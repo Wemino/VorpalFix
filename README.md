@@ -4,7 +4,7 @@ A plugin that addresses a variety of technical issues and adds quality-of-life i
 ## Features
 ### Fixes
 - Fix the random sound selection function. (e.g., Cheshire Cat summon, Vorpal knife hit sounds and much more)
-- Fix saving when the game is installed on a disk with more than 2TB of free space.
+- Fix "Hard Disk Full" when the game is installed on a disk with more than 2TB of free space.
 - Fix crashing when saving at certain resolutions.
 - Fix Alice's blinking animation playing too quickly at high frame rates in the settings menu.
 - Fix HUD stretching in widescreen resolutions.
