@@ -7,9 +7,9 @@ A plugin that addresses a variety of technical issues and adds quality-of-life i
 - Fix "Hard Disk Full" when the game is installed on a disk with more than 2TB of free space.
 - Fix crashing when saving at certain resolutions.
 - Fix Alice's blinking animation playing too quickly at high frame rates in the settings menu.
-- Fix HUD stretching in widescreen resolutions. [Before & After](https://github.com/Wemino/VorpalFix/assets/hud.gif)
-- Fix FMV stretching in widescreen resolutions. [Before & After](https://github.com/Wemino/VorpalFix/assets/fmv.gif)
-- Fix GUI stretching in widescreen resolutions. [Before & After](https://github.com/Wemino/VorpalFix/assets/gui.gif)
+- Fix HUD stretching in widescreen resolutions. [Before & After](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/hud.gif)
+- Fix FMV stretching in widescreen resolutions. [Before & After](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/fmv.gif)
+- Fix GUI stretching in widescreen resolutions. [Before & After](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/gui.gif)
 
 ### General
 - Allow the game to launch without Alice: Madness Returns.
