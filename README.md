@@ -3,13 +3,13 @@ A plugin that addresses a variety of technical issues and adds quality-of-life i
 
 ## Features
 ### Fixes
-- Fix the random sound selection function. (e.g., Cheshire Cat summon, Vorpal knife hit sounds and much more)
+- Fix the random sound selection function. (e.g., Cheshire Cat summon, Vorpal Blade hit sounds and much more)
 - Fix "Hard Disk Full" when the game is installed on a disk with more than 2TB of free space.
 - Fix crashing when saving at certain resolutions.
 - Fix Alice's blinking animation playing too quickly at high frame rates in the settings menu.
-- Fix HUD stretching in widescreen resolutions.
-- Fix FMV stretching in widescreen resolutions.
-- Fix Menus stretching in widescreen resolutions.
+- Fix HUD stretching in widescreen resolutions. [Before & After](https://github.com/Wemino/VorpalFix/assets/hud.gif)
+- Fix FMV stretching in widescreen resolutions. [Before & After](https://github.com/Wemino/VorpalFix/assets/fmv.gif)
+- Fix GUI stretching in widescreen resolutions. [Before & After](https://github.com/Wemino/VorpalFix/assets/gui.gif)
 
 ### General
 - Allow the game to launch without Alice: Madness Returns.

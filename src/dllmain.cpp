@@ -44,7 +44,7 @@ bool FixSaveScreenshotBufferOverflow = false;
 bool FixBlinkingAnimationSpeed = false;
 bool FixStretchedHUD = false;
 bool FixStretchedFMV = false;
-bool FixStretchedMenu = false;
+bool FixStretchedGUI = false;
 
 // General
 bool LaunchWithoutAlice2 = false;
@@ -83,7 +83,7 @@ static void ReadConfig()
 	FixBlinkingAnimationSpeed = iniReader.ReadInteger("Fixes", "FixBlinkingAnimationSpeed", 1) == 1;
 	FixStretchedHUD = iniReader.ReadInteger("Fixes", "FixStretchedHUD", 1) == 1;
 	FixStretchedFMV = iniReader.ReadInteger("Fixes", "FixStretchedFMV", 1) == 1;
-	FixStretchedMenu = iniReader.ReadInteger("Fixes", "FixStretchedMenu", 1) == 1;
+	FixStretchedGUI = iniReader.ReadInteger("Fixes", "FixStretchedGUI", 1) == 1;
 
 	// General
 	LaunchWithoutAlice2 = iniReader.ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
@@ -811,7 +811,7 @@ static void ApplyFixStretchedFMV()
 
 static void ApplyFixStretchedMenu()
 {
-	if (!FixStretchedMenu) return;
+	if (!FixStretchedGUI) return;
 
 	ApplyHook((void*)0x48FC00, &RenderShader_Hook, reinterpret_cast<LPVOID*>(&RenderShader)); // UI Scaling
 	ApplyHook((void*)0x44B100, &SetUIBorder_Hook, reinterpret_cast<LPVOID*>(&SetUIBorder)); // Add the borders
