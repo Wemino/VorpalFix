@@ -519,21 +519,15 @@ static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 	return QGL_Init(lpLibFileName);
 }
 
-typedef int(__cdecl* sub_42CFF0)();
-sub_42CFF0 LoadGameDLL = nullptr;
+typedef void(__cdecl* sub_420390)(DWORD*, int, int*);
+sub_420390 MSG_DoStuff = nullptr;
 
-static int __cdecl LoadGameDLL_Hook()
+static void __cdecl UpdateFOV(DWORD* a1, int a2, int* a3)
 {
-	// Load the game's DLL
-	int result = LoadGameDLL();
+	float* targetAddress = (float*)((DWORD)a2 - 0x50);
 
-	// Get handle to "fgamex86.dll" if loaded
-	HMODULE gameApiDll = GetModuleHandle(L"fgamex86.dll");
-
-	// If DLL is loaded, get its base address and do the patching
-	if (gameApiDll) {
-		DWORD gameApiBaseAddress = (DWORD)gameApiDll;
-
+	if (*targetAddress == 90.0f)
+	{
 		// Scale the FOV for non-4:3 aspect ratios
 		if (AutoFOV)
 		{
@@ -549,10 +543,10 @@ static int __cdecl LoadGameDLL_Hook()
 			FOV = 2.0 * atan(tan(vFOV / 2.0) * current_aspect_ratio) * 180.0 / M_PI;
 		}
 
-		injector::WriteMemory<float>(gameApiBaseAddress + FOV_ADDR, FOV, true);
+		*targetAddress = FOV;
 	}
 
-	return result;
+	MSG_DoStuff(a1, a2, a3);
 }
 
 typedef int(__cdecl* sub_419910)(const char*, const char*, int);
@@ -928,9 +922,9 @@ static void ApplyCustomResolution()
 
 static void ApplyCustomFOV()
 {
-	if (!AutoFOV && FOV != 90.0) return;
+	if (!AutoFOV && FOV == 90.0) return;
 
-	ApplyHook((void*)0x42CFF0, &LoadGameDLL_Hook, reinterpret_cast<LPVOID*>(&LoadGameDLL));
+	ApplyHook((void*)0x420390, &UpdateFOV, reinterpret_cast<LPVOID*>(&MSG_DoStuff));
 }
 
 static void ApplyCvarTweaks()

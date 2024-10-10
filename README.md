@@ -1,5 +1,5 @@
 # VorpalFix
-A plugin that addresses a variety of technical issues and adds quality-of-life improvements to the 2011 re-release/remaster of American McGee's Alice.
+A plugin that addresses a variety of technical issues and adds quality-of-life improvements to the 2011 remaster of American McGee's Alice.
 
 ## Features
 ### Fixes
