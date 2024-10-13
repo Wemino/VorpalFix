@@ -110,6 +110,18 @@ static void ReadConfig()
 	FOV = iniReader.ReadFloat("Graphics", "FOV", 90.0);
 	AutoFOV = iniReader.ReadInteger("Graphics", "AutoFOV", 0) == 1;
 
+	// Set to monitor's refresh rate
+	if (CustomFPSLimit == -1)
+	{
+		DEVMODE devMode = {};
+		devMode.dmSize = sizeof(DEVMODE);
+
+		if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &devMode))
+		{
+			CustomFPSLimit = devMode.dmDisplayFrequency;
+		}
+	}
+
 	CvarHooking = EnableDevConsole || EnableVsync || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60);
 }
 
@@ -586,17 +598,6 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 
 	if (CustomFPSLimit != 60 && strcmp(var_name, "com_maxfps") == 0)
 	{
-		if (CustomFPSLimit == -1)
-		{
-			DEVMODE devMode = {};
-			devMode.dmSize = sizeof(DEVMODE);
-
-			if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &devMode))
-			{
-				CustomFPSLimit = devMode.dmDisplayFrequency; // Set to monitor's refresh rate
-			}
-		}
-
 		static std::string fpsLimitStr;
 		fpsLimitStr = std::to_string(CustomFPSLimit);
 		value = fpsLimitStr.c_str();
