@@ -67,6 +67,7 @@ bool AutoResolution = false;
 bool CustomResolution = false;
 int CustomResolutionWidth = 0;
 int CustomResolutionHeight = 0;
+bool EnableAltF4Close = 0;
 
 // Graphics
 bool TrilinearTextureFiltering = false;
@@ -107,6 +108,7 @@ static void ReadConfig()
 	CustomResolution = iniReader.ReadInteger("Display", "CustomResolution", 0) == 1;
 	CustomResolutionWidth = iniReader.ReadInteger("Display", "CustomResolutionWidth", 640);
 	CustomResolutionHeight = iniReader.ReadInteger("Display", "CustomResolutionHeight", 480);
+	EnableAltF4Close = iniReader.ReadInteger("Display", "EnableAltF4Close", 0);
 
 	// Graphics
 	TrilinearTextureFiltering = iniReader.ReadInteger("Graphics", "TrilinearTextureFiltering", 1) == 1;
@@ -534,6 +536,19 @@ static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 	}
 
 	return QGL_Init(lpLibFileName);
+}
+
+typedef int(__stdcall* sub_46C600)(HWND, UINT, HDC, HWND);
+sub_46C600 lpfnWndProc_MSG = nullptr;
+
+static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, HDC hdc, HWND lParam)
+{
+	if ((GetAsyncKeyState(VK_MENU) & 0x8000) != 0 && (GetAsyncKeyState(VK_F4) & 0x8000) != 0)
+	{
+		Msg = 0x10;
+	}
+
+	return lpfnWndProc_MSG(hWnd, Msg, hdc, lParam);
 }
 
 typedef void(__cdecl* sub_420390)(DWORD*, int, int*);
@@ -975,6 +990,13 @@ static void ApplyCustomResolution()
 	ApplyHook((void*)0x47ABE0, &QGL_Init_Hook, reinterpret_cast<LPVOID*>(&QGL_Init));
 }
 
+static void ApplyEnableAltF4Close()
+{
+	if (!EnableAltF4Close) return;
+
+	ApplyHook((void*)0x46C600, &lpfnWndProc_MSG_Hook, reinterpret_cast<LPVOID*>(&lpfnWndProc_MSG));
+}
+
 static void ApplyCustomFOV()
 {
 	if (!AutoFOV && FOV == 90.0) return;
@@ -1012,6 +1034,7 @@ static void Init()
 	ApplyEnableDevConsole();
 	ApplyHideConsoleAtLaunch();
 	ApplyCustomResolution();
+	ApplyEnableAltF4Close();
 	ApplyCustomFOV();
 	ApplyCvarTweaks();
 }
