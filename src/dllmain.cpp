@@ -3,6 +3,9 @@
 #include <IniReader.h>
 #include <shlobj.h>
 #include "MinHook.h"
+#include <Windows.h>
+#include <VersionHelpers.h>
+#include <ShellScalingAPI.h>
 
 // =============================
 // Memory Addresses 
@@ -45,6 +48,7 @@ bool FixBlinkingAnimationSpeed = false;
 bool FixStretchedHUD = false;
 bool FixStretchedFMV = false;
 bool FixStretchedGUI = false;
+bool FixDPIScaling = false;
 
 // General
 bool LaunchWithoutAlice2 = false;
@@ -84,6 +88,7 @@ static void ReadConfig()
 	FixStretchedHUD = iniReader.ReadInteger("Fixes", "FixStretchedHUD", 1) == 1;
 	FixStretchedFMV = iniReader.ReadInteger("Fixes", "FixStretchedFMV", 1) == 1;
 	FixStretchedGUI = iniReader.ReadInteger("Fixes", "FixStretchedGUI", 1) == 1;
+	FixDPIScaling = iniReader.ReadInteger("Fixes", "FixDPIScaling", 1) == 1;
 
 	// General
 	LaunchWithoutAlice2 = iniReader.ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
@@ -804,7 +809,7 @@ static void ApplyFixStretchedFMV()
 	ApplyHook((void*)0x490130, &SetFMVPosition_Hook, reinterpret_cast<LPVOID*>(&SetFMVPosition));
 }
 
-static void ApplyFixStretchedMenu()
+static void ApplyFixStretchedGUI()
 {
 	if (!FixStretchedGUI) return;
 
@@ -812,6 +817,55 @@ static void ApplyFixStretchedMenu()
 	ApplyHook((void*)0x44B100, &SetUIBorder_Hook, reinterpret_cast<LPVOID*>(&SetUIBorder)); // Add the borders
 	ApplyHook((void*)0x4C0A10, &GetGlyphInfo_Hook, reinterpret_cast<LPVOID*>(&GetGlyphInfo)); // Font Scaling
 	ApplyHook((void*)0x4C5D30, &SetAliceMirrorViewportParams_Hook, reinterpret_cast<LPVOID*>(&SetAliceMirrorViewportParams)); // Scale Alice's 3D model in the settings menu
+}
+
+typedef HRESULT(WINAPI* SetProcessDpiAwarenessProc)(PROCESS_DPI_AWARENESS);
+typedef BOOL(WINAPI* SetProcessDpiAwarenessContextProc)(DPI_AWARENESS_CONTEXT);
+
+static void ApplyFixDPIScaling()
+{
+	if (!FixDPIScaling) return;
+
+	if (IsWindows10OrGreater())
+	{
+		HMODULE user32 = LoadLibrary(L"user32.dll");
+		if (user32)
+		{
+			auto setDpiAwarenessContext = (SetProcessDpiAwarenessContextProc)GetProcAddress(user32, "SetProcessDpiAwarenessContext");
+			if (setDpiAwarenessContext)
+			{
+				setDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+			}
+			FreeLibrary(user32);
+		}
+	}
+	else if (IsWindows8Point1OrGreater())
+	{
+		HMODULE shcore = LoadLibrary(L"shcore.dll");
+		if (shcore)
+		{
+			auto setDpiAwareness = (SetProcessDpiAwarenessProc)GetProcAddress(shcore, "SetProcessDpiAwareness");
+			if (setDpiAwareness)
+			{
+				setDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+			}
+			FreeLibrary(shcore);
+		}
+	}
+	else if (IsWindows7OrGreater())
+	{
+		HMODULE user32 = LoadLibrary(L"user32.dll");
+		if (user32)
+		{
+			typedef BOOL(WINAPI* SetProcessDPIAwareProc)();
+			auto setProcessDPIAware = (SetProcessDPIAwareProc)GetProcAddress(user32, "SetProcessDPIAware");
+			if (setProcessDPIAware)
+			{
+				setProcessDPIAware();
+			}
+			FreeLibrary(user32);
+		}
+	}
 }
 
 static void ApplyLaunchWithoutAlice2()
@@ -948,7 +1002,8 @@ static void Init()
 	ApplyFixBlinkingAnimationSpeed();
 	ApplyFixStretchedHUD();
 	ApplyFixStretchedFMV();
-	ApplyFixStretchedMenu();
+	ApplyFixStretchedGUI();
+	ApplyFixDPIScaling();
 	ApplyLaunchWithoutAlice2();
 	ApplyPreventAlice2OnExit();
 	ApplyLanguageId();
