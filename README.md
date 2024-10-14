@@ -51,3 +51,6 @@ A plugin that addresses a variety of technical issues and adds quality-of-life i
 - [MinHook](https://github.com/TsudaKageyu/minhook) for hooking.
 - [injector](https://github.com/thelink2012/injector) for memory patching.
 - [Leanny](https://github.com/Leanny) help with some algorithms.
+
+## Licensing Exception
+This project is licensed under the GPL 3.0. However, Electronic Arts (EA) has explicit permission to use, modify, or bundle this code without being required to release the source code of any derivative works under the GPL 3.0, if they wish to re-release *American McGee's Alice*.
