@@ -62,6 +62,7 @@ char* ToggleConsoleBindKey = nullptr;
 // Display
 bool HideConsoleAtLaunch = false;
 bool ForceFullscreen = false;
+bool ForceBorderlessFullscreen = false;
 bool EnableVsync = false;
 bool AutoResolution = false;
 bool CustomResolution = false;
@@ -103,6 +104,7 @@ static void ReadConfig()
 	// Display
 	HideConsoleAtLaunch = iniReader.ReadInteger("Display", "HideConsoleAtLaunch", 1) == 1;
 	ForceFullscreen = iniReader.ReadInteger("Display", "ForceFullscreen", 1) == 1;
+	ForceBorderlessFullscreen = iniReader.ReadInteger("Display", "ForceBorderlessFullscreen", 0) == 1;
 	EnableVsync = iniReader.ReadInteger("Display", "EnableVsync", 0) == 1;
 	AutoResolution = iniReader.ReadInteger("Display", "AutoResolution", 0) == 1;
 	CustomResolution = iniReader.ReadInteger("Display", "CustomResolution", 0) == 1;
@@ -545,7 +547,7 @@ static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, HDC hdc, HWND lPa
 {
 	if ((GetAsyncKeyState(VK_MENU) & 0x8000) != 0 && (GetAsyncKeyState(VK_F4) & 0x8000) != 0)
 	{
-		Msg = 0x10;
+		Msg = WM_CLOSE;
 	}
 
 	return lpfnWndProc_MSG(hWnd, Msg, hdc, lParam);
@@ -625,6 +627,28 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	}
 
 	return Cvar_Set(var_name, value, flag);
+}
+
+typedef HWND(WINAPI* CreateWindowExA_t)( DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam);
+CreateWindowExA_t fpCreateWindowExA = NULL;
+
+static HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
+{
+	if (dwStyle == 0x10C80000)
+	{
+		int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+		int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+		dwStyle = WS_VISIBLE + WS_POPUP;
+
+		nWidth = screenWidth;
+		nHeight = screenHeight;
+
+		X = 0;
+		Y = 0;
+	}
+
+	return fpCreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
 }
 
 #pragma endregion Hooks with MinHook
@@ -983,9 +1007,16 @@ static void ApplyHideConsoleAtLaunch()
 	injector::WriteMemory<char>(0x46C28F, 0x00, true);
 }
 
+static void ApplyForceBorderlessFullscreen()
+{
+	if (!ForceBorderlessFullscreen) return;
+
+	ApplyHook(&CreateWindowExA, &CreateWindowExA_Hook, (LPVOID*)&fpCreateWindowExA);
+}
+
 static void ApplyCustomResolution()
 {
-	if (!AutoResolution && !CustomResolution && !ForceFullscreen) return;
+	if ((!AutoResolution && !CustomResolution && !ForceFullscreen) || ForceBorderlessFullscreen) return;
 
 	ApplyHook((void*)0x47ABE0, &QGL_Init_Hook, reinterpret_cast<LPVOID*>(&QGL_Init));
 }
@@ -1033,6 +1064,7 @@ static void Init()
 	ApplyDisableRemasteredModels();
 	ApplyEnableDevConsole();
 	ApplyHideConsoleAtLaunch();
+	ApplyForceBorderlessFullscreen();
 	ApplyCustomResolution();
 	ApplyEnableAltF4Close();
 	ApplyCustomFOV();
