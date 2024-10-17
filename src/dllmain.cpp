@@ -10,8 +10,8 @@
 // =============================
 // Memory Addresses 
 // =============================
-const int CURRENT_WIDTH_ADDR = 0x11C02CC;
-const int CURRENT_HEIGHT_ADDR = 0x11C02D0;
+const int CURRENT_WIDTH_ADDR = 0x1C4798C;
+const int CURRENT_HEIGHT_ADDR = 0x1C47990;
 const int FOV_ADDR = 0x15BC94;
 const int STARTUP_STATE_ADDR = 0x7CCA20;
 const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
@@ -31,6 +31,8 @@ bool isMHInitialized = false;
 bool isDialog = false;
 bool isResolutionApplied = false;
 bool CvarHooking = false;
+int currentWidth = 0;
+int currentHeight = 0;
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const float BORDER_THRESHOLD = 140.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
@@ -273,11 +275,8 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 
 	if (!skip)
 	{
-		int current_width_int = injector::ReadMemory<int>(CURRENT_WIDTH_ADDR, false);
-		int current_height_int = injector::ReadMemory<int>(CURRENT_HEIGHT_ADDR, false);
-
-		float current_width = static_cast<float>(current_width_int);
-		float current_height = static_cast<float>(current_height_int);
+		float current_width = static_cast<float>(currentWidth);
+		float current_height = static_cast<float>(currentHeight);
 
 		float current_aspect_ratio = current_width / current_height;
 
@@ -399,10 +398,8 @@ static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_po
 		return GetGlyphInfo(this_ptr, font_x_position, font_y_position, a4, a5, a6, a7, a8, font_scale_width, font_scale_height);
 	}
 
-	int current_width_int = injector::ReadMemory<int>(CURRENT_WIDTH_ADDR, false);
-	int current_height_int = injector::ReadMemory<int>(CURRENT_HEIGHT_ADDR, false);
-	float current_width = static_cast<float>(current_width_int);
-	float current_height = static_cast<float>(current_height_int);
+	float current_width = static_cast<float>(currentWidth);
+	float current_height = static_cast<float>(currentHeight);
 
 	float current_aspect_ratio = current_width / current_height;
 
@@ -553,31 +550,40 @@ static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, HDC hdc, HWND lPa
 	return lpfnWndProc_MSG(hWnd, Msg, hdc, lParam);
 }
 
+typedef int(__cdecl* sub_46FC70)(void*, unsigned __int8, char, unsigned __int8, int);
+sub_46FC70 GLW_CreatePFD = nullptr;
+
+static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, char depthbits, unsigned __int8 stencilbits, int stereo)
+{
+	// Resolution updated, update the variables
+	currentWidth = injector::ReadMemory<int>(CURRENT_WIDTH_ADDR, false);
+	currentHeight = injector::ReadMemory<int>(CURRENT_HEIGHT_ADDR, false);
+
+	// Scale the FOV for non-4:3 aspect ratios
+	if (AutoFOV)
+	{
+		float current_width = static_cast<float>(currentWidth);
+		float current_height = static_cast<float>(currentHeight);
+
+		float current_aspect_ratio = current_width / current_height;
+
+		float vFOV = 2.0 * atan(tan(90.0 * M_PI / 180.0 / 2.0) / ASPECT_RATIO_4_3);
+		FOV = 2.0 * atan(tan(vFOV / 2.0) * current_aspect_ratio) * 180.0 / M_PI;
+	}	
+
+	return GLW_CreatePFD(pPFD, colorbits, depthbits, stencilbits, stereo);
+}
+
 typedef void(__cdecl* sub_420390)(DWORD*, int, int*);
 sub_420390 MSG_DoStuff = nullptr;
 
 static void __cdecl UpdateFOV(DWORD* a1, int a2, int* a3)
 {
-	float* targetAddress = (float*)((DWORD)a2 - 0x50);
+	float* fovPointer = (float*)((DWORD)a2 - 0x50);
 
-	if (*targetAddress == 90.0f)
+	if (*fovPointer != FOV)
 	{
-		// Scale the FOV for non-4:3 aspect ratios
-		if (AutoFOV)
-		{
-			int current_width_int = injector::ReadMemory<int>(CURRENT_WIDTH_ADDR, false);
-			int current_height_int = injector::ReadMemory<int>(CURRENT_HEIGHT_ADDR, false);
-
-			float current_width = static_cast<float>(current_width_int);
-			float current_height = static_cast<float>(current_height_int);
-
-			float current_aspect_ratio = current_width / current_height;
-
-			float vFOV = 2.0 * atan(tan(90.0 * M_PI / 180.0 / 2.0) / ASPECT_RATIO_4_3);
-			FOV = 2.0 * atan(tan(vFOV / 2.0) * current_aspect_ratio) * 180.0 / M_PI;
-		}
-
-		*targetAddress = FOV;
+		*fovPointer = FOV;
 	}
 
 	MSG_DoStuff(a1, a2, a3);
@@ -1042,6 +1048,13 @@ static void ApplyCvarTweaks()
 	ApplyHook((void*)0x419910, &Cvar_Set_Hook, reinterpret_cast<LPVOID*>(&Cvar_Set));
 }
 
+static void ApplyResolutionChangeHook()
+{
+	if (!AutoFOV && !FixStretchedGUI) return;
+
+	ApplyHook((void*)0x46FC70, &GLW_CreatePFD_Hook, reinterpret_cast<LPVOID*>(&GLW_CreatePFD));
+}
+
 #pragma endregion Apply Patches
 
 #pragma region
@@ -1069,6 +1082,7 @@ static void Init()
 	ApplyEnableAltF4Close();
 	ApplyCustomFOV();
 	ApplyCvarTweaks();
+	ApplyResolutionChangeHook();
 }
 
 static BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
