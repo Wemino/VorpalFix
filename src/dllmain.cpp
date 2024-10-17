@@ -1,4 +1,5 @@
 ﻿#define _USE_MATH_DEFINES
+#define NOMINMAX
 #include <injector\injector.hpp>
 #include <IniReader.h>
 #include <shlobj.h>
@@ -32,6 +33,7 @@ bool isResolutionApplied = false;
 bool CvarHooking = false;
 int currentWidth = 0;
 int currentHeight = 0;
+bool isCursorResized = false;
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const float BORDER_THRESHOLD = 140.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
@@ -368,6 +370,54 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 				}
 			}
 		}
+
+		// Hack to resize the cursor
+		if (!isCursorResized)
+		{
+			char* ShaderName = *(char**)(SHADERS_CACHE_ADDR + 0x4 * ShaderHandle);
+
+			if (strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
+			{
+				int ImageNum = injector::ReadMemory<int>(0x1BCCEEC, false);
+				int ImageIndex = 0x1BCCEF0;
+
+				// Constants for the original width and height of the cursor
+				const int originalWidth = 640;
+				const int originalHeight = 480;
+
+				// Loop through to find the correct ImageIndex
+				for (int i = 0; i < ImageNum; ++i)
+				{
+					// Check if the current ImageIndex corresponds to the desired texture
+					const char* currentTexture = (const char*)ImageIndex;
+
+					// If the current texture is "gfx/2d/mouse_arrow.tga", apply the scaling patch
+					if (strcmp(currentTexture, "gfx/2d/mouse_arrow.tga") == 0)
+					{
+						// Calculate scale factors
+						float widthScale = static_cast<float>(currentWidth) / originalWidth;
+						float heightScale = static_cast<float>(currentHeight) / originalHeight;
+
+						// Use the smallest scale factor to maintain the aspect ratio
+						float scaleFactor = std::min(widthScale, heightScale);
+
+						// Calculate the new scaled sizes
+						int scaledMouseWidth = static_cast<int>(injector::ReadMemory<int>(ImageIndex + 0x40, false) * scaleFactor);
+						int scaledMouseHeight = static_cast<int>(injector::ReadMemory<int>(ImageIndex + 0x44, false) * scaleFactor);
+
+						injector::WriteMemory<int>(ImageIndex + 0x40, scaledMouseWidth, false);
+						injector::WriteMemory<int>(ImageIndex + 0x44, scaledMouseHeight, false);
+
+						// Set the flag indicating the cursor has been resized
+						isCursorResized = true;
+						break;
+					}
+
+					// Move to the next ImageIndex by incrementing by 0x80
+					ImageIndex += 0x80;
+				}
+			}
+		}
 	}
 
 	return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
@@ -571,6 +621,8 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 		float vFOV = 2.0 * atan(tan(90.0 * M_PI / 180.0 / 2.0) / ASPECT_RATIO_4_3);
 		FOV = 2.0 * atan(tan(vFOV / 2.0) * current_aspect_ratio) * 180.0 / M_PI;
 	}
+
+	isCursorResized = false;
 
 	return GLW_CreatePFD(pPFD, colorbits, depthbits, stencilbits, stereo);
 }
