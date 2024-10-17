@@ -12,7 +12,6 @@
 // =============================
 const int CURRENT_WIDTH_ADDR = 0x1C4798C;
 const int CURRENT_HEIGHT_ADDR = 0x1C47990;
-const int FOV_ADDR = 0x15BC94;
 const int STARTUP_STATE_ADDR = 0x7CCA20;
 const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
 const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
@@ -63,6 +62,7 @@ char* ToggleConsoleBindKey = nullptr;
 
 // Display
 bool HideConsoleAtLaunch = false;
+bool DisableLetterbox = false;
 bool ForceFullscreen = false;
 bool ForceBorderlessFullscreen = false;
 bool EnableVsync = false;
@@ -105,6 +105,7 @@ static void ReadConfig()
 
 	// Display
 	HideConsoleAtLaunch = iniReader.ReadInteger("Display", "HideConsoleAtLaunch", 1) == 1;
+	DisableLetterbox = iniReader.ReadInteger("Display", "DisableLetterbox", 0) == 1;
 	ForceFullscreen = iniReader.ReadInteger("Display", "ForceFullscreen", 1) == 1;
 	ForceBorderlessFullscreen = iniReader.ReadInteger("Display", "ForceBorderlessFullscreen", 0) == 1;
 	EnableVsync = iniReader.ReadInteger("Display", "EnableVsync", 0) == 1;
@@ -569,7 +570,7 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 
 		float vFOV = 2.0 * atan(tan(90.0 * M_PI / 180.0 / 2.0) / ASPECT_RATIO_4_3);
 		FOV = 2.0 * atan(tan(vFOV / 2.0) * current_aspect_ratio) * 180.0 / M_PI;
-	}	
+	}
 
 	return GLW_CreatePFD(pPFD, colorbits, depthbits, stencilbits, stereo);
 }
@@ -635,7 +636,28 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	return Cvar_Set(var_name, value, flag);
 }
 
-typedef HWND(WINAPI* CreateWindowExA_t)( DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam);
+typedef int(__cdecl* sub_42CFF0)();
+sub_42CFF0 LoadGameDLL = nullptr;
+
+static int __cdecl LoadGameDLL_Hook()
+{
+	// Load the game's DLL
+	int result = LoadGameDLL();
+
+	// Get handle to "fgamex86.dll" if loaded
+	HMODULE gameApiDll = GetModuleHandle(L"fgamex86.dll");
+
+	// If DLL is loaded, get its base address and do the patching
+	if (gameApiDll) {
+		DWORD gameApiBaseAddress = (DWORD)gameApiDll;
+
+		injector::WriteMemory<int>(gameApiBaseAddress + 0x16CAA3, 0, true);
+	}
+
+	return result;
+}
+
+typedef HWND(WINAPI* CreateWindowExA_t)(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam);
 CreateWindowExA_t fpCreateWindowExA = NULL;
 
 static HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
@@ -1013,6 +1035,13 @@ static void ApplyHideConsoleAtLaunch()
 	injector::WriteMemory<char>(0x46C28F, 0x00, true);
 }
 
+static void ApplyDisableLetterbox()
+{
+	if (!DisableLetterbox) return;
+
+	ApplyHook((void*)0x42CFF0, &LoadGameDLL_Hook, reinterpret_cast<LPVOID*>(&LoadGameDLL));
+}
+
 static void ApplyForceBorderlessFullscreen()
 {
 	if (!ForceBorderlessFullscreen) return;
@@ -1077,6 +1106,7 @@ static void Init()
 	ApplyDisableRemasteredModels();
 	ApplyEnableDevConsole();
 	ApplyHideConsoleAtLaunch();
+	ApplyDisableLetterbox();
 	ApplyForceBorderlessFullscreen();
 	ApplyCustomResolution();
 	ApplyEnableAltF4Close();
