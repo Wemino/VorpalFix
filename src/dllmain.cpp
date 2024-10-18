@@ -64,6 +64,7 @@ bool EnableDevConsole = false;
 char* ToggleConsoleBindKey = nullptr;
 
 // Display
+bool ConsolePortHUD = false;
 bool HideConsoleAtLaunch = false;
 bool DisableLetterbox = false;
 bool ForceFullscreen = false;
@@ -107,6 +108,7 @@ static void ReadConfig()
 	ToggleConsoleBindKey = iniReader.ReadString("General", "ToggleConsoleBindKey", "F2");
 
 	// Display
+	ConsolePortHUD = iniReader.ReadInteger("Display", "ConsolePortHUD", 0) == 1;
 	HideConsoleAtLaunch = iniReader.ReadInteger("Display", "HideConsoleAtLaunch", 1) == 1;
 	DisableLetterbox = iniReader.ReadInteger("Display", "DisableLetterbox", 0) == 1;
 	ForceFullscreen = iniReader.ReadInteger("Display", "ForceFullscreen", 1) == 1;
@@ -123,7 +125,7 @@ static void ReadConfig()
 	EnhancedLOD = iniReader.ReadInteger("Graphics", "EnhancedLOD", 1) == 1;
 	CustomFPSLimit = iniReader.ReadInteger("Graphics", "CustomFPSLimit", 60);
 	FOV = iniReader.ReadFloat("Graphics", "FOV", 90.0);
-	AutoFOV = iniReader.ReadInteger("Graphics", "AutoFOV", 0) == 1;
+	AutoFOV = iniReader.ReadInteger("Graphics", "AutoFOV", 1) == 1;
 
 	// Set to monitor's refresh rate
 	if (CustomFPSLimit == -1)
@@ -185,7 +187,7 @@ static int __cdecl SetHUDPosition_Hook(float x_position, float y_position, float
 	double hud_object_x_position = (x_position * 640.0) / resolution_width;
 	float resolution_width_original = resolution_width;
 
-	if (current_aspect_ratio > ASPECT_RATIO_4_3)
+	if (current_aspect_ratio > ASPECT_RATIO_4_3 && FixStretchedHUD)
 	{
 		scaleX = ASPECT_RATIO_4_3 / current_aspect_ratio;
 
@@ -212,35 +214,53 @@ static int __cdecl SetHUDPosition_Hook(float x_position, float y_position, float
 				}
 			}
 		}
-	}
 
-	// Adjust width scaling for the HUD elements on the left
-	resolution_width *= scaleX;
+		// Adjust width scaling for the HUD elements on the left
+		resolution_width *= scaleX;
 
-	if (x_position < 0)
-	{
-		x_position = static_cast<double>(resolution_width / 640.0 * hud_object_x_position);
-
-		// Fine tuning
-		if (resolution_width_original != 1440 || resolution_height != 900)
+		if (x_position < 0)
 		{
-			if (resolution_width_original == 1280 && resolution_height == 800)
+			x_position = static_cast<double>(resolution_width / 640.0 * hud_object_x_position);
+
+			// Fine tuning
+			if (resolution_width_original != 1440 || resolution_height != 900)
 			{
-				x_position += 2.0f;
-			}
-			else if (resolution_width_original < 1920)
-			{
-				x_position += 1.0f;
-			}
-			else if (resolution_width_original < 3840)
-			{
-				x_position += 2.0f;
-			}
-			else
-			{
-				x_position += 3.0f;
+				if (resolution_width_original == 1280 && resolution_height == 800)
+				{
+					x_position += 2.0f;
+				}
+				else if (resolution_width_original < 1920)
+				{
+					x_position += 1.0f;
+				}
+				else if (resolution_width_original < 3840)
+				{
+					x_position += 2.0f;
+				}
+				else
+				{
+					x_position += 3.0f;
+				}
 			}
 		}
+	}
+
+	if (ConsolePortHUD)
+	{
+		float current_width = static_cast<float>(currentWidth);
+		float current_height = static_cast<float>(currentHeight);
+
+		if (x_position < 0)
+		{
+			x_position += current_width / 17.5f;
+		}
+
+		if (x_position > 0)
+		{
+			x_position -= current_width / 17.5f;
+		}
+
+		y_position -= current_height / 10.0f;
 	}
 
 	return SetHUDPosition(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16);
@@ -917,9 +937,14 @@ static void ApplyFixBlinkingAnimationSpeed()
 
 static void ApplyFixStretchedHUD()
 {
-	if (!FixStretchedHUD) return;
+	if (!FixStretchedHUD && !FixStretchedGUI) return;
 
 	ApplyHook((void*)0x446050, &SetHUDPosition_Hook, reinterpret_cast<LPVOID*>(&SetHUDPosition));
+
+	// hud_item_foldout
+	injector::WriteMemory<float>(0x5218A8, 258.5f, true);
+	// hud_weapon_foldout
+	injector::WriteMemory<float>(0x5218F8, -258.5f, true);
 }
 
 static void ApplyFixStretchedFMV()
@@ -1193,16 +1218,16 @@ static BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID l
 {
 	switch (ul_reason_for_call)
 	{
-		case DLL_PROCESS_ATTACH:
-		{
-			LoadProxyLibrary();
-			Init();
-			break;
-		}
-		case DLL_THREAD_ATTACH:
-		case DLL_THREAD_DETACH:
-		case DLL_PROCESS_DETACH:
-			break;
+	case DLL_PROCESS_ATTACH:
+	{
+		LoadProxyLibrary();
+		Init();
+		break;
+	}
+	case DLL_THREAD_ATTACH:
+	case DLL_THREAD_DETACH:
+	case DLL_PROCESS_DETACH:
+		break;
 	}
 	return TRUE;
 }
