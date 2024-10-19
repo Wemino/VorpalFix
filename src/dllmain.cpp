@@ -114,7 +114,7 @@ static void ReadConfig()
 	ForceFullscreen = iniReader.ReadInteger("Display", "ForceFullscreen", 1) == 1;
 	ForceBorderlessFullscreen = iniReader.ReadInteger("Display", "ForceBorderlessFullscreen", 0) == 1;
 	EnableVsync = iniReader.ReadInteger("Display", "EnableVsync", 0) == 1;
-	AutoResolution = iniReader.ReadInteger("Display", "AutoResolution", 0) == 1;
+	AutoResolution = iniReader.ReadInteger("Display", "AutoResolution", 1) == 1;
 	CustomResolution = iniReader.ReadInteger("Display", "CustomResolution", 0) == 1;
 	CustomResolutionWidth = iniReader.ReadInteger("Display", "CustomResolutionWidth", 640);
 	CustomResolutionHeight = iniReader.ReadInteger("Display", "CustomResolutionHeight", 480);
@@ -573,28 +573,7 @@ static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 			injector::WriteMemory<int>(pointer + 0x20, 1, false);
 		}
 
-		// Pick AutoResolution over CustomResolution
-		if (AutoResolution)
-		{
-			int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-			int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-			int resolutionNum = injector::ReadMemory<int>(DISPLAY_MODE_NUM, false);
-
-			for (int i = 0; i < resolutionNum; i++)
-			{
-				int screenWidthMode = injector::ReadMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR + (i * 8), false);
-				int screenHeightMode = injector::ReadMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR + (i * 8), false);
-
-				if (screenWidth == screenWidthMode && screenHeight == screenHeightMode)
-				{
-					int pointer = injector::ReadMemory<int>(DISPLAY_MODE_PTR_ADDR, false);
-					injector::WriteMemory<int>(pointer + 0x20, i, false);
-					isResolutionApplied = true;
-					break;
-				}
-			}
-		}
-		else if (CustomResolution)
+		if (CustomResolution)
 		{
 			int pointer = injector::ReadMemory<int>(DISPLAY_MODE_PTR_ADDR, false);
 			injector::WriteMemory<int>(pointer + 0x20, 0, false);
@@ -696,6 +675,33 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	{
 		value = "1";
 		flag = 0x10;
+	}
+
+	if (AutoResolution && strcmp(var_name, "r_mode") == 0 && strcmp(value, "0") == 0)
+	{
+		// Since this code is executed after, do it before
+		typedef signed int(__cdecl* sub_46F850)();
+		sub_46F850 FetchDisplayResolutions = (sub_46F850)0x46F850;
+		FetchDisplayResolutions();
+
+		// Find the correct r_mode for the current resolution
+		int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+		int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+		int resolutionNum = injector::ReadMemory<int>(DISPLAY_MODE_NUM, false);
+
+		for (int i = 0; i < resolutionNum; i++)
+		{
+			int screenWidthMode = injector::ReadMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR + (i * 8), false);
+			int screenHeightMode = injector::ReadMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR + (i * 8), false);
+
+			if (screenWidth == screenWidthMode && screenHeight == screenHeightMode)
+			{
+				static std::string r_mode;
+				r_mode = std::to_string(i);
+				value = r_mode.c_str();
+				break;
+			}
+		}
 	}
 
 	if (CustomFPSLimit != 60 && strcmp(var_name, "com_maxfps") == 0)
@@ -1129,7 +1135,7 @@ static void ApplyForceBorderlessFullscreen()
 
 static void ApplyCustomResolution()
 {
-	if ((!AutoResolution && !CustomResolution && !ForceFullscreen) || ForceBorderlessFullscreen) return;
+	if ((!CustomResolution && !ForceFullscreen) || ForceBorderlessFullscreen) return;
 
 	ApplyHook((void*)0x47ABE0, &QGL_Init_Hook, reinterpret_cast<LPVOID*>(&QGL_Init));
 }
