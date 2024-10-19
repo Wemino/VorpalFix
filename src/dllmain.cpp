@@ -17,7 +17,6 @@ const int CURRENT_HEIGHT_ADDR = 0x1C47990;
 const int STARTUP_STATE_ADDR = 0x7CCA20;
 const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
 const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
-const int FULLSCREEN_PTR_ADDR = 0x11C4FE4;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
 const int DISPLAY_MODE_PTR_ADDR = 0x1C463E8;
 const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
@@ -35,6 +34,7 @@ bool CvarHooking = false;
 int currentWidth = 0;
 int currentHeight = 0;
 bool isCursorResized = false;
+bool isDefaultFullscreenSettingSkipped = false;
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const float BORDER_THRESHOLD = 140.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
@@ -53,6 +53,7 @@ bool FixStretchedHUD = false;
 bool FixStretchedFMV = false;
 bool FixStretchedGUI = false;
 bool FixDPIScaling = false;
+bool FixFullscreenSetting = false;
 
 // General
 bool LaunchWithoutAlice2 = false;
@@ -67,7 +68,6 @@ char* ToggleConsoleBindKey = nullptr;
 bool ConsolePortHUD = false;
 bool HideConsoleAtLaunch = false;
 bool DisableLetterbox = false;
-bool ForceFullscreen = false;
 bool ForceBorderlessFullscreen = false;
 bool EnableVsync = false;
 bool AutoResolution = false;
@@ -97,6 +97,7 @@ static void ReadConfig()
 	FixStretchedFMV = iniReader.ReadInteger("Fixes", "FixStretchedFMV", 1) == 1;
 	FixStretchedGUI = iniReader.ReadInteger("Fixes", "FixStretchedGUI", 1) == 1;
 	FixDPIScaling = iniReader.ReadInteger("Fixes", "FixDPIScaling", 1) == 1;
+	FixFullscreenSetting = iniReader.ReadInteger("Fixes", "FixFullscreenSetting", 1) == 1;
 
 	// General
 	LaunchWithoutAlice2 = iniReader.ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
@@ -111,7 +112,6 @@ static void ReadConfig()
 	ConsolePortHUD = iniReader.ReadInteger("Display", "ConsolePortHUD", 0) == 1;
 	HideConsoleAtLaunch = iniReader.ReadInteger("Display", "HideConsoleAtLaunch", 1) == 1;
 	DisableLetterbox = iniReader.ReadInteger("Display", "DisableLetterbox", 0) == 1;
-	ForceFullscreen = iniReader.ReadInteger("Display", "ForceFullscreen", 1) == 1;
 	ForceBorderlessFullscreen = iniReader.ReadInteger("Display", "ForceBorderlessFullscreen", 0) == 1;
 	EnableVsync = iniReader.ReadInteger("Display", "EnableVsync", 0) == 1;
 	AutoResolution = iniReader.ReadInteger("Display", "AutoResolution", 1) == 1;
@@ -139,7 +139,7 @@ static void ReadConfig()
 		}
 	}
 
-	CvarHooking = EnableDevConsole || EnableVsync || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60);
+	CvarHooking = FixFullscreenSetting || AutoResolution || EnableDevConsole || EnableVsync || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60);
 }
 
 #pragma region
@@ -567,12 +567,6 @@ static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 	// Do it once
 	if (!isResolutionApplied)
 	{
-		if (ForceFullscreen)
-		{
-			int pointer = injector::ReadMemory<int>(FULLSCREEN_PTR_ADDR, false);
-			injector::WriteMemory<int>(pointer + 0x20, 1, false);
-		}
-
 		if (CustomResolution)
 		{
 			int pointer = injector::ReadMemory<int>(DISPLAY_MODE_PTR_ADDR, false);
@@ -677,6 +671,13 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		flag = 0x10;
 	}
 
+	// Read settings from "base" folder, skip it
+	if (FixFullscreenSetting && strcmp(var_name, "r_fullscreen") == 0 && !isDefaultFullscreenSettingSkipped)
+	{
+		isDefaultFullscreenSettingSkipped = true;
+		return 0;
+	}
+
 	if (AutoResolution && strcmp(var_name, "r_mode") == 0 && strcmp(value, "0") == 0)
 	{
 		// Since this code is executed after, do it before
@@ -730,13 +731,16 @@ static int __cdecl LoadGameDLL_Hook()
 	if (gameApiDll) {
 		DWORD gameApiBaseAddress = (DWORD)gameApiDll;
 
-		injector::WriteMemory<int>(gameApiBaseAddress + 0x16CAA3, 0, true);
+		if (DisableLetterbox)
+		{
+			injector::WriteMemory<int>(gameApiBaseAddress + 0x16CAA3, 0, true);
+		}
 	}
 
 	return result;
 }
 
-typedef HWND(WINAPI* CreateWindowExA_t)(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam);
+typedef HWND(WINAPI* CreateWindowExA_t)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
 CreateWindowExA_t fpCreateWindowExA = NULL;
 
 static HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
@@ -1135,7 +1139,7 @@ static void ApplyForceBorderlessFullscreen()
 
 static void ApplyCustomResolution()
 {
-	if ((!CustomResolution && !ForceFullscreen) || ForceBorderlessFullscreen) return;
+	if (!CustomResolution || ForceBorderlessFullscreen) return;
 
 	ApplyHook((void*)0x47ABE0, &QGL_Init_Hook, reinterpret_cast<LPVOID*>(&QGL_Init));
 }
