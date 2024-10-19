@@ -10,18 +10,21 @@ A plugin that addresses a variety of technical issues and adds quality-of-life i
 - Fix HUD stretching in widescreen resolutions. [Before & After](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/hud.gif)
 - Fix FMV stretching in widescreen resolutions. [Before & After](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/fmv.gif)
 - Fix GUI stretching in widescreen resolutions. [Before & After](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/gui.gif)
+- Fix DPI Scaling on high-DPI displays.
+- Fix the fullscreen setting not saving.
 
 ### General
 - Allow the game to launch without Alice: Madness Returns.
 - Prevent Alice: Madness Returns from launching on exit. (when installed with Alice: Madness Returns)
 - Allow to switch the game's supported language. (English, German, French, or Spanish)
-- Provide the option to display the EA and Rogue Entertainment intro videos that were disabled in the re-release.
+- Provide the option to display the EA and Rogue Entertainment intro videos that were disabled in the remaster.
 - Allow the option to disable the use of the remastered models.
 - Allow the use of the developer console from the original game.
  
 ### Display
-- Allow to hide the popup console at launch.
-- Force the game to start in fullscreen mode.
+- Provide the option to use the HUD position similar to the PS3/Xbox360 console version.
+- Provide the option to hide the popup console at launch.
+- Provide the option to launch the game in borderless fullscreen mode.
 - Provide the option to enable VSync.
 - Custom resolution settings.
 
@@ -33,7 +36,7 @@ A plugin that addresses a variety of technical issues and adds quality-of-life i
 
 ## How to Install
 > [!NOTE]
-> This plugin will only work on the 2011 re-release/remaster of American McGee's Alice and **will not work on the 2000 version** of the game.
+> This plugin will only work on the 2011 remaster of American McGee's Alice and **will not work on the 2000 version** of the game.
 >
 > **Download**: [VorpalFix.zip](https://github.com/Wemino/VorpalFix/releases/latest/download/VorpalFix.zip)
 >
