@@ -50,7 +50,6 @@ A plugin that addresses a variety of technical issues and adds quality-of-life i
 - Modify the `VorpalFix.ini` file to adjust the plugin’s settings.
 
 ## Credits
-- [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader) for ASI loading.
 - [MinHook](https://github.com/TsudaKageyu/minhook) for hooking.
 - [injector](https://github.com/thelink2012/injector) for memory patching.
 - [Leanny](https://github.com/Leanny) help with some algorithms.
