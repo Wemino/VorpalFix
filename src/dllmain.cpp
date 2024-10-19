@@ -373,8 +373,8 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 				resolution_width *= scale_factor;
 				float horizontal_offset = (current_width - target_width) / 2.0f;
 
-				// Don't change the coordinate of the save cam
-				if (strcmp(ShaderName, "ui/quicksavecam/quicksavecam") != 0 && strcmp(ShaderName, "ui/dialog/leftFrame") != 0 && strcmp(ShaderName, "ui/dialog/rightFrame") != 0)
+				// Exceptions for some of the in-game assets
+				if ((ConsolePortHUD || strcmp(ShaderName, "ui/quicksavecam/quicksavecam") != 0) && strcmp(ShaderName, "ui/dialog/leftFrame") != 0 && strcmp(ShaderName, "ui/dialog/rightFrame") != 0) 
 				{
 					x_position = (x_position * scale_factor) + horizontal_offset;
 				}
