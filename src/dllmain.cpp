@@ -797,10 +797,13 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 			break;
 	}
 
-	typedef int(__cdecl* sub_4635A0)();
-	sub_4635A0 IsControllerConnected = (sub_4635A0)0x4635A0;
+	if (!isUsingControllerMenu)
+	{
+		typedef int(__cdecl* sub_463130)();
+		sub_463130 IsControllerConnected = (sub_463130)0x463130;
 
-	if (IsControllerConnected() == 0) return LoadUI(ptr, ui_path);
+		if (IsControllerConnected() == 0) return LoadUI(ptr, ui_path);
+	}
 
 	if (ui_path != NULL && strcmp(ui_path, "ui/controls.urc") == 0)
 	{
