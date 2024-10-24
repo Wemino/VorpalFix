@@ -14,6 +14,8 @@
 // =============================
 const int CURRENT_WIDTH_ADDR = 0x1C4798C;
 const int CURRENT_HEIGHT_ADDR = 0x1C47990;
+const int CURRENT_LANG = 0x7CF868;
+const int IS_CURSOR_VISIBLE = 0x11C02E0;
 const int STARTUP_STATE_ADDR = 0x7CCA20;
 const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
 const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
@@ -35,6 +37,7 @@ int currentWidth = 0;
 int currentHeight = 0;
 bool isCursorResized = false;
 bool isDefaultFullscreenSettingSkipped = false;
+bool isUsingControllerMenu = false;
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const float BORDER_THRESHOLD = 140.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
@@ -66,6 +69,7 @@ char* ToggleConsoleBindKey = nullptr;
 
 // Display
 bool ConsolePortHUD = false;
+bool EnableControllerIcons = false;
 bool HideConsoleAtLaunch = false;
 bool DisableLetterbox = false;
 bool ForceBorderlessFullscreen = false;
@@ -110,6 +114,7 @@ static void ReadConfig()
 
 	// Display
 	ConsolePortHUD = iniReader.ReadInteger("Display", "ConsolePortHUD", 0) == 1;
+	EnableControllerIcons = iniReader.ReadInteger("Display", "EnableControllerIcons", 1) == 1;
 	HideConsoleAtLaunch = iniReader.ReadInteger("Display", "HideConsoleAtLaunch", 1) == 1;
 	DisableLetterbox = iniReader.ReadInteger("Display", "DisableLetterbox", 0) == 1;
 	ForceBorderlessFullscreen = iniReader.ReadInteger("Display", "ForceBorderlessFullscreen", 0) == 1;
@@ -374,7 +379,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 				float horizontal_offset = (current_width - target_width) / 2.0f;
 
 				// Exceptions for some of the in-game assets
-				if ((ConsolePortHUD || strcmp(ShaderName, "ui/quicksavecam/quicksavecam") != 0) && strcmp(ShaderName, "ui/dialog/leftFrame") != 0 && strcmp(ShaderName, "ui/dialog/rightFrame") != 0) 
+				if ((ConsolePortHUD || strcmp(ShaderName, "ui/quicksavecam/quicksavecam") != 0) && strcmp(ShaderName, "ui/dialog/leftFrame") != 0 && strcmp(ShaderName, "ui/dialog/rightFrame") != 0)
 				{
 					x_position = (x_position * scale_factor) + horizontal_offset;
 				}
@@ -425,6 +430,12 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 						// Calculate the new scaled sizes
 						int scaledMouseWidth = static_cast<int>(injector::ReadMemory<int>(ImageIndex + 0x40, false) * scaleFactor);
 						int scaledMouseHeight = static_cast<int>(injector::ReadMemory<int>(ImageIndex + 0x44, false) * scaleFactor);
+
+						if (isUsingControllerMenu)
+						{
+							scaledMouseWidth = 0;
+							scaledMouseHeight = 0;
+						}
 
 						injector::WriteMemory<int>(ImageIndex + 0x40, scaledMouseWidth, false);
 						injector::WriteMemory<int>(ImageIndex + 0x44, scaledMouseHeight, false);
@@ -760,6 +771,98 @@ static HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 	}
 
 	return fpCreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+}
+
+typedef DWORD(__thiscall* sub_4C1AC0)(DWORD*, char*);
+sub_4C1AC0 LoadUI = nullptr;
+
+static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
+{
+	int lang = injector::ReadMemory<int>(CURRENT_LANG, false);
+	const char* langPrefix;
+
+	switch (lang)
+	{
+		case 1:
+			langPrefix = "DEU";
+			break;
+		case 2:
+			langPrefix = "FRA";
+			break;
+		case 3:
+			langPrefix = "ESN";
+			break;
+		default:
+			langPrefix = "INT";
+			break;
+	}
+
+	typedef int(__cdecl* sub_4635A0)();
+	sub_4635A0 IsControllerConnected = (sub_4635A0)0x4635A0;
+
+	if (IsControllerConnected() == 0) return LoadUI(ptr, ui_path);
+
+	if (ui_path != NULL && strcmp(ui_path, "ui/controls.urc") == 0)
+	{
+		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/controls2.urc") + 1);
+		sprintf(ui_path, "%s/controls2.urc", langPrefix);
+		isUsingControllerMenu = true;
+
+		// Disable mouse navigation
+		injector::MakeNOP(0x40675E, 0x2, true);
+		injector::MakeNOP(0x40676E, 0x2, true);
+	}
+
+	if (ui_path != NULL && strcmp(ui_path, "ui/credits.urc") == 0)
+	{
+		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/credits2.urc") + 1);
+		sprintf(ui_path, "%s/credits2.urc", langPrefix);
+	}
+
+	if (ui_path != NULL && strcmp(ui_path, "ui/loadsave.urc") == 0)
+	{
+		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/loadsave2.urc") + 1);
+		sprintf(ui_path, "%s/loadsave2.urc", langPrefix);
+	}
+
+	if (ui_path != NULL && strcmp(ui_path, "ui/main.urc") == 0)
+	{
+		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/main2.urc") + 1);
+		sprintf(ui_path, "%s/main2.urc", langPrefix);
+	}
+
+	if (ui_path != NULL && strcmp(ui_path, "ui/newgame.urc") == 0)
+	{
+		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/newgame2.urc") + 1);
+		sprintf(ui_path, "%s/newgame2.urc", langPrefix);
+	}
+
+	/*
+	if (ui_path != NULL && strcmp(ui_path, "ui/quit.urc") == 0)
+	{
+		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/quit2.urc") + 1);
+		sprintf(ui_path, "%s/quit2.urc", langPrefix);
+	}
+	*/
+
+	return LoadUI(ptr, ui_path);
+}
+
+typedef float(__cdecl* sub_48B290)(DWORD*, float*);
+sub_48B290 AliceHeadMovementCoordinates = nullptr;
+
+static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
+{
+	int isCursorShown = injector::ReadMemory<int>(IS_CURSOR_VISIBLE, false);
+
+	// Make sure Alice is not looking at the top left of the screen
+	if (isCursorShown == 1)
+	{
+		*a1 = 0;
+		*(a1 + 1) = 0;
+		*(a1 + 2) = 0;
+	}
+	return AliceHeadMovementCoordinates(a1, a2);
 }
 
 #pragma endregion Hooks with MinHook
@@ -1116,6 +1219,14 @@ static void ApplyEnableDevConsole()
 	injector::MakeNOP(0x408240, 6, true);
 }
 
+static void ApplyEnableControllerIcons()
+{
+	if (!EnableControllerIcons) return;
+
+	ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, reinterpret_cast<LPVOID*>(&LoadUI));
+	ApplyHook((void*)0x423740, &AliceHeadMovementCoordinates_Hook, reinterpret_cast<LPVOID*>(&AliceHeadMovementCoordinates));
+}
+
 static void ApplyHideConsoleAtLaunch()
 {
 	if (!HideConsoleAtLaunch) return;
@@ -1193,6 +1304,7 @@ static void Init()
 	ApplyUseOriginalIntroVideos();
 	ApplyDisableRemasteredModels();
 	ApplyEnableDevConsole();
+	ApplyEnableControllerIcons();
 	ApplyHideConsoleAtLaunch();
 	ApplyDisableLetterbox();
 	ApplyForceBorderlessFullscreen();
