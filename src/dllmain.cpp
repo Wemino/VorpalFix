@@ -859,7 +859,7 @@ static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
 	int isCursorShown = injector::ReadMemory<int>(IS_CURSOR_VISIBLE, false);
 
 	// Make sure Alice is not looking at the top left of the screen
-	if (isCursorShown == 1)
+	if (isCursorShown == 1 && isUsingControllerMenu)
 	{
 		*a1 = 0;
 		*(a1 + 1) = 0;
