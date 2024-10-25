@@ -24,6 +24,7 @@ A plugin that addresses a variety of technical issues and adds quality-of-life i
 ### Display
 - Provide the option to use the HUD position similar to the PS3/Xbox360 console version.
 - Enable support for Xbox controller icons in the menus when a controller is detected during startup.
+- Provide an option to display PS3 controller icons in place of Xbox controller icons.
 - Provide the option to hide the popup console at launch.
 - Provide the option to launch the game in borderless fullscreen mode.
 - Provide the option to enable VSync.

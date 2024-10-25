@@ -70,6 +70,7 @@ char* ToggleConsoleBindKey = nullptr;
 // Display
 bool ConsolePortHUD = false;
 bool EnableControllerIcons = false;
+bool UsePS3ControllerIcons = false;
 bool HideConsoleAtLaunch = false;
 bool DisableLetterbox = false;
 bool ForceBorderlessFullscreen = false;
@@ -115,6 +116,7 @@ static void ReadConfig()
 	// Display
 	ConsolePortHUD = iniReader.ReadInteger("Display", "ConsolePortHUD", 0) == 1;
 	EnableControllerIcons = iniReader.ReadInteger("Display", "EnableControllerIcons", 1) == 1;
+	UsePS3ControllerIcons = iniReader.ReadInteger("Display", "UsePS3ControllerIcons", 0) == 1;
 	HideConsoleAtLaunch = iniReader.ReadInteger("Display", "HideConsoleAtLaunch", 1) == 1;
 	DisableLetterbox = iniReader.ReadInteger("Display", "DisableLetterbox", 0) == 1;
 	ForceBorderlessFullscreen = iniReader.ReadInteger("Display", "ForceBorderlessFullscreen", 0) == 1;
@@ -779,41 +781,48 @@ sub_4C1AC0 LoadUI = nullptr;
 static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 {
 	int lang = injector::ReadMemory<int>(CURRENT_LANG, false);
-	const char* langPrefix;
 
+	const char* langPrefix = "INT";
 	switch (lang)
 	{
-		case 1:
-			langPrefix = "DEU";
-			break;
-		case 2:
-			langPrefix = "FRA";
-			break;
-		case 3:
-			langPrefix = "ESN";
-			break;
-		default:
-			langPrefix = "INT";
-			break;
+	case 1: langPrefix = "DEU"; break;
+	case 2: langPrefix = "FRA"; break;
+	case 3: langPrefix = "ESN"; break;
 	}
 
+	if (UsePS3ControllerIcons)
+	{
+		char* newLangPrefix = (char*)malloc(strlen(langPrefix) + strlen("_ps3") + 1);
+		sprintf(newLangPrefix, "%s_ps3", langPrefix);
+		langPrefix = newLangPrefix;
+	}
+
+	// Check if a controller is connected
 	if (!isUsingControllerMenu)
 	{
+		// XInputGetState
 		typedef int(__cdecl* sub_463130)();
 		sub_463130 IsControllerConnected = (sub_463130)0x463130;
 
-		if (IsControllerConnected() == 0) return LoadUI(ptr, ui_path);
+		if (IsControllerConnected() == 0)
+		{
+			return LoadUI(ptr, ui_path); // Exit early if no controller is connected
+		}
+		else
+		{
+			isUsingControllerMenu = true;
+
+			// Disable mouse navigation
+			injector::MakeNOP(0x40675E, 0x2, true);
+			injector::MakeNOP(0x40676E, 0x2, true);
+		}
 	}
 
+	// To do: refactor this
 	if (ui_path != NULL && strcmp(ui_path, "ui/controls.urc") == 0)
 	{
 		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/controls2.urc") + 1);
 		sprintf(ui_path, "%s/controls2.urc", langPrefix);
-		isUsingControllerMenu = true;
-
-		// Disable mouse navigation
-		injector::MakeNOP(0x40675E, 0x2, true);
-		injector::MakeNOP(0x40676E, 0x2, true);
 	}
 
 	if (ui_path != NULL && strcmp(ui_path, "ui/credits.urc") == 0)
@@ -840,19 +849,11 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 		sprintf(ui_path, "%s/newgame2.urc", langPrefix);
 	}
 
-	/*
-	if (ui_path != NULL && strcmp(ui_path, "ui/quit.urc") == 0)
-	{
-		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/quit2.urc") + 1);
-		sprintf(ui_path, "%s/quit2.urc", langPrefix);
-	}
-	*/
-
 	return LoadUI(ptr, ui_path);
 }
 
-typedef float(__cdecl* sub_48B290)(DWORD*, float*);
-sub_48B290 AliceHeadMovementCoordinates = nullptr;
+typedef float(__cdecl* sub_423740)(DWORD*, float*);
+sub_423740 AliceHeadMovementCoordinates = nullptr;
 
 static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
 {
@@ -861,9 +862,8 @@ static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
 	// Make sure Alice is not looking at the top left of the screen
 	if (isCursorShown == 1 && isUsingControllerMenu)
 	{
-		*a1 = 0;
-		*(a1 + 1) = 0;
-		*(a1 + 2) = 0;
+		*a1 = 0xC119EB80;
+		*(a1 + 1) = 0xC2100000;
 	}
 	return AliceHeadMovementCoordinates(a1, a2);
 }

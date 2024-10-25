@@ -1,0 +1,616 @@
+menu "loadsave" 640 480 NONE 0.5
+fadeoverlay 0.5
+bgcolor 0 0 0 1
+borderstyle NONE
+bgfill 0 0 0 1
+fullscreen 1
+//fadein 0.5
+//vidmode 3
+
+//include "ui/common.inc"
+
+showcommand		"widgetcommand LoadSaveList resetpage\n"
+showcommand		"widgetcommand LoadSaveList CheckErrorState\n"
+showcommand		"widgetcommand LoadSaveList disablegroup delete_group\n"
+showcommand		"widgetcommand LoadSaveList enablegroup bigshot_group\n"
+
+
+hidecommand		"widgetcommand MsgBackground disable; widgetcommand DiskFull disable\n"
+
+// List
+resource
+FakkLoadGameClass
+{
+	name			"LoadSaveList"
+	rect			100 400 0 0
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.70
+	borderstyle		"NONE"
+	neverdraw
+}
+
+// BIG PREVIEW
+resource
+Label
+{
+	name			"BigSaveShot"
+	rect			358 101 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	staticshader	6 ui/load/bigdefault
+	borderstyle		"NONE"
+//	groupid			"bigshot_group"
+//	disable
+}
+resource
+Label
+{
+	name			"sepia1"
+	rect			358 101 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	shader			ui/loadgame/sepia1
+	borderstyle		"NONE"
+	groupid			"bigshot_group"
+}
+
+// LOAD SHOTS
+resource
+Button
+{
+	name			"LoadSaveShot1"
+	rect			12 69 128 90
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	staticshader	7 ui/load/blank
+	borderstyle		"NONE"
+}
+resource
+Label
+{
+	name			"LoadSaveShot2"
+	rect			157 65 128 90
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	staticshader	9 ui/load/blank
+	borderstyle		"NONE"
+}
+resource
+Label
+{
+	name			"LoadSaveShot3"
+	rect			17 193 128 90
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	staticshader	11 ui/load/blank
+	borderstyle		"NONE"
+}
+resource
+Label
+{
+	name			"LoadSaveShot4"
+	rect			166 187 128 90
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	staticshader	13 ui/load/blank
+	borderstyle		"NONE"
+}
+resource
+Label
+{
+	name			"LoadSaveShot5"
+	rect			21 314 128 90
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	staticshader	15 ui/load/blank
+	borderstyle		"NONE"
+}
+resource
+Label
+{
+	name			"LoadSaveShot6"
+	rect			168 312 128 90
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	staticshader	17 ui/load/blank
+	borderstyle		"NONE"
+}
+
+resource
+Label
+{
+	name			"MsgBackground"
+	rect			358 101 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/loadgame/deleteconfirm
+	disable
+}
+
+// PAGE NUM INDICATOR
+resource
+Label
+{
+	title			""
+	name			"PageNum"
+	rect			151 412 20 20
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	font			"asrafel"
+	fontjustify		center center
+	fontscale		0.70
+	fontspacing		1.0
+	fontangle		1.5
+}
+
+// Background
+resource
+Label
+{
+	name			"Default"
+	rect			0 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	0 ui/load/loadA
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	1 ui/load/loadB
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			512 0 128 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	2 ui/load/loadC
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			0 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	3 ui/load/loadD
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	4 ui/load/loadE
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			512 256 128 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	5 ui/load/loadF
+	allowactivate	false
+}
+
+// 1st
+resource
+Button
+{
+	name			"LoadSaveShot_alpha"
+	rect			12 69 128 90
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+//	staticshader	8 ui/load/maskA
+	stuffcommand	"widgetcommand LoadButton1 triggerwait\n"
+	borderstyle		"NONE"
+	groupid			"lsd_group"
+	clicksound		"sound/ui/projector_long.wav"
+}
+resource
+Button
+{
+	name			"LoadButton1"
+	rect			23 159 32 32
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	shader			ui/load/pushbtn_med
+	hovershader		ui/loadgame/pushbtn_med_lit
+	stuffcommand	"widgetcommand LoadButton1 triggerwait\n"
+	borderstyle		"NONE"
+	groupid			"lsd_group"
+	clicksound		"sound/ui/projector_long.wav"
+	
+
+	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
+	waitcommand		"widgetcommand LoadSaveList selecttab 1" 350
+
+}
+
+// 2st
+resource
+Button
+{
+	name			"LoadSaveShot2_alpha"
+	rect			157 65 128 90
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+//	staticshader	10 ui/load/maskB
+	stuffcommand	"widgetcommand LoadButton2 triggerwait\n"
+	borderstyle		"NONE"
+	groupid			"lsd_group"
+	clicksound		"sound/ui/projector_long.wav"
+}
+resource
+Button
+{
+	name			"LoadButton2"
+	rect			247 154 32 32
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	shader			ui/load/pushbtn_med
+	hovershader		ui/loadgame/pushbtn_med_lit
+	stuffcommand	"widgetcommand LoadButton2 triggerwait\n"
+	borderstyle		"NONE"
+	groupid			"lsd_group"
+	clicksound		"sound/ui/projector_long.wav"
+	
+
+	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
+	waitcommand		"widgetcommand LoadSaveList selecttab 2" 350
+
+}
+
+// 3rd
+resource
+Button
+{
+	name			"LoadSaveShot3_alpha"
+	rect			17 193 128 90
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+//	staticshader	12 ui/load/maskC
+	stuffcommand	"widgetcommand LoadButton3 triggerwait\n"
+	borderstyle		"NONE"
+	groupid			"lsd_group"
+	clicksound		"sound/ui/projector_long.wav"
+}
+resource
+Button
+{
+	name			"LoadButton3"
+	rect			21 282 32 32
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	shader			ui/load/pushbtn_med
+	hovershader		ui/loadgame/pushbtn_med_lit
+	stuffcommand	"widgetcommand LoadButton3 triggerwait\n"
+	borderstyle		"NONE"
+	groupid			"lsd_group"
+	clicksound		"sound/ui/projector_long.wav"
+	
+
+	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
+	waitcommand		"widgetcommand LoadSaveList selecttab 3" 350
+
+}
+
+// 4th
+resource
+Button
+{
+	name			"LoadSaveShot4_alpha"
+	rect			166 187 128 90
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+//	staticshader	14 ui/load/maskD
+	stuffcommand	"widgetcommand LoadButton4 triggerwait\n"
+	borderstyle		"NONE"
+	groupid			"lsd_group"
+	clicksound		"sound/ui/projector_long.wav"
+}
+resource
+Button
+{
+	name			"LoadButton4"
+	rect			254 275 32 32
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	shader			ui/load/pushbtn_med
+	hovershader		ui/loadgame/pushbtn_med_lit
+	stuffcommand	"widgetcommand LoadButton4 triggerwait\n"
+	borderstyle		"NONE"
+	groupid			"lsd_group"
+	clicksound		"sound/ui/projector_long.wav"
+	
+
+	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
+	waitcommand		"widgetcommand LoadSaveList selecttab 4" 350
+
+}
+
+// 5th
+resource
+Button
+{
+	name			"LoadSaveShot5_alpha"
+	rect			21 314 128 90
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+//	staticshader	16 ui/load/maskE
+	stuffcommand	"widgetcommand LoadButton5 triggerwait\n"
+	borderstyle		"NONE"
+	groupid			"lsd_group"
+	clicksound		"sound/ui/projector_long.wav"
+}
+resource
+Button
+{
+	name			"LoadButton5"
+	rect			27 404 32 32
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	shader			ui/load/pushbtn_med
+	hovershader		ui/loadgame/pushbtn_med_lit
+	stuffcommand	"widgetcommand LoadButton5 triggerwait\n"
+	borderstyle		"NONE"
+	groupid			"lsd_group"
+	clicksound		"sound/ui/projector_long.wav"
+	
+
+	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
+	waitcommand		"widgetcommand LoadSaveList selecttab 5" 350
+
+}
+
+// 6th
+resource
+Button
+{
+	name			"LoadSaveShot6_alpha"
+	rect			168 312 128 90
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+//	staticshader	18 ui/load/maskF
+	stuffcommand	"widgetcommand LoadButton6 triggerwait\n"
+	borderstyle		"NONE"
+	groupid			"lsd_group"
+	clicksound		"sound/ui/projector_long.wav"
+}
+resource
+Button
+{
+	name			"LoadButton6"
+	rect			257 399 32 32
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	shader			ui/load/pushbtn_med
+	hovershader		ui/loadgame/pushbtn_med_lit
+	stuffcommand	"widgetcommand LoadButton6 triggerwait\n"
+	borderstyle		"NONE"
+	groupid			"lsd_group"
+	clicksound		"sound/ui/projector_long.wav"
+	
+
+	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
+	waitcommand		"widgetcommand LoadSaveList selecttab 6" 350
+
+}
+
+// LOAD BUTTONS
+resource
+Button
+{
+	title			"CARGAR"
+	name			"LoadingButton"
+	rect			300 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	font			"asrafel"
+	fontjustify		center center
+	fontscale		0.8
+	fontpos			35 8
+} 
+resource
+Button
+{
+	name			"Default"
+	rect			305 405 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"cross_button_ps3"	
+	allowactivate	false
+}
+
+// SAVE BUTTON
+resource
+Button
+{
+	title			"GUARDAR"
+	name			"SaveButton"
+	rect			400 400 110 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	font			"asrafel"
+	fontjustify		center center
+	fontscale		0.8
+	fontpos			35 8
+} 
+resource
+Button
+{
+	name			"Default"
+	rect			405 405 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"square_button_ps3"	
+	allowactivate	false
+}
+
+// DELETE BUTTON
+resource
+Button
+{
+	title			"BORRAR"
+	name			"DeleteButton"
+	rect			510 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	font			"asrafel"
+	fontjustify		center center
+	fontscale		0.8
+	fontpos			35 8
+} 
+resource
+Button
+{
+	name			"Default"
+	rect			515 405 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"tri_button_ps3"	
+	allowactivate	false
+}
+
+resource
+Label
+{
+	title			""
+	name			"MapName"
+	rect			365 99 238 60
+	fgcolor			0.00 0.00 0.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	font			"asrafel"
+	fontjustify		left center
+	fontangle		2.1
+	fontspacing		1
+	fontscale		0.8
+}
+
+resource
+Label
+{
+	title			""
+	name			"DateTime"
+	rect			375 315 238 60
+	fgcolor			0.00 0.00 0.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	font			"asrafel"
+	fontjustify		left center
+	fontangle		2.1
+	fontspacing		1
+	fontscale		0.85
+}
+
+resource
+Label
+{
+	name			"DeleteConfirm"
+	rect			358 197 256 64
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/load/deletetext
+	groupid			"delete_group"
+	disable
+}
+resource
+Button
+{
+	name			"DeleteYES"
+	rect			445 236 35 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"delete_group"
+	disable
+	stuffcommand	"widgetcommand LoadSaveList removegame; widgetcommand LoadSaveList disablegroup delete_group\n"
+}
+resource
+Button
+{
+	name			"DeleteNO"
+	rect			499 236 35 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"delete_group"
+	disable
+	stuffcommand	"widgetcommand LoadSaveList disablegroup delete_group\n"
+}
+
+resource
+Label
+{
+	name			"DiskFull"
+	rect			358 165 256 128
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/load/disk_full
+	disable
+}
+
+// RETURN BUTTON
+resource
+Button
+{
+	title			"Atrás"
+	name			"Default"
+	rect			100 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			35 8
+	stuffcommand	"popmenu"
+} 
+resource
+Button
+{
+	name			"Default"
+	rect			105 405 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"circle_button_ps3"	
+	allowactivate	false
+}
+end.

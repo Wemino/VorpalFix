@@ -1,0 +1,210 @@
+menu "newgame" 640 480 NONE 0.5
+fadeoverlay 0.5
+bgcolor 0 0 0 1
+borderstyle NONE
+bgfill 0 0 0 1
+fullscreen 1
+
+// Background
+resource
+Label
+{
+	name			"Default"
+	rect			0 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	0 ui/newgame/newgameA
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	1 ui/newgame/newgameB
+}
+resource
+Label
+{
+	name			"Default"
+	rect			512 0 128 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	2 ui/newgame/newgameC
+}
+resource
+Label
+{
+	name			"Default"
+	rect			0 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	3 ui/newgame/newgameD
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	4 ui/newgame/newgameE
+}
+resource
+Label
+{
+	name			"Default"
+	rect			512 256 128 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	5 ui/newgame/newgameF
+}
+
+// BUTTONS
+resource
+Button
+{
+	name			"easy"
+	rect			198 78 256 64
+	fgcolor			0.00 0.00 0.00 1.00
+	bgcolor			1.00 1.00 1.00 0.00
+	borderstyle		"NONE"
+	hovershader		ui/newgame/easy_glow
+	ordernumber		1
+	stuffcommand	"seta skill 0; seta nextmap gvillage; cinematic opening.roq; togglemenu newgame;"
+	hoversound		sound/ui/mouseover.wav
+	clicksound		sound/ui/newclick.wav
+}
+resource
+Button
+{
+	name			"medium"
+	rect			198 153 256 64
+	fgcolor			0.00 0.00 0.00 1.00
+	bgcolor			1.00 1.00 1.00 0.00
+	borderstyle		"NONE"
+	hovershader		ui/newgame/medium_glow
+	ordernumber		2
+	stuffcommand	"seta skill 1; seta nextmap gvillage; cinematic opening.roq; togglemenu newgame;"
+	hoversound		sound/ui/mouseover.wav
+	clicksound		sound/ui/newclick.wav
+}
+
+resource
+Button
+{
+	name			"hard"
+	rect			198 225 256 64
+	fgcolor			0.00 0.00 0.00 1.00
+	bgcolor			1.00 1.00 1.00 0.00
+	borderstyle		"NONE"
+	hovershader		ui/newgame/hard_glow
+	ordernumber		3
+	stuffcommand	"seta skill 2; seta nextmap gvillage; cinematic opening.roq; togglemenu newgame;"
+	hoversound		sound/ui/mouseover.wav
+	clicksound		sound/ui/newclick.wav
+}
+
+resource
+Button
+{
+	name			"nightmare"
+	rect			198 298 256 64
+	fgcolor			0.00 0.00 0.00 1.00
+	bgcolor			1.00 1.00 1.00 0.00
+	borderstyle		"NONE"
+	hovershader		ui/newgame/nightmare_glow
+	ordernumber		4
+	stuffcommand	"seta skill 3; seta nextmap gvillage; cinematic opening.roq; togglemenu newgame;"
+	hoversound		sound/ui/mouseover.wav
+	clicksound		sound/ui/newclick.wav
+}
+// Button Callouts: 
+resource
+Button
+{
+	title			"Wechseln"
+	name			"Default"
+	rect			200 400 115 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			35 8
+} 
+resource
+Button
+{
+	name			"Default"
+	rect			205 405 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"dpad_ps3"	
+	allowactivate	false
+}
+resource
+Button
+{
+	title			"Auswählen"
+	name			"Default"
+	rect			50 400 130 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			35 8
+} 
+resource
+Button
+{
+	name			"Default"
+	rect			55 405 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"cross_button_ps3"	
+	allowactivate	false
+}
+// RETURN BUTTON
+resource
+Button
+{
+	title			"Zurück"
+	name			"Default"
+	rect			350 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			35 8
+	stuffcommand	"popmenu"
+} 
+resource
+Button
+{
+	name			"Default"
+	rect			355 405 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"circle_button_ps3"	
+	allowactivate	false
+}
+end.

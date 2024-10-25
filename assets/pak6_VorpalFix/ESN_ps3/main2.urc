@@ -1,0 +1,279 @@
+menu "main"		640 480 NONE 0.0
+//fadeoverlay	0.5
+bgcolor			0 0 0 1
+borderstyle		NONE
+bgfill			0 0 0 1
+fullscreen		1 
+showcommand		"widgetcommand backtogame showifalive; widgetcommand backtogamebtn showifalive" 
+// Background
+resource
+Label
+{
+	name			"Default"
+	rect			0 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	0 ui/main/mainA
+}
+resource
+Label
+{
+	name			"Default"
+	rect			0 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/main/mainA_glow
+}
+
+resource
+Label
+{
+	name			"Default"
+	rect			256 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	1 ui/main/mainB
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/main/mainB_glow
+}
+
+resource
+Label
+{
+	name			"Default"
+	rect			512 0 128 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	2 ui/main/mainC
+}
+
+resource
+Label
+{
+	name			"Default"
+	rect			0 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	3 ui/main/mainD
+}
+resource
+Label
+{
+	name			"Default"
+	rect			0 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/main/mainD_glow
+}
+
+resource
+Label
+{
+	name			"Default"
+	rect			256 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	4 ui/main/mainE
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/main/mainE_glow
+}
+
+resource
+Label
+{
+	name			"Default"
+	rect			512 256 128 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	5 ui/main/mainF
+}
+
+// WICK
+resource
+Label
+{
+	name			"Default"
+	rect			145 239 64 64
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/main/wick
+}
+
+// BUTTONS
+resource
+Button
+{
+	name			"newgame"
+	rect			74 12 256 64
+	fgcolor			0.00 0.00 0.00 1.00
+	bgcolor			1.00 1.00 1.00 0.00
+	borderstyle		"NONE"
+	hovershader		ui/main/newgame_glow
+	ordernumber		1
+//	stuffcommand	"map gvillage"
+	stuffcommand	"pushmenu newgame"
+	hoversound		sound/ui/loadsave_h.wav
+	clicksound		sound/ui/loadsave_c.wav
+}
+resource
+Button
+{
+	name			"loadgame"
+	rect			34 79 317 67
+	fgcolor			0.00 0.00 0.00 1.00
+	bgcolor			1.00 1.00 1.00 0.00
+	borderstyle		"NONE"
+	hovershader		ui/main/loadgame_glow
+	stuffcommand	"pushmenu loadsave"
+	ordernumber		2
+	hoversound		sound/ui/loadsave_h.wav
+	clicksound		sound/ui/loadsave_c.wav
+}
+resource
+Button
+{
+	name			"settings"
+	rect			35 159 256 64
+	fgcolor			0.00 0.00 0.00 1.00
+	bgcolor			1.00 1.00 1.00 0.00
+	borderstyle		"NONE"
+	hovershader		ui/main/settings_glow
+	stuffcommand	"pushmenu controls"
+	ordernumber		3
+	hoversound		sound/ui/loadsave_h.wav
+	clicksound		sound/ui/loadsave_c.wav
+}
+resource
+Button
+{
+	name			"quit"
+	rect			157 244 256 64
+	fgcolor			0.00 0.00 0.00 1.00
+	bgcolor			1.00 1.00 1.00 0.00
+	borderstyle		"NONE"
+	hovershader		ui/main/quit_glow
+	stuffcommand	"pushmenu quit"
+	ordernumber		4
+	hoversound		sound/ui/loadsave_h.wav
+	clicksound		sound/ui/loadsave_c.wav
+}
+
+resource
+Label
+{
+	name			"Default"
+	rect			167 0 32 251
+	fgcolor			0.00 0.00 0.00 1.00
+	bgcolor			1.00 1.00 1.00 0.00
+	borderstyle		"NONE"
+	shader			ui/main/smoke
+}
+// Button Callouts: 
+resource
+Button
+{
+	title			"Cambiar"
+	name			"Default"
+	rect			200 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			35 8
+} 
+resource
+Button
+{
+	name			"Default"
+	rect			205 405 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"dpad_ps3"	
+	allowactivate	false
+}
+resource
+Button
+{
+	title			"Seleccionar"
+	name			"Default"
+	rect			50 400 130 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			35 8
+} 
+resource
+Button
+{
+	name			"Default"
+	rect			55 405 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"cross_button_ps3"	
+	allowactivate	false
+} 
+ 
+
+// RETURN BUTTON
+resource
+Button
+{
+	title			"Atrás"
+	name			"backtogame"
+	rect			335 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	stuffcommand	"popmenu\n"
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			35 8
+} 
+resource
+Button
+{
+	name			"backtogamebtn"
+	rect			340 405 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"circle_button_ps3"	
+	allowactivate	false
+} 
+end.

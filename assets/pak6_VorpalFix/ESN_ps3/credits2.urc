@@ -1,0 +1,606 @@
+menu "credits" 640 480 NONE 0.5
+fadeoverlay 0.5
+bgcolor 0 0 0 1
+borderstyle NONE
+bgfill 0 0 0 1
+fullscreen 1
+
+showcommand "widgetcommand page2 activategroup group_page1\n"
+showcommand "widgetcommand Rogue_Glow enable\n"
+showcommand "widgetcommand EA_Glow enable\n"
+showcommand	"widgetcommand title1 resetscroll\n"
+
+//waitcommand "widgetcommand page1 activategroup group_page2" 7000
+
+// Background
+resource
+Label
+{
+	name			"Default"
+	rect			0 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	0 ui/credits/creditsA
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 0 128 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	1 ui/credits/creditsB
+}
+resource
+Label
+{
+	name			"Default"
+	rect			0 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	2 ui/credits/creditsD
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 256 128 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	3 ui/credits/creditsE
+}
+
+
+// PAGE
+resource
+Label
+{
+	name			"Default"
+	rect			0 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	8 ui/credits/pageA
+	direction		from_point 0.5 250 0
+}
+resource
+Label
+{
+	name			"bah1"
+	rect			256 0 128 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	9 ui/credits/pageB
+//	waitcommand		"widgetcommand bah1 direction from_point 0.5 556 50" 5000
+	direction		from_point 0.5 250 0
+}
+resource
+Label
+{
+	name			"Default"
+	rect			0 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	10 ui/credits/pageC
+	direction		from_point 0.5 250 0
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 256 128 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	11 ui/credits/pageD
+	direction		from_point 0.5 250 0
+}
+
+// --------------------------------
+// PAGE1
+// --------------------------------
+resource
+AutoScroll
+{
+	title			"AutoScroll1"
+	name			"title1"
+	rect			27 100 246 280
+	fgcolor			0.00 0.00 0.00 1.00
+	bgcolor			1.00 1.00 1.00 0.00
+	borderstyle		"NONE"
+	font			"asrafel"
+	fontjustify		center center
+//	fontangle		0.4
+	fontspacing		0 -8
+	fontscale		0.85
+	direction		from_point 0.5 250 0
+	groupid			"group_page1"
+
+	scrollspeed		1.2
+
+	forcescissor
+
+	addimage		"ui/credits/alice" 96 5 64 128
+//	addimage		"ui/credits/rabbit" 60 130 128 128
+//	addimage		"ui/credits/bill" 138 154 128 128
+
+	addline			" "
+	addline			" "
+	addline			" "
+	addline			" "
+	addline			" "
+	addline			" "
+	addline			" "
+	addline			" "
+	addline			" "
+	addline			" "
+	addline			" "
+	addline			" "
+
+	addline			"=== Por Electronic Arts ==="
+	addline			" "
+
+	addline			"Diseño, Desarrollo y Producción"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"American McGee"
+	addline			"R.J. Berg"
+	addline			"Billy Delli-Gatti"
+	addline			"Jordan David Maynard"
+	addline			" "
+
+	addline			"Marketing y Relaciones Públicas"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Jonathan Harris"
+	addline			"Mike Jeffress"
+	addline			"Anne Marie Stein "
+	addline			"Jason S. Andersen "
+	addline			"Noreen Dante"
+	addline			"Gaylene Nagel"
+	addline			" "
+
+	addline			"Pruebas"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"David McCormick, Director"
+	addline			"Justin Holst, Asis. Dirección"
+	addline			"Chad Schnittjer, Asis. Dirección"
+	addline			"James Stanley"
+	addline			"Rad Christian"
+	addline			"Mike Kaiser"
+	addline			"Brian Sperduto"
+	addline			"Brian Barsda"
+	addline			"Donna Hunt"
+	addline			"Scott Ko"
+	addline			"Matt Dominguez "
+	addline			"Matt Ellison"
+	addline			"William Lane"
+	addline			"Seth Mespelli"
+	addline			"David Miller"
+	addline			" "
+
+	addline			"Pruebas de Idioma"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Colin Clarke"
+	addline			"Daryl Humdy"
+	addline			"Patrick Wilkes"
+	addline			"Deni Skeens"
+	addline			"Christoph Betschart"
+	addline			"Roger Metcalf"
+	addline			"Daren Hooper"
+	addline			"AC Martin"
+	addline			"Timothy Johns"
+	addline			" "
+
+	addline			"Secuencias Cinemáticas de"
+	addline			"Apertura y Cierre"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"por Little Beast"
+	addline			"San Francisco, CA"
+	addline			"R. Zane Rutledge, Director"
+	addline			"Matthew Fassberg, Productor"
+	addline			" "
+
+	addline			"Dibujo Digital e Ilustaciones"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"lxl"
+	addline			" "
+
+	addline			"Animaciones"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Matthew Hendershot"
+	addline			"Jamie Houk"
+	addline			"R. Zane Rutledge"
+	addline			" "
+
+	addline			"Música"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Producida, Compuesta y Arreglada"
+	addline			"por Chris Vrenna"
+	addline			" "
+	addline			"Música adicional programada y"
+	addline			"realizada por Mark Blasquez"
+	addline			" "
+	addline			"Coro femenino realizado por Jessicka"
+	addline			" "
+
+	addline			"Diseño de Sonido, Grabaciones,"
+	addline			"Edición y Efectos"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Ken Felton"
+	addline			"Marc Farley "
+	addline			"Mat Mitchell"
+	addline			"Aaron Thibault"
+	addline			"Stretch Williams"
+	addline			" "
+
+	addline			"Voces"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Susie Brann "
+	addline			"Roger Jackson"
+	addline			"Jarion Monroe"
+	addline			"Andrew Chaikin"
+	addline			"Anni Long"
+	addline			"Sandra Jara"
+	addline			"Richar del Olmo"
+	addline			"Antonio Fernadez"
+	addline			"Elixabete Aldama"
+	addline			"David Bascones"
+	addline			"Regino Ramos"
+	addline			"Luis Paramo"
+	addline			"Julia Martinez"
+	addline			"Jaime Roca"
+	addline			" "
+
+	addline			"Desarrollo Internacional"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Atsuko Matsumoto"
+	addline			"Dan Roisman"
+	addline			"John Pemberton"
+	addline			"Gabriel Gils Carbo"
+	addline			"Lafayette Taylor"
+	addline			" "
+
+	addline			"Servicios Creativos"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Adrienne Rogers "
+	addline			"Kevin Marburg"
+	addline			"Jennie Maruyama"
+	addline			"Mark Hausler"
+	addline			"Marco Garcia"
+	addline			"Mike Lippert"
+	addline			"Nathan Carrico"
+	addline			"Corey Higgins"
+	addline			"Greg Roensch"
+	addline			"Ede Clarke"
+	addline			"Michael Kerbow - IMAGIC"
+	addline			" "
+
+	addline			"Laboratorio CYT"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"John Hanley"
+	addline			" "
+
+	addline			"Laboratorio de Masterización"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Michael Yasko"
+	addline			"Yakim Hayuk"
+	addline			"Mike Dier"
+	addline			"Chris Espiritu"
+	addline			" "
+
+	addline			"Control de Calidad"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Andrew Young"
+	addline			"Benjamin Crick"
+	addline			"Dave Knudson"
+	addline			"Micah Pritchard"
+	addline			"Darryl Jenkins"
+	addline			"Tony Alexander"
+	addline			"Dave Kellum"
+	addline			"Benjamin Smith"
+	addline			"Anthony Barbagallo"
+	addline			" "
+
+	addline			"Director Proyecto Localización"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Carole Celle"
+	addline			" "
+
+	addline			"Coordinador de Traducción"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"José Luis Rovira"
+	addline			" "
+
+	addline			"Traductor"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Cristina Macía"
+	addline			" "
+
+	addline			"Jefe de Producto"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Francesc Caparros"
+	addline			" "
+
+	addline			"Relaciones Públicas"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Oscar Frades"
+	addline			" "
+
+	addline			"Dirección Pruebas Idioma"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Sylvain Caburrosso"
+	addline			" "
+
+	addline			"Supervisor de Pruebas de Idiomas"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Luis Pinés"
+	addline			" "
+
+	addline			"Pruebas de Idioma"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"José Ramón Sagarna"
+	addline			" "
+
+	addline			"Supervisor Control Calidad"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Antonio Yago"
+	addline			" "
+
+	addline			"Control de Calidad"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Tomás Hermida"
+	addline			" "
+
+	addline			"Director de Audio"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"David Lapp"
+	addline			" "
+
+	addline			"Estudio de Grabación"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Taller de Sonido"
+	addline			" "
+
+	addline			"Agradecimientos Especiales"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Rich Hilleman, Terry Smith,"
+	addline			"Colin Boswell, Linda Matteson,"
+	addline			"Murray Allen, Paulette Doudell,"
+	addline			"Joel Linzner, Chris Plummer,"
+	addline			"Bob Rossman, Eiso Kawamoto,"
+	addline			"Rob Hubbard, Jerry Newton,"
+	addline			"Eric Kornblum. Allison Wong,"
+	addline			"Milly Ng, Patrick Fitzgerald,"
+	addline			"Quarium Inc., Leigh Matty,"
+	addline			"Erik Whiteford, Santiago Nunez"
+	addline			"Gerrit Velthoen, Tim Wilson"
+	addline			" "
+
+//	addimage		"ui/credits/rabbit" 60 0 128 128
+	addimage		"ui/credits/bill" 60 0 128 128
+	addline			" "
+	addline			" "
+	addline			" "
+	addline			" "
+	addline			" "
+	addline			" "
+
+	addline			"=== Por Rogue Entertainment ==="
+	addline			" "
+
+	addline			"Diseño 2D"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Rich Fleider"
+	addline			"Christopher 'Derelict' Greenhaw"
+	addline			"Benjamin Hall"
+	addline			"Zach Hall"
+	addline			"Stephen Hornback"
+	addline			"Aaron Smith"
+	addline			"Joel F. Thomas Jr."
+	addline			" "
+
+	addline			"Diseño 3D/Animaciones"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Jay Brushwood"
+	addline			"Jose Hernandez"
+	addline			"Steven Maines"
+	addline			"John Turner"
+	addline			"Sung Yi"
+	addline			" "
+
+	addline			"Diseño de Niveles"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Christian Cummings"
+	addline			"Brandon James"
+	addline			"Josh Jay"
+	addline			"Iikka Keränen"
+	addline			"Cameron Lamprecht"
+	addline			"Brian Patenaude"
+	addline			"Bobby Pavlock"
+	addline			" "
+
+	addline			"Soporte del Diseño"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Zdim"
+	addline			" "
+
+	addline			"Programación"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Sean Fleming"
+	addline			"Peter Mack"
+	addline			"Darin McNeil"
+	addline			"Joe Waters"
+	addline			" "
+
+	addline			"Productor"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Jim Molinets"
+	addline			" "
+
+	addline			"Negocios"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Barrett Alexander"
+	addline			"Matt Kelso"
+	addline			" "
+
+	addline			"Agradecimientos Especiales"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Ritual Entertainment:"
+	addline			"Beau Anderson, Diseño 3D"
+	addline			"Mark Dochtermann, Programación"
+	addline			"Jim Dosé, Programación"
+	addline			"Levelord, Diseño de Niveles"
+	addline			"Patrick Hook, Diseño de Niveles"
+	addline			" "
+
+	addline			"Colaboradores"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Won Choi, Diseño"
+	addline			"Lee Dotson, Diseño 2D"
+	addline			"Ciara Gay, Actor de Animación de Alice"
+	addline			"Will Loconto, Diseño de Sonido"
+	addline			"Patrick Magruder, Programación"
+	addline			"Mike O'Rourke, Diseño 3D"
+	addline			"Robert Selitto, Diseño de Sonido"
+	addline			" "
+
+	addline			"Pruebas"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Brock Boutte"
+	addline			"Shane Boydston"
+	addline			"Christina Bullard"
+	addline			"Pat Carmichael"
+	addline			"Sean Carmichael"
+	addline			"Jay 'Switch' Carter"
+	addline			"Regina 'Riana' Cothran"
+	addline			"Jeffrey Davis"
+	addline			"Audra Davis"
+	addline			"Chris Van Doren"
+	addline			"Keith Egler"
+	addline			"Katy 'Girlafraid' Gill"
+	addline			"Wyeth Johnson"
+	addline			"Jennifer Lawson"
+	addline			"David Lewis"
+	addline			"Herb Marselas"
+	addline			"Sean 'Redwood' Martin"
+	addline			"Brian Matt"
+	addline			"Paul Maygar"
+	addline			"Elizabeth McNeil"
+	addline			"Kevin Phillips"
+	addline			"Matt Pritchard"
+	addline			"Cliff Ritchey"
+	addline			"Karen 'Scout' Sparks"
+	addline			"Marlena Troncoso"
+	addline			" "
+}
+
+resource
+Button
+{
+	name			"EA_Glow"
+	rect			20 360 64 64
+	fgcolor			0.00 0.00 0.00 1.00
+	bgcolor			1.00 1.00 1.00 0.00
+	borderstyle		"NONE"
+	direction		from_point 0.5 250 0
+	groupid			"group_page1"
+	stuffcommand	"widgetcommand title1 resetscroll"
+	shader			ui/credits/ea_glow
+	hovershader		ui/credits/ea_logo.tga
+}
+
+resource
+Button
+{
+	name			"Rogue_Glow"
+	rect			224 356 64 64
+	fgcolor			0.00 0.00 0.00 1.00
+	bgcolor			1.00 1.00 1.00 0.00
+	borderstyle		"NONE"
+	direction		from_point 0.5 250 0
+	groupid			"group_page1"
+	stuffcommand	"widgetcommand title1 resetscroll 189"
+	shader			ui/credits/rogue_glow
+	hovershader		ui/credits/rogue_logo.tga
+}
+// RETURN BUTTON
+resource
+Button
+{
+	title			"Atrás"
+	name			"Default"
+	rect			100 370 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			35 8
+	direction		from_point 0.5 250 0
+	groupid			"group_page1"
+	stuffcommand	"widgetcommand Rogue_Glow hide; widgetcommand EA_Glow hide; popmenu"
+} 
+resource
+Button
+{
+	name			"Default"
+	rect			105 375 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"circle_button_ps3"	
+	allowactivate	false
+	direction		from_point 0.5 250 0
+	groupid			"group_page1"
+}
+//-----------------------------------
+
+// MOUSE
+resource
+Label
+{
+	name			"Default"
+	rect			256 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	4 ui/credits/mouseB
+}
+resource
+Label
+{
+	name			"Default"
+	rect			512 0 128 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	5 ui/credits/mouseC
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	6 ui/credits/mouseE
+}
+resource
+Label
+{
+	name			"Default"
+	rect			512 256 128 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	7 ui/credits/mouseF
+} 
+end.
