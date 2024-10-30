@@ -373,14 +373,15 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 	{
 		if (black_border_width <= BORDER_THRESHOLD)
 		{
-			// The black border is too small, adjust the width less aggressively
-			resolution_width = black_border_width * 2; // Fill the entire black border
+			// Calculate the scale factor to match the target height
+			float scale_factor = current_height / 720.0f; // Original height of the image is 720
 
-			// Adjust the image width less aggressively
-			resolution_height = current_height;
+			// Scale the width and height proportionally
+			resolution_width = 160.0f * scale_factor;  // Original width is 160
+			resolution_height = current_height;        // Match the screen height
 
-			// Move the image off-screen slightly to hide part of it
-			x_position = -(resolution_width / 2.0f);  // Move half of the image off-screen
+			// Align the image to the left edge to cover the black border precisely
+			x_position = black_border_width - resolution_width;
 		}
 		else
 		{
@@ -394,14 +395,15 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 	{
 		if (black_border_width <= BORDER_THRESHOLD)
 		{
-			// The black border is too small, adjust the width less aggressively
-			resolution_width = black_border_width * 2; // Fill the entire black border
+			// Calculate the scale factor to match the target height
+			float scale_factor = current_height / 720.0f; // Original height of the image is 720
 
-			// Adjust the image width less aggressively
-			resolution_height = current_height;
+			// Scale the width and height proportionally
+			resolution_width = 160.0f * scale_factor;  // Original width is 160
+			resolution_height = current_height;        // Match the screen height
 
-			// Move the image off-screen slightly to hide part of it
-			x_position = current_width - (resolution_width / 2.0f);  // Move half of the image off-screen
+			// Position the image to align precisely with the right black border
+			x_position = current_width - black_border_width;
 		}
 		else
 		{
@@ -494,32 +496,35 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
 
-		float target_width = current_height * ASPECT_RATIO_4_3;
-		float scale_factor = target_width / current_width;
-		resolution_width *= scale_factor;
-		float horizontal_offset = (current_width - target_width) / 2.0f;
+		if (current_aspect_ratio >= ASPECT_RATIO_4_3)
+		{
+			float target_width = current_height * ASPECT_RATIO_4_3;
+			float scale_factor = target_width / current_width;
+			resolution_width *= scale_factor;
+			float horizontal_offset = (current_width - target_width) / 2.0f;
 
-		// Exceptions for some of the in-game assets
-		if ((ConsolePortHUD || strcmp(ShaderName, "ui/quicksavecam/quicksavecam") != 0) && strcmp(ShaderName, "ui/dialog/leftFrame") != 0 && strcmp(ShaderName, "ui/dialog/rightFrame") != 0)
-		{
-			x_position = (x_position * scale_factor) + horizontal_offset;
-		}
+			// Exceptions for some of the in-game assets
+			if ((ConsolePortHUD || strcmp(ShaderName, "ui/quicksavecam/quicksavecam") != 0) && strcmp(ShaderName, "ui/dialog/leftFrame") != 0 && strcmp(ShaderName, "ui/dialog/rightFrame") != 0)
+			{
+				x_position = (x_position * scale_factor) + horizontal_offset;
+			}
 
-		if ((ConsolePortHUD && strcmp(ShaderName, "ui/quicksavecam/quicksavecam") == 0))
-		{
-			x_position = current_width / 6.0f;
-			y_position = current_height / 14.25f;
-		}
+			if ((ConsolePortHUD && strcmp(ShaderName, "ui/quicksavecam/quicksavecam") == 0))
+			{
+				x_position = current_width / 6.0f;
+				y_position = current_height / 14.25f;
+			}
 
-		// Move the dialog boxes to the center
-		if (strcmp(ShaderName, "ui/dialog/leftFrame") == 0 || strcmp(ShaderName, "ui/dialog/rightFrame") == 0)
-		{
-			x_position = (x_position * scale_factor) + horizontal_offset / 1.65f;
-			isDialog = true;
-		}
-		else
-		{
-			isDialog = false;
+			// Move the dialog boxes to the center
+			if (strcmp(ShaderName, "ui/dialog/leftFrame") == 0 || strcmp(ShaderName, "ui/dialog/rightFrame") == 0)
+			{
+				x_position = (x_position * scale_factor) + horizontal_offset / 1.65f;
+				isDialog = true;
+			}
+			else
+			{
+				isDialog = false;
+			}
 		}
 	}
 	return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
