@@ -1,0 +1,47 @@
+menu "title" 640 480 NONE 0.5
+fadeoverlay 0.5
+bgcolor 0 0 0 0
+borderstyle NONE
+bgfill 0 0 0 0
+fullscreen 1 
+allowactivate	true
+
+// Background
+resource
+Label
+{
+	name			"Default"
+	rect			0 0 1 1
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	0 title_bg
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	title			"Pulsa el Botón ENTER"
+	rect			160 370 320 50
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	font			"asrafel"
+	fontjustify		left center
+	fontscale		1.25
+	fontpos			80 12
+	dropshadow		1
+} 
+resource
+Button
+{
+	name			"Default"
+	rect			640 0 1 1
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	hovershader		"border1_left"
+	allowactivate	false
+} 
+end.

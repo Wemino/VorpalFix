@@ -38,6 +38,10 @@ int currentHeight = 0;
 bool isCursorResized = false;
 bool isDefaultFullscreenSettingSkipped = false;
 bool isUsingControllerMenu = false;
+bool isMainMenuShown = false;
+bool isTitleBgSet = false;
+bool isRestartedForLinux = false;
+int linuxRestartTiming = 0;
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const float BORDER_THRESHOLD = 140.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
@@ -57,11 +61,14 @@ bool FixStretchedFMV = false;
 bool FixStretchedGUI = false;
 bool FixDPIScaling = false;
 bool FixFullscreenSetting = false;
+bool FixMenuTransitionTiming = false;
+bool FixProton = false;
 
 // General
 bool LaunchWithoutAlice2 = false;
 bool PreventAlice2OnExit = false;
-int LanguageId = false;
+int LanguageId = 0;
+bool UseConsoleTitleScreen = false;
 bool UseOriginalIntroVideos = false;
 bool DisableRemasteredModels = false;
 bool EnableDevConsole = false;
@@ -103,12 +110,15 @@ static void ReadConfig()
 	FixStretchedGUI = iniReader.ReadInteger("Fixes", "FixStretchedGUI", 1) == 1;
 	FixDPIScaling = iniReader.ReadInteger("Fixes", "FixDPIScaling", 1) == 1;
 	FixFullscreenSetting = iniReader.ReadInteger("Fixes", "FixFullscreenSetting", 1) == 1;
+	FixMenuTransitionTiming = iniReader.ReadInteger("Fixes", "FixMenuTransitionTiming", 1) == 1;
+	FixProton = iniReader.ReadInteger("Fixes", "FixProton", 0) == 1;
 
 	// General
 	LaunchWithoutAlice2 = iniReader.ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
 	PreventAlice2OnExit = iniReader.ReadInteger("General", "PreventAlice2OnExit", 0) == 1;
 	LanguageId = iniReader.ReadInteger("General", "LanguageId", 0);
 	UseOriginalIntroVideos = iniReader.ReadInteger("General", "UseOriginalIntroVideos", 0) == 1;
+	UseConsoleTitleScreen = iniReader.ReadInteger("General", "UseConsoleTitleScreen", 0) == 1;
 	DisableRemasteredModels = iniReader.ReadInteger("General", "DisableRemasteredModels", 0) == 1;
 	EnableDevConsole = iniReader.ReadInteger("General", "EnableDevConsole", 0) == 1;
 	ToggleConsoleBindKey = iniReader.ReadString("General", "ToggleConsoleBindKey", "F2");
@@ -150,6 +160,54 @@ static void ReadConfig()
 }
 
 #pragma region
+
+typedef int(__cdecl* sub_4158F0)(char*, char);
+
+static int CallCmd(char* command, char flag) {
+	sub_4158F0 Cmd = (sub_4158F0)0x4158F0;
+
+	return Cmd(command, flag);
+}
+
+static void __cdecl ResizeCursor(bool Hide)
+{
+	int ImageNum = injector::ReadMemory<int>(0x1BCCEEC, false);
+	int ImageIndex = 0x1BCCEF0;
+
+	const int originalWidth = 640;
+	const int originalHeight = 480;
+
+	for (int i = 0; i < ImageNum; ++i)
+	{
+		const char* currentTexture = (const char*)ImageIndex;
+
+		if (strcmp(currentTexture, "gfx/2d/mouse_arrow.tga") == 0)
+		{
+			// Calculate scale factors
+			float widthScale = static_cast<float>(currentWidth) / originalWidth;
+			float heightScale = static_cast<float>(currentHeight) / originalHeight;
+
+			// Use the smallest scale factor to maintain the aspect ratio
+			float scaleFactor = std::min(widthScale, heightScale);
+
+			// Calculate the new scaled sizes
+			int scaledMouseWidth = static_cast<int>(16 * scaleFactor);
+			int scaledMouseHeight = static_cast<int>(32 * scaleFactor);
+
+			if (Hide)
+			{
+				scaledMouseWidth = 0;
+				scaledMouseHeight = 0;
+			}
+
+			injector::WriteMemory<int>(ImageIndex + 0x40, scaledMouseWidth, false);
+			injector::WriteMemory<int>(ImageIndex + 0x44, scaledMouseHeight, false);
+			break;
+		}
+
+		ImageIndex += 0x80;
+	}
+}
 
 typedef int(__cdecl* sub_41D1E0)();
 sub_41D1E0 CheckDiskFreeSpace = nullptr;
@@ -301,159 +359,161 @@ sub_48FC00 RenderShader = nullptr;
 
 static int __cdecl RenderShader_Hook(float x_position, float y_position, float resolution_width, float resolution_height, float a5, float a6, float a7, float a8, int ShaderHandle)
 {
-	// Wait until the game started
-	bool skip = injector::ReadMemory<int>(STARTUP_STATE_ADDR, false) >= 1;
+	float current_width = static_cast<float>(currentWidth);
+	float current_height = static_cast<float>(currentHeight);
 
-	if (!skip)
+	float current_aspect_ratio = current_width / current_height;
+
+	float black_border_width = (current_width - (current_height * ASPECT_RATIO_4_3)) / 2.0f;
+
+	// Don't do this if black_border_width too big
+	if (x_position == LEFT_BORDER_X_ID && current_aspect_ratio <= 2.0f && current_aspect_ratio > 1.5f) // Left border, skip if the image is going to be stretched
 	{
-		float current_width = static_cast<float>(currentWidth);
-		float current_height = static_cast<float>(currentHeight);
-
-		float current_aspect_ratio = current_width / current_height;
-
-		if (current_aspect_ratio > ASPECT_RATIO_4_3)
+		if (black_border_width <= BORDER_THRESHOLD)
 		{
-			float black_border_width = (current_width - (current_height * ASPECT_RATIO_4_3)) / 2.0f;
+			// The black border is too small, adjust the width less aggressively
+			resolution_width = black_border_width * 2; // Fill the entire black border
 
-			// Don't do this if black_border_width too big
-			if (x_position == LEFT_BORDER_X_ID && current_aspect_ratio <= 2.0f && current_aspect_ratio > 1.5f) // Left border, skip if the image is going to be stretched
+			// Adjust the image width less aggressively
+			resolution_height = current_height;
+
+			// Move the image off-screen slightly to hide part of it
+			x_position = -(resolution_width / 2.0f);  // Move half of the image off-screen
+		}
+		else
+		{
+			// Fill the left border
+			resolution_width = (current_width - (current_height * ASPECT_RATIO_4_3)) / 2.0f; // Adjust width to cover left border
+			resolution_height = current_height;  // Stretch to full screen height
+			x_position = 0.0f;
+		}
+	}
+	else if (x_position == RIGHT_BORDER_X_ID && current_aspect_ratio <= 2.0f && current_aspect_ratio > 1.5f) // Right border, skip if the image is going to be stretched
+	{
+		if (black_border_width <= BORDER_THRESHOLD)
+		{
+			// The black border is too small, adjust the width less aggressively
+			resolution_width = black_border_width * 2; // Fill the entire black border
+
+			// Adjust the image width less aggressively
+			resolution_height = current_height;
+
+			// Move the image off-screen slightly to hide part of it
+			x_position = current_width - (resolution_width / 2.0f);  // Move half of the image off-screen
+		}
+		else
+		{
+			// Fill the right border
+			resolution_width = (current_width - (current_height * ASPECT_RATIO_4_3)) / 2.0f; // Adjust width to cover right border
+			resolution_height = current_height;  // Stretch to full screen height
+			x_position = current_width - resolution_width;  // Start from the right edge
+		}
+	}
+	else
+	{
+		char* ShaderName = *(char**)(SHADERS_CACHE_ADDR + 0x4 * ShaderHandle);
+		BYTE isConsoleOpen = (*(BYTE**)CONSOLE_THREAD_PTR_ADDR && *(*(BYTE**)CONSOLE_THREAD_PTR_ADDR + 0xCC)) ? *(*(BYTE**)CONSOLE_THREAD_PTR_ADDR + 0xCC) : 0;
+
+		// Workaround to be able to use the console
+		if (isConsoleOpen == 1 && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
+		{
+			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+		}
+
+		if (!isCursorResized && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
+		{
+			ResizeCursor(isUsingControllerMenu);
+			isCursorResized = true;
+		}
+
+		if (!isMainMenuShown && strstr(ShaderName, "main") != NULL)
+		{
+			ResizeCursor(isUsingControllerMenu);
+			isMainMenuShown = true;
+
+			injector::WriteMemory<char>(0x4082C3, 0x1B, true);
+		}
+
+		if (!isMainMenuShown && strstr(ShaderName, "legalplate") != NULL)
+		{
+			linuxRestartTiming++;
+
+			if (FixProton && !isRestartedForLinux && linuxRestartTiming > 400)
 			{
-				if (black_border_width <= BORDER_THRESHOLD)
-				{
-					// The black border is too small, adjust the width less aggressively
-					resolution_width = black_border_width * 2; // Fill the entire black border
-
-					// Adjust the image width less aggressively
-					resolution_height = current_height;
-
-					// Move the image off-screen slightly to hide part of it
-					x_position = -(resolution_width / 2.0f);  // Move half of the image off-screen
-				}
-				else
-				{
-					// Fill the left border
-					resolution_width = (current_width - (current_height * ASPECT_RATIO_4_3)) / 2.0f; // Adjust width to cover left border
-					resolution_height = current_height;  // Stretch to full screen height
-					x_position = 0.0f;
-				}
+				CallCmd("vid_restart\n", 0);
+				isRestartedForLinux = 1;
 			}
-			else if (x_position == RIGHT_BORDER_X_ID && current_aspect_ratio <= 2.0f && current_aspect_ratio > 1.5f) // Right border, skip if the image is going to be stretched
+
+			if (current_width > 1280)
 			{
-				if (black_border_width <= BORDER_THRESHOLD)
-				{
-					// The black border is too small, adjust the width less aggressively
-					resolution_width = black_border_width * 2; // Fill the entire black border
+				float scale_factor = (float)current_height / 720.0f;
 
-					// Adjust the image width less aggressively
-					resolution_height = current_height;
+				resolution_width = 512 * scale_factor;
+				resolution_height = 512 * scale_factor;
 
-					// Move the image off-screen slightly to hide part of it
-					x_position = current_width - (resolution_width / 2.0f);  // Move half of the image off-screen
-				}
-				else
-				{
-					// Fill the right border
-					resolution_width = (current_width - (current_height * ASPECT_RATIO_4_3)) / 2.0f; // Adjust width to cover right border
-					resolution_height = current_height;  // Stretch to full screen height
-					x_position = current_width - resolution_width;  // Start from the right edge
-				}
+				x_position = (current_width - resolution_width) / 2.0f;
+				y_position = (current_height - resolution_height) / 2.0f;
+			}
+
+			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+		}
+
+		if (!isMainMenuShown && strcmp(ShaderName, "title_bg") == 0)
+		{
+			float image_aspect_ratio = 1280.0f / 720.0f;
+
+			// Determine the scale factor to fill the screen
+			float scale_factor;
+			if (current_aspect_ratio > image_aspect_ratio)
+			{
+				// Screen is wider than 16:9; scale based on width to fill horizontally, cropping top and bottom
+				scale_factor = (float)current_width / 1280.0f;
 			}
 			else
 			{
-				char* ShaderName = *(char**)(SHADERS_CACHE_ADDR + 0x4 * ShaderHandle);
-				BYTE isConsoleOpen = (*(BYTE**)CONSOLE_THREAD_PTR_ADDR && *(*(BYTE**)CONSOLE_THREAD_PTR_ADDR + 0xCC)) ? *(*(BYTE**)CONSOLE_THREAD_PTR_ADDR + 0xCC) : 0;
-
-				// Workaround to be able to use the console
-				if (isConsoleOpen == 1 && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
-				{
-					return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-				}
-
-				// Full screen effects
-				if (strcmp(ShaderName, "textures/special/drugfade") == 0 || strcmp(ShaderName, "textures/special/icefade") == 0)
-				{
-					return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-				}
-
-				float target_width = current_height * ASPECT_RATIO_4_3;
-				float scale_factor = target_width / current_width;
-				resolution_width *= scale_factor;
-				float horizontal_offset = (current_width - target_width) / 2.0f;
-
-				// Exceptions for some of the in-game assets
-				if ((ConsolePortHUD || strcmp(ShaderName, "ui/quicksavecam/quicksavecam") != 0) && strcmp(ShaderName, "ui/dialog/leftFrame") != 0 && strcmp(ShaderName, "ui/dialog/rightFrame") != 0)
-				{
-					x_position = (x_position * scale_factor) + horizontal_offset;
-				}
-
-				// Move the dialog boxes to the center
-				if (strcmp(ShaderName, "ui/dialog/leftFrame") == 0 || strcmp(ShaderName, "ui/dialog/rightFrame") == 0)
-				{
-					x_position = (x_position * scale_factor) + horizontal_offset / 1.65f;
-					isDialog = true;
-				}
-				else
-				{
-					isDialog = false;
-				}
+				// Screen is taller than 16:9; scale based on height to fill vertically, cropping sides
+				scale_factor = (float)current_height / 720.0f;
 			}
+
+			// Set scaled dimensions to fill the screen fully
+			resolution_width = 1280 * scale_factor;
+			resolution_height = 720 * scale_factor;
+
+			// Center the image on the screen
+			x_position = (current_width - resolution_width) / 2.0f;
+			y_position = (current_height - resolution_height) / 2.0f;
+
+			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
 
-		// Hack to resize the cursor
-		if (!isCursorResized)
+		// Full screen effects
+		if (strcmp(ShaderName, "textures/special/drugfade") == 0 || strcmp(ShaderName, "textures/special/icefade") == 0)
 		{
-			char* ShaderName = *(char**)(SHADERS_CACHE_ADDR + 0x4 * ShaderHandle);
+			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+		}
 
-			if (strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
-			{
-				int ImageNum = injector::ReadMemory<int>(0x1BCCEEC, false);
-				int ImageIndex = 0x1BCCEF0;
+		float target_width = current_height * ASPECT_RATIO_4_3;
+		float scale_factor = target_width / current_width;
+		resolution_width *= scale_factor;
+		float horizontal_offset = (current_width - target_width) / 2.0f;
 
-				// Constants for the original width and height of the cursor
-				const int originalWidth = 640;
-				const int originalHeight = 480;
+		// Exceptions for some of the in-game assets
+		if ((ConsolePortHUD || strcmp(ShaderName, "ui/quicksavecam/quicksavecam") != 0) && strcmp(ShaderName, "ui/dialog/leftFrame") != 0 && strcmp(ShaderName, "ui/dialog/rightFrame") != 0)
+		{
+			x_position = (x_position * scale_factor) + horizontal_offset;
+		}
 
-				// Loop through to find the correct ImageIndex
-				for (int i = 0; i < ImageNum; ++i)
-				{
-					// Check if the current ImageIndex corresponds to the desired texture
-					const char* currentTexture = (const char*)ImageIndex;
-
-					// If the current texture is "gfx/2d/mouse_arrow.tga", apply the scaling patch
-					if (strcmp(currentTexture, "gfx/2d/mouse_arrow.tga") == 0)
-					{
-						// Calculate scale factors
-						float widthScale = static_cast<float>(currentWidth) / originalWidth;
-						float heightScale = static_cast<float>(currentHeight) / originalHeight;
-
-						// Use the smallest scale factor to maintain the aspect ratio
-						float scaleFactor = std::min(widthScale, heightScale);
-
-						// Calculate the new scaled sizes
-						int scaledMouseWidth = static_cast<int>(injector::ReadMemory<int>(ImageIndex + 0x40, false) * scaleFactor);
-						int scaledMouseHeight = static_cast<int>(injector::ReadMemory<int>(ImageIndex + 0x44, false) * scaleFactor);
-
-						if (isUsingControllerMenu)
-						{
-							scaledMouseWidth = 0;
-							scaledMouseHeight = 0;
-						}
-
-						injector::WriteMemory<int>(ImageIndex + 0x40, scaledMouseWidth, false);
-						injector::WriteMemory<int>(ImageIndex + 0x44, scaledMouseHeight, false);
-
-						// Set the flag indicating the cursor has been resized
-						isCursorResized = true;
-						break;
-					}
-
-					// Move to the next ImageIndex by incrementing by 0x80
-					ImageIndex += 0x80;
-				}
-			}
+		// Move the dialog boxes to the center
+		if (strcmp(ShaderName, "ui/dialog/leftFrame") == 0 || strcmp(ShaderName, "ui/dialog/rightFrame") == 0)
+		{
+			x_position = (x_position * scale_factor) + horizontal_offset / 1.65f;
+			isDialog = true;
+		}
+		else
+		{
+			isDialog = false;
 		}
 	}
-
 	return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 }
 
@@ -629,7 +689,10 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 		FOV = 2.0 * atan(tan(vFOV / 2.0) * current_aspect_ratio) * 180.0 / M_PI;
 	}
 
-	isCursorResized = false;
+	if (isMainMenuShown)
+	{
+		isCursorResized = false;
+	}
 
 	return GLW_CreatePFD(pPFD, colorbits, depthbits, stencilbits, stereo);
 }
@@ -785,16 +848,9 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 	const char* langPrefix = "INT";
 	switch (lang)
 	{
-	case 1: langPrefix = "DEU"; break;
-	case 2: langPrefix = "FRA"; break;
-	case 3: langPrefix = "ESN"; break;
-	}
-
-	if (UsePS3ControllerIcons)
-	{
-		char* newLangPrefix = (char*)malloc(strlen(langPrefix) + strlen("_ps3") + 1);
-		sprintf(newLangPrefix, "%s_ps3", langPrefix);
-		langPrefix = newLangPrefix;
+		case 1: langPrefix = "DEU"; break;
+		case 2: langPrefix = "FRA"; break;
+		case 3: langPrefix = "ESN"; break;
 	}
 
 	// Check if a controller is connected
@@ -804,11 +860,7 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 		typedef int(__cdecl* sub_463130)();
 		sub_463130 IsControllerConnected = (sub_463130)0x463130;
 
-		if (IsControllerConnected() == 0)
-		{
-			return LoadUI(ptr, ui_path); // Exit early if no controller is connected
-		}
-		else
+		if (IsControllerConnected() == 1)
 		{
 			isUsingControllerMenu = true;
 
@@ -818,32 +870,56 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 		}
 	}
 
+	if (UseConsoleTitleScreen && ui_path != NULL && strcmp(ui_path, "ui/title.urc") == 0)
+	{
+		if (!isUsingControllerMenu)
+		{
+			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/title.urc") + 1);
+			sprintf(ui_path, "%s/title.urc", langPrefix);
+
+			// Press Enter
+			injector::WriteMemory<char>(0x4082C3, 0x0D, true);
+		}
+		else
+		{
+			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/title_console.urc") + 1);
+			sprintf(ui_path, "%s/title_console.urc", langPrefix);
+		}
+	}
+
+	if (UsePS3ControllerIcons)
+	{
+		char* newLangPrefix = (char*)malloc(strlen(langPrefix) + strlen("_ps3") + 1);
+		sprintf(newLangPrefix, "%s_ps3", langPrefix);
+		langPrefix = newLangPrefix;
+	}
+
 	// To do: refactor this
-	if (ui_path != NULL && strcmp(ui_path, "ui/controls.urc") == 0)
+	if (isUsingControllerMenu && ui_path != NULL && strcmp(ui_path, "ui/controls.urc") == 0)
 	{
 		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/controls2.urc") + 1);
 		sprintf(ui_path, "%s/controls2.urc", langPrefix);
 	}
 
-	if (ui_path != NULL && strcmp(ui_path, "ui/credits.urc") == 0)
+	if (isUsingControllerMenu && ui_path != NULL && strcmp(ui_path, "ui/credits.urc") == 0)
 	{
 		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/credits2.urc") + 1);
 		sprintf(ui_path, "%s/credits2.urc", langPrefix);
 	}
 
-	if (ui_path != NULL && strcmp(ui_path, "ui/loadsave.urc") == 0)
+	if (isUsingControllerMenu && ui_path != NULL && strcmp(ui_path, "ui/loadsave.urc") == 0)
 	{
 		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/loadsave2.urc") + 1);
 		sprintf(ui_path, "%s/loadsave2.urc", langPrefix);
 	}
 
-	if (ui_path != NULL && strcmp(ui_path, "ui/main.urc") == 0)
+	if (isUsingControllerMenu && ui_path != NULL && strcmp(ui_path, "ui/main.urc") == 0)
 	{
 		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/main2.urc") + 1);
 		sprintf(ui_path, "%s/main2.urc", langPrefix);
 	}
 
-	if (ui_path != NULL && strcmp(ui_path, "ui/newgame.urc") == 0)
+	if (isUsingControllerMenu && ui_path != NULL && strcmp(ui_path, "ui/newgame.urc") == 0)
 	{
 		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/newgame2.urc") + 1);
 		sprintf(ui_path, "%s/newgame2.urc", langPrefix);
@@ -866,6 +942,58 @@ static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
 		*(a1 + 1) = 0xC2100000;
 	}
 	return AliceHeadMovementCoordinates(a1, a2);
+}
+
+typedef int(__cdecl* sub_44C1B0)(const char*);
+sub_44C1B0 PushMenu = nullptr;
+
+static int __cdecl PushMenu_Hook(const char* menu_name)
+{
+	if (FixMenuTransitionTiming && strcmp(menu_name, "newgame") == 0)
+	{
+		injector::WriteMemory<int>(0x12EF948, 1200, true);
+	}
+
+	if (!isTitleBgSet && strcmp(menu_name, "main") == 0)
+	{
+		isTitleBgSet = true;
+		ResizeCursor(true);
+		return PushMenu("title");
+	}
+	else
+	{
+		return PushMenu(menu_name);
+	}
+}
+
+typedef void(__cdecl* sub_44C4F0)(int);
+sub_44C4F0 TriggerMainMenu = nullptr;
+
+static void __cdecl TriggerMainMenu_Hook(int a1)
+{
+	if (isMainMenuShown)
+	{
+		TriggerMainMenu(a1);
+	}
+	else
+	{
+		PushMenu_Hook("main");
+	}
+}
+
+typedef int(__cdecl* sub_449DF0)();
+sub_449DF0 IsGameStarted = nullptr;
+
+static int __cdecl IsGameStarted_Hook()
+{
+	if (isMainMenuShown)
+	{
+		return IsGameStarted();
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 #pragma endregion Hooks with MinHook
@@ -1129,6 +1257,13 @@ static void ApplyFixDPIScaling()
 	}
 }
 
+static void ApplyFixMenuTransitionTiming()
+{
+	if (!FixMenuTransitionTiming) return;
+
+	injector::WriteMemory<int>(0x4082FC, 0x3200, true);
+}
+
 static void ApplyLaunchWithoutAlice2()
 {
 	if (!LaunchWithoutAlice2) return;
@@ -1146,6 +1281,16 @@ static void ApplyPreventAlice2OnExit()
 static void ApplyLanguageId()
 {
 	injector::WriteMemory<int>(0x461A90, LanguageId, true);
+}
+
+static void ApplyUseConsoleTitleScreen()
+{
+	if (!UseConsoleTitleScreen) return;
+
+	ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, reinterpret_cast<LPVOID*>(&LoadUI));
+	ApplyHook((void*)0x44C1B0, &PushMenu_Hook, reinterpret_cast<LPVOID*>(&PushMenu));
+	ApplyHook((void*)0x44C4F0, &TriggerMainMenu_Hook, reinterpret_cast<LPVOID*>(&TriggerMainMenu));
+	ApplyHook((void*)0x449DF0, &IsGameStarted_Hook, reinterpret_cast<LPVOID*>(&IsGameStarted));
 }
 
 static void ApplyUseOriginalIntroVideos()
@@ -1226,7 +1371,11 @@ static void ApplyEnableControllerIcons()
 {
 	if (!EnableControllerIcons) return;
 
-	ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, reinterpret_cast<LPVOID*>(&LoadUI));
+	if (!UseConsoleTitleScreen)
+	{
+		ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, reinterpret_cast<LPVOID*>(&LoadUI));
+	}
+
 	ApplyHook((void*)0x423740, &AliceHeadMovementCoordinates_Hook, reinterpret_cast<LPVOID*>(&AliceHeadMovementCoordinates));
 }
 
@@ -1301,9 +1450,11 @@ static void Init()
 	ApplyFixStretchedFMV();
 	ApplyFixStretchedGUI();
 	ApplyFixDPIScaling();
+	ApplyFixMenuTransitionTiming();
 	ApplyLaunchWithoutAlice2();
 	ApplyPreventAlice2OnExit();
 	ApplyLanguageId();
+	ApplyUseConsoleTitleScreen();
 	ApplyUseOriginalIntroVideos();
 	ApplyDisableRemasteredModels();
 	ApplyEnableDevConsole();
