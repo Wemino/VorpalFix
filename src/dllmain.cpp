@@ -73,6 +73,7 @@ bool UseOriginalIntroVideos = false;
 bool DisableRemasteredModels = false;
 bool EnableDevConsole = false;
 char* ToggleConsoleBindKey = nullptr;
+char* CustomSavePath = nullptr;
 
 // Display
 bool ConsolePortHUD = false;
@@ -122,6 +123,7 @@ static void ReadConfig()
 	DisableRemasteredModels = iniReader.ReadInteger("General", "DisableRemasteredModels", 0) == 1;
 	EnableDevConsole = iniReader.ReadInteger("General", "EnableDevConsole", 0) == 1;
 	ToggleConsoleBindKey = iniReader.ReadString("General", "ToggleConsoleBindKey", "F2");
+	CustomSavePath = iniReader.ReadString("General", "CustomSavePath", "0");
 
 	// Display
 	ConsolePortHUD = iniReader.ReadInteger("Display", "ConsolePortHUD", 0) == 1;
@@ -501,6 +503,12 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		if ((ConsolePortHUD || strcmp(ShaderName, "ui/quicksavecam/quicksavecam") != 0) && strcmp(ShaderName, "ui/dialog/leftFrame") != 0 && strcmp(ShaderName, "ui/dialog/rightFrame") != 0)
 		{
 			x_position = (x_position * scale_factor) + horizontal_offset;
+		}
+
+		if ((ConsolePortHUD && strcmp(ShaderName, "ui/quicksavecam/quicksavecam") == 0))
+		{
+			x_position = current_width / 6.0f;
+			y_position = current_height / 14.25f;
 		}
 
 		// Move the dialog boxes to the center
