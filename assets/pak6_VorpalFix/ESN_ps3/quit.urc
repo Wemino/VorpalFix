@@ -1,0 +1,134 @@
+menu "quit"		640 480 NONE 0.5
+bgcolor			0 0 0 1
+borderstyle		NONE
+bgfill			0 0 0 1
+fullscreen		1
+fadeoverlay		0.5
+
+allowactivate	true
+keycommand		y quit
+keycommand		n popmenu
+
+// Background
+resource
+Label
+{
+	name			"Default"
+	rect			0 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	0 ui/quit/quitA
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	1 ui/quit/quitB
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			512 0 128 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	2 ui/quit/quitC
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			0 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	3 ui/quit/quitD
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	4 ui/quit/quitE
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			512 255 128 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	5 ui/quit/quitF
+	allowactivate	false
+}
+
+// BUTTONS
+resource
+Button
+{
+	name			"Default"
+	rect			403 249 64 32
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	stuffcommand	"quit"
+	hovershader		"ui/quit/yes_glow"
+	allowactivate	true
+	ordernumber		1
+	keycommand		y quit
+	keycommand		n popmenu
+	hoversound		sound/ui/loadsave_h.wav
+	clicksound		sound/ui/loadsave_c.wav
+}
+resource
+Button
+{
+	name			"Default"
+	rect			471 253 64 32
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	stuffcommand	"popmenu"
+	hovershader		"ui/quit/no_glow"
+//	allowactivate	false
+	ordernumber		2
+	keycommand		y quit
+	keycommand		n popmenu
+	hoversound		sound/ui/loadsave_h.wav
+	clicksound		sound/ui/loadsave_c.wav
+}
+
+resource
+Button
+{
+	name			"Default"
+	rect			363 416 256 64
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	stuffcommand	"pushmenu credits"
+	hovershader		"ui/quit/credits_glow"
+//	allowactivate	false
+	ordernumber		3
+	keycommand		y quit
+	keycommand		n popmenu
+	hoversound		sound/ui/loadsave_h.wav
+	clicksound		sound/ui/loadsave_c.wav
+}
+
+end.

@@ -909,6 +909,12 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 		sprintf(ui_path, "%s/newgame2.urc", langPrefix);
 	}
 
+	if (isUsingControllerMenu && ui_path != NULL && strcmp(ui_path, "ui/quit.urc") == 0)
+	{
+		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/quit.urc") + 1);
+		sprintf(ui_path, "%s/quit.urc", langPrefix);
+	}
+
 	return LoadUI(ptr, ui_path);
 }
 
