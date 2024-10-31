@@ -1,10 +1,10 @@
 ﻿#define _USE_MATH_DEFINES
 #define NOMINMAX
-#include <injector\injector.hpp>
 #include <IniReader.h>
 #include <shlobj.h>
 #include "MinHook.h"
 #include "dllmain.h"
+#include "MemoryHelper.hpp"
 #include <Windows.h>
 #include <VersionHelpers.h>
 #include <ShellScalingAPI.h>
@@ -41,7 +41,6 @@ bool isUsingControllerMenu = false;
 bool isMainMenuShown = false;
 bool isTitleBgSet = false;
 bool isRestartedForLinux = false;
-int linuxRestartTiming = 0;
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const float BORDER_THRESHOLD = 140.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
@@ -173,7 +172,7 @@ static int CallCmd(char* command, char flag) {
 
 static void __cdecl ResizeCursor(bool Hide)
 {
-	int ImageNum = injector::ReadMemory<int>(0x1BCCEEC, false);
+	int ImageNum = MemoryHelper::ReadMemory<int>(0x1BCCEEC, false);
 	int ImageIndex = 0x1BCCEF0;
 
 	const int originalWidth = 640;
@@ -202,8 +201,8 @@ static void __cdecl ResizeCursor(bool Hide)
 				scaledMouseHeight = 0;
 			}
 
-			injector::WriteMemory<int>(ImageIndex + 0x40, scaledMouseWidth, false);
-			injector::WriteMemory<int>(ImageIndex + 0x44, scaledMouseHeight, false);
+			MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, scaledMouseWidth, false);
+			MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, scaledMouseHeight, false);
 			break;
 		}
 
@@ -371,47 +370,27 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 	// Don't do this if black_border_width too big
 	if (x_position == LEFT_BORDER_X_ID && current_aspect_ratio <= 2.0f && current_aspect_ratio > 1.5f) // Left border, skip if the image is going to be stretched
 	{
-		if (black_border_width <= BORDER_THRESHOLD)
-		{
-			// Calculate the scale factor to match the target height
-			float scale_factor = current_height / 720.0f; // Original height of the image is 720
+		// Calculate the scale factor to match the target height
+		float scale_factor = current_height / 720.0f; // Original height of the image is 720
 
-			// Scale the width and height proportionally
-			resolution_width = 160.0f * scale_factor;  // Original width is 160
-			resolution_height = current_height;        // Match the screen height
+		// Scale the width and height proportionally
+		resolution_width = 320.0f * scale_factor;  // Original width is 160
+		resolution_height = current_height;        // Match the screen height
 
-			// Align the image to the left edge to cover the black border precisely
-			x_position = black_border_width - resolution_width;
-		}
-		else
-		{
-			// Fill the left border
-			resolution_width = (current_width - (current_height * ASPECT_RATIO_4_3)) / 2.0f; // Adjust width to cover left border
-			resolution_height = current_height;  // Stretch to full screen height
-			x_position = 0.0f;
-		}
+		// Align the image to the left edge to cover the black border precisely
+		x_position = black_border_width - resolution_width;
 	}
 	else if (x_position == RIGHT_BORDER_X_ID && current_aspect_ratio <= 2.0f && current_aspect_ratio > 1.5f) // Right border, skip if the image is going to be stretched
 	{
-		if (black_border_width <= BORDER_THRESHOLD)
-		{
-			// Calculate the scale factor to match the target height
-			float scale_factor = current_height / 720.0f; // Original height of the image is 720
+		// Calculate the scale factor to match the target height
+		float scale_factor = current_height / 720.0f; // Original height of the image is 720
 
-			// Scale the width and height proportionally
-			resolution_width = 160.0f * scale_factor;  // Original width is 160
-			resolution_height = current_height;        // Match the screen height
+		// Scale the width and height proportionally
+		resolution_width = 320.0f * scale_factor;  // Original width is 160
+		resolution_height = current_height;        // Match the screen height
 
-			// Position the image to align precisely with the right black border
-			x_position = current_width - black_border_width;
-		}
-		else
-		{
-			// Fill the right border
-			resolution_width = (current_width - (current_height * ASPECT_RATIO_4_3)) / 2.0f; // Adjust width to cover right border
-			resolution_height = current_height;  // Stretch to full screen height
-			x_position = current_width - resolution_width;  // Start from the right edge
-		}
+		// Position the image to align precisely with the right black border
+		x_position = current_width - black_border_width;
 	}
 	else
 	{
@@ -435,25 +414,17 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 			ResizeCursor(isUsingControllerMenu);
 			isMainMenuShown = true;
 
-			injector::WriteMemory<char>(0x4082C3, 0x1B, true);
+			MemoryHelper::WriteMemory<char>(0x4082C3, 0x1B, true);
 		}
 
 		if (!isMainMenuShown && strstr(ShaderName, "legalplate") != NULL)
 		{
-			linuxRestartTiming++;
-
-			if (FixProton && !isRestartedForLinux && linuxRestartTiming > 400)
-			{
-				CallCmd("vid_restart\n", 0);
-				isRestartedForLinux = 1;
-			}
-
 			if (current_width > 1280)
 			{
 				float scale_factor = (float)current_height / 720.0f;
 
-				resolution_width = 512 * scale_factor;
-				resolution_height = 512 * scale_factor;
+				resolution_width *= scale_factor;
+				resolution_height *= scale_factor;
 
 				x_position = (current_width - resolution_width) / 2.0f;
 				y_position = (current_height - resolution_height) / 2.0f;
@@ -655,11 +626,11 @@ static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 	{
 		if (CustomResolution)
 		{
-			int pointer = injector::ReadMemory<int>(DISPLAY_MODE_PTR_ADDR, false);
-			injector::WriteMemory<int>(pointer + 0x20, 0, false);
+			int pointer = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_PTR_ADDR, false);
+			MemoryHelper::WriteMemory<int>(pointer + 0x20, 0, false);
 
-			injector::WriteMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR, CustomResolutionWidth, false);
-			injector::WriteMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR, CustomResolutionHeight, false);
+			MemoryHelper::WriteMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR, CustomResolutionWidth, false);
+			MemoryHelper::WriteMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR, CustomResolutionHeight, false);
 
 			isResolutionApplied = true;
 		}
@@ -687,8 +658,8 @@ sub_46FC70 GLW_CreatePFD = nullptr;
 static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, char depthbits, unsigned __int8 stencilbits, int stereo)
 {
 	// Resolution updated, update the variables
-	currentWidth = injector::ReadMemory<int>(CURRENT_WIDTH_ADDR, false);
-	currentHeight = injector::ReadMemory<int>(CURRENT_HEIGHT_ADDR, false);
+	currentWidth = MemoryHelper::ReadMemory<int>(CURRENT_WIDTH_ADDR, false);
+	currentHeight = MemoryHelper::ReadMemory<int>(CURRENT_HEIGHT_ADDR, false);
 
 	// Scale the FOV for non-4:3 aspect ratios
 	if (AutoFOV)
@@ -761,7 +732,7 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	}
 
 	// Read settings from "base" folder, skip it
-	if (FixFullscreenSetting && strcmp(var_name, "r_fullscreen") == 0 && !isDefaultFullscreenSettingSkipped)
+	if (FixFullscreenSetting && !isDefaultFullscreenSettingSkipped && strcmp(var_name, "r_fullscreen") == 0)
 	{
 		isDefaultFullscreenSettingSkipped = true;
 		return 0;
@@ -777,12 +748,12 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		// Find the correct r_mode for the current resolution
 		int screenWidth = GetSystemMetrics(SM_CXSCREEN);
 		int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-		int resolutionNum = injector::ReadMemory<int>(DISPLAY_MODE_NUM, false);
+		int resolutionNum = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_NUM, false);
 
 		for (int i = 0; i < resolutionNum; i++)
 		{
-			int screenWidthMode = injector::ReadMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR + (i * 8), false);
-			int screenHeightMode = injector::ReadMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR + (i * 8), false);
+			int screenWidthMode = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR + (i * 8), false);
+			int screenHeightMode = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR + (i * 8), false);
 
 			if (screenWidth == screenWidthMode && screenHeight == screenHeightMode)
 			{
@@ -822,7 +793,7 @@ static int __cdecl LoadGameDLL_Hook()
 
 		if (DisableLetterbox)
 		{
-			injector::WriteMemory<int>(gameApiBaseAddress + 0x16CAA3, 0, true);
+			MemoryHelper::WriteMemory<int>(gameApiBaseAddress + 0x16CAA3, 0, true);
 		}
 	}
 
@@ -856,7 +827,7 @@ sub_4C1AC0 LoadUI = nullptr;
 
 static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 {
-	int lang = injector::ReadMemory<int>(CURRENT_LANG, false);
+	int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG, false);
 
 	const char* langPrefix = "INT";
 	switch (lang)
@@ -878,8 +849,8 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 			isUsingControllerMenu = true;
 
 			// Disable mouse navigation
-			injector::MakeNOP(0x40675E, 0x2, true);
-			injector::MakeNOP(0x40676E, 0x2, true);
+			MemoryHelper::MakeNOP(0x40675E, 0x2, true);
+			MemoryHelper::MakeNOP(0x40676E, 0x2, true);
 		}
 	}
 
@@ -891,7 +862,7 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 			sprintf(ui_path, "%s/title.urc", langPrefix);
 
 			// Press Enter
-			injector::WriteMemory<char>(0x4082C3, 0x0D, true);
+			MemoryHelper::WriteMemory<char>(0x4082C3, 0x0D, true);
 		}
 		else
 		{
@@ -946,7 +917,7 @@ sub_423740 AliceHeadMovementCoordinates = nullptr;
 
 static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
 {
-	int isCursorShown = injector::ReadMemory<int>(IS_CURSOR_VISIBLE, false);
+	int isCursorShown = MemoryHelper::ReadMemory<int>(IS_CURSOR_VISIBLE, false);
 
 	// Make sure Alice is not looking at the top left of the screen
 	if (isCursorShown == 1 && isUsingControllerMenu)
@@ -964,7 +935,7 @@ static int __cdecl PushMenu_Hook(const char* menu_name)
 {
 	if (FixMenuTransitionTiming && strcmp(menu_name, "newgame") == 0)
 	{
-		injector::WriteMemory<int>(0x12EF948, 1200, true);
+		MemoryHelper::WriteMemory<int>(0x12EF948, 1200, false);
 	}
 
 	if (!isTitleBgSet && strcmp(menu_name, "main") == 0)
@@ -1007,6 +978,19 @@ static int __cdecl IsGameStarted_Hook()
 	{
 		return 0;
 	}
+}
+
+typedef void(__cdecl* sub_429600)();
+sub_429600 PlayIntroMusic = nullptr;
+
+static void __cdecl PlayIntroMusic_Hook()
+{
+	if (FixProton && !isRestartedForLinux)
+	{
+		CallCmd("vid_restart\n", 0);
+		isRestartedForLinux = true;
+	}
+	PlayIntroMusic();
 }
 
 #pragma endregion Hooks with MinHook
@@ -1119,12 +1103,12 @@ static void ApplyFixSoundRandomization()
 		0x83, 0xC4, 0x0C, 0xC3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90
 	};
 
-	injector::WriteMemoryRaw(0x00513490, portedInstructions, sizeof(portedInstructions), true);
+	MemoryHelper::WriteMemoryRaw(0x00513490, portedInstructions, sizeof(portedInstructions), true);
 
-	injector::MakeCALL(0x00402131, 0x005137A0, true);
-	injector::MakeJMP(0x004348BF, 0x005137A0, true);
-	injector::MakeJMP(0x0043491F, 0x005136B0, true);
-	injector::MakeJMP(0x0043494F, 0x00513720, true);
+	MemoryHelper::MakeCALL(0x00402131, 0x005137A0, true);
+	MemoryHelper::MakeJMP(0x004348BF, 0x005137A0, true);
+	MemoryHelper::MakeJMP(0x0043491F, 0x005136B0, true);
+	MemoryHelper::MakeJMP(0x0043494F, 0x00513720, true);
 }
 
 static void ApplyFixHardDiskFull()
@@ -1139,19 +1123,19 @@ static void ApplyFixSaveScreenshotBufferOverflow()
 	if (!FixSaveScreenshotBufferOverflow) return;
 
 	// JMP Redirect
-	injector::MakeJMP(0x0046D292, 0x00513850, true);
+	MemoryHelper::MakeJMP(0x0046D292, 0x00513850, true);
 
 	char leaInstruction[] = { 0x8D, 0x04, 0x40 };
 	char addInstruction[] = { 0x05 };
 	char pushInstruction[] = { 0x57, 0x50 };
 
-	injector::WriteMemoryRaw(0x00513850, leaInstruction, sizeof(leaInstruction), true);
-	injector::WriteMemoryRaw(0x00513853, addInstruction, sizeof(addInstruction), true);
-	injector::WriteMemory<int>(0x00513854, 0x1000, true); // Hack: Increase the buffer size by 0x1000
-	injector::WriteMemoryRaw(0x00513858, pushInstruction, sizeof(pushInstruction), true);
+	MemoryHelper::WriteMemoryRaw(0x00513850, leaInstruction, sizeof(leaInstruction), true);
+	MemoryHelper::WriteMemoryRaw(0x00513853, addInstruction, sizeof(addInstruction), true);
+	MemoryHelper::WriteMemory<int>(0x00513854, 0x1000, true); // Hack: Increase the buffer size by 0x1000
+	MemoryHelper::WriteMemoryRaw(0x00513858, pushInstruction, sizeof(pushInstruction), true);
 
 	// Back to the function
-	injector::MakeJMP(0x0051385A, 0x0046D297, true);
+	MemoryHelper::MakeJMP(0x0051385A, 0x0046D297, true);
 }
 
 static void ApplyFixBlinkingAnimationSpeed()
@@ -1162,34 +1146,34 @@ static void ApplyFixBlinkingAnimationSpeed()
 	int blinkRate = 20;
 
 	// First JMP Redirect
-	injector::MakeJMP(0x4C6367, 0x513E08, true);
+	MemoryHelper::MakeJMP(0x4C6367, 0x513E08, true);
 
 	char cmpInstruction[] = { 0x81, 0xF9 };
 	char addInstruction[] = { 0x8B, 0xF0 };
 
-	injector::WriteMemoryRaw(0x513E08, cmpInstruction, sizeof(cmpInstruction), true);
-	injector::WriteMemory<int>(0x513E0A, 100 * CustomFPSLimit / blinkRate, true);
-	injector::WriteMemoryRaw(0x513E0E, addInstruction, sizeof(addInstruction), true);
+	MemoryHelper::WriteMemoryRaw(0x513E08, cmpInstruction, sizeof(cmpInstruction), true);
+	MemoryHelper::WriteMemory<int>(0x513E0A, 100 * CustomFPSLimit / blinkRate, true);
+	MemoryHelper::WriteMemoryRaw(0x513E0E, addInstruction, sizeof(addInstruction), true);
 
 	// Back to the function
-	injector::MakeJMP(0x513E10, 0x4C636C, true);
+	MemoryHelper::MakeJMP(0x513E10, 0x4C636C, true);
 
 	// Second JMP Redirect
-	injector::MakeJMP(0x4C638D, 0x513E20, true);
+	MemoryHelper::MakeJMP(0x4C638D, 0x513E20, true);
 
 	char imulInstruction[] = { 0x69, 0xC0 };
 	//char subInstruction[] = { 0x2B, 0xC8 };
 
-	injector::WriteMemoryRaw(0x513E20, imulInstruction, sizeof(imulInstruction), true);
-	injector::WriteMemory<int>(0x513E22, 100 * CustomFPSLimit / blinkRate, true);
-	//injector::WriteMemoryRaw(0x513E26, subInstruction, sizeof(subInstruction), true); // ???
-	injector::MakeNOP(0x513E26, 2, true);
+	MemoryHelper::WriteMemoryRaw(0x513E20, imulInstruction, sizeof(imulInstruction), true);
+	MemoryHelper::WriteMemory<int>(0x513E22, 100 * CustomFPSLimit / blinkRate, true);
+	//MemoryHelper::WriteMemoryRaw(0x513E26, subInstruction, sizeof(subInstruction), true); // ???
+	MemoryHelper::MakeNOP(0x513E26, 2, true);
 
-	injector::WriteMemoryRaw(0x513E28, cmpInstruction, sizeof(cmpInstruction), true);
-	injector::WriteMemory<int>(0x513E2A, 4 * CustomFPSLimit / 60, true);
+	MemoryHelper::WriteMemoryRaw(0x513E28, cmpInstruction, sizeof(cmpInstruction), true);
+	MemoryHelper::WriteMemory<int>(0x513E2A, 4 * CustomFPSLimit / 60, true);
 
 	// Back to the function
-	injector::MakeJMP(0x513E2E, 0x4C6395, true);
+	MemoryHelper::MakeJMP(0x513E2E, 0x4C6395, true);
 }
 
 static void ApplyFixStretchedHUD()
@@ -1199,9 +1183,9 @@ static void ApplyFixStretchedHUD()
 	ApplyHook((void*)0x446050, &SetHUDPosition_Hook, reinterpret_cast<LPVOID*>(&SetHUDPosition));
 
 	// hud_item_foldout
-	injector::WriteMemory<float>(0x5218A8, 258.5f, true);
+	MemoryHelper::WriteMemory<float>(0x5218A8, 258.5f, true);
 	// hud_weapon_foldout
-	injector::WriteMemory<float>(0x5218F8, -258.5f, true);
+	MemoryHelper::WriteMemory<float>(0x5218F8, -258.5f, true);
 }
 
 static void ApplyFixStretchedFMV()
@@ -1274,26 +1258,33 @@ static void ApplyFixMenuTransitionTiming()
 {
 	if (!FixMenuTransitionTiming) return;
 
-	injector::WriteMemory<int>(0x4082FC, 0x3200, true);
+	MemoryHelper::WriteMemory<int>(0x4082FC, 0x3200, true);
+}
+
+static void ApplyFixProton()
+{
+	if (!FixProton) return;
+
+	ApplyHook((void*)0x429600, &PlayIntroMusic_Hook, reinterpret_cast<LPVOID*>(&PlayIntroMusic));
 }
 
 static void ApplyLaunchWithoutAlice2()
 {
 	if (!LaunchWithoutAlice2) return;
 
-	injector::WriteMemory<int>(0x526A84, 0x00, true);
+	MemoryHelper::WriteMemory<int>(0x526A84, 0x00, true);
 }
 
 static void ApplyPreventAlice2OnExit()
 {
 	if (!PreventAlice2OnExit) return;
 
-	injector::MakeNOP(0x4642F0, 0x05, true);
+	MemoryHelper::MakeNOP(0x4642F0, 0x05, true);
 }
 
 static void ApplyLanguageId()
 {
-	injector::WriteMemory<int>(0x461A90, LanguageId, true);
+	MemoryHelper::WriteMemory<int>(0x461A90, LanguageId, true);
 }
 
 static void ApplyUseConsoleTitleScreen()
@@ -1352,10 +1343,10 @@ static void ApplyUseOriginalIntroVideos()
 		0x72, 0x6F, 0x71, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	};
 
-	injector::WriteMemoryRaw(0x00513B90, portedIntroData, sizeof(portedIntroData), true);
+	MemoryHelper::WriteMemoryRaw(0x00513B90, portedIntroData, sizeof(portedIntroData), true);
 
-	injector::MakeJMP(0x0044D91F, 0x00513B90, true);
-	injector::WriteMemory(0x0044E409, 0x00513B90, true);
+	MemoryHelper::MakeJMP(0x0044D91F, 0x00513B90, true);
+	MemoryHelper::WriteMemory(0x0044E409, 0x00513B90, true);
 }
 
 static void ApplyDisableRemasteredModels()
@@ -1375,9 +1366,9 @@ static void ApplyEnableDevConsole()
 	int toggleConsoleKeyId = GetKeyId(ToggleConsoleBindKey);
 
 	char cmpInstruction[] = { 0x81, 0xFF };
-	injector::WriteMemoryRaw(0x40823A, cmpInstruction, sizeof(cmpInstruction), true);
-	injector::WriteMemory<int>(0x40823C, toggleConsoleKeyId, true);
-	injector::MakeNOP(0x408240, 6, true);
+	MemoryHelper::WriteMemoryRaw(0x40823A, cmpInstruction, sizeof(cmpInstruction), true);
+	MemoryHelper::WriteMemory<int>(0x40823C, toggleConsoleKeyId, true);
+	MemoryHelper::MakeNOP(0x408240, 6, true);
 }
 
 static void ApplyEnableControllerIcons()
@@ -1396,7 +1387,7 @@ static void ApplyHideConsoleAtLaunch()
 {
 	if (!HideConsoleAtLaunch) return;
 
-	injector::WriteMemory<char>(0x46C28F, 0x00, true);
+	MemoryHelper::WriteMemory<char>(0x46C28F, 0x00, true);
 }
 
 static void ApplyDisableLetterbox()
@@ -1464,6 +1455,7 @@ static void Init()
 	ApplyFixStretchedGUI();
 	ApplyFixDPIScaling();
 	ApplyFixMenuTransitionTiming();
+	ApplyFixProton();
 	ApplyLaunchWithoutAlice2();
 	ApplyPreventAlice2OnExit();
 	ApplyLanguageId();
