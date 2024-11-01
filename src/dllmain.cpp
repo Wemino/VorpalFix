@@ -41,10 +41,12 @@ bool isTitleBgSet = false;
 bool isRestartedForLinux = false;
 bool isUsingCustomSaveDir = false;
 bool skipAutoResolution = false;
+bool setAlice2Path = false;
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const float BORDER_THRESHOLD = 140.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
 const int RIGHT_BORDER_X_ID = 0x2000000;
+const char* ALICE2_DEFAULT_PATH = "..\\..\\Alice2\\Binaries\\Win32\\AliceMadnessReturns.exe";
 
 // =============================
 // Ini Variables
@@ -66,6 +68,7 @@ bool FixProton = false;
 // General
 bool LaunchWithoutAlice2 = false;
 bool PreventAlice2OnExit = false;
+char* Alice2Path = nullptr;
 int LanguageId = 0;
 bool UseConsoleTitleScreen = false;
 bool UseOriginalIntroVideos = false;
@@ -116,6 +119,7 @@ static void ReadConfig()
 	// General
 	LaunchWithoutAlice2 = iniReader.ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
 	PreventAlice2OnExit = iniReader.ReadInteger("General", "PreventAlice2OnExit", 0) == 1;
+	Alice2Path = iniReader.ReadString("General", "Alice2Path", ALICE2_DEFAULT_PATH);
 	LanguageId = iniReader.ReadInteger("General", "LanguageId", 0);
 	UseOriginalIntroVideos = iniReader.ReadInteger("General", "UseOriginalIntroVideos", 0) == 1;
 	UseConsoleTitleScreen = iniReader.ReadInteger("General", "UseConsoleTitleScreen", 0) == 1;
@@ -152,7 +156,8 @@ static void ReadConfig()
 	}
 
 	isUsingCustomSaveDir = (CustomSavePath != NULL) && (CustomSavePath[0] != '\0');
-	CvarHooking = FixFullscreenSetting || AutoResolution || EnableDevConsole || EnableVsync || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60);
+	setAlice2Path = strcmp(Alice2Path, ALICE2_DEFAULT_PATH) != 0;
+	CvarHooking = FixFullscreenSetting || AutoResolution || EnableDevConsole || EnableVsync || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60) || setAlice2Path;
 }
 
 #pragma region
@@ -688,6 +693,14 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	if (EnableVsync && strcmp(var_name, "r_swapInterval") == 0)
 	{
 		value = "1";
+		flag = 0x10;
+	}
+
+	if (setAlice2Path && strcmp(var_name, "s_Alice2URL") == 0)
+	{
+		MessageBoxA(NULL, ALICE2_DEFAULT_PATH, "", MB_OK | MB_ICONINFORMATION);
+		MessageBoxA(NULL, Alice2Path, "", MB_OK | MB_ICONINFORMATION);
+		value = Alice2Path;
 		flag = 0x10;
 	}
 
