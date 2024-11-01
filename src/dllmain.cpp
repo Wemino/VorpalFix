@@ -40,6 +40,7 @@ bool isMainMenuShown = false;
 bool isTitleBgSet = false;
 bool isRestartedForLinux = false;
 bool isUsingCustomSaveDir = false;
+bool skipAutoResolution = false;
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const float BORDER_THRESHOLD = 140.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
@@ -697,27 +698,34 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		return 0;
 	}
 
-	if (AutoResolution && strcmp(var_name, "r_mode") == 0 && strcmp(value, "0") == 0)
+	if (AutoResolution && !skipAutoResolution && strcmp(var_name, "r_mode") == 0)
 	{
-		MessageBoxA(NULL, std::to_string(flag).c_str(), "Base Address Info", MB_OK | MB_ICONINFORMATION);
-		// Since this code is executed after, do it before
-		GameHelper::FetchDisplayResolutions();
-
-		// Find the correct r_mode for the current resolution
-		auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
-		int resolutionNum = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_NUM, false);
-
-		for (int i = 0; i < resolutionNum; i++)
+		if (flag != 33)
 		{
-			int screenWidthMode = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR + (i * 8), false);
-			int screenHeightMode = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR + (i * 8), false);
+			// From config.cfg
+			skipAutoResolution = true;
+		}
+		else if (strcmp(value, "0") == 0)
+		{
+			// Since this function is executed after, do it before
+			GameHelper::FetchDisplayResolutions();
 
-			if (screenWidth == screenWidthMode && screenHeight == screenHeightMode)
+			// Find the correct r_mode for the current resolution
+			auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
+			int resolutionNum = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_NUM, false);
+
+			for (int i = 0; i < resolutionNum; i++)
 			{
-				static std::string r_mode;
-				r_mode = std::to_string(i);
-				value = r_mode.c_str();
-				break;
+				int screenWidthMode = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR + (i * 8), false);
+				int screenHeightMode = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR + (i * 8), false);
+
+				if (screenWidth == screenWidthMode && screenHeight == screenHeightMode)
+				{
+					static std::string r_mode;
+					r_mode = std::to_string(i);
+					value = r_mode.c_str();
+					break;
+				}
 			}
 		}
 	}
