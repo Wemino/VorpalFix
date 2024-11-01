@@ -4,7 +4,7 @@
 #include <shlobj.h>
 #include "MinHook.h"
 #include "dllmain.h"
-#include "MemoryHelper.hpp"
+#include "helper.hpp"
 #include <Windows.h>
 #include <VersionHelpers.h>
 #include <ShellScalingAPI.h>
@@ -23,8 +23,6 @@ const int DISPLAY_MODE_NUM = 0x7D40C8;
 const int DISPLAY_MODE_PTR_ADDR = 0x1C463E8;
 const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
 const int DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
-const int STATIC_MAP_FUNC_ADDR = 0x44A300;
-const int KEY_STRING_TO_KEY_NUM_FUNC_ADDR = 0x4076F0;
 
 // =============================
 // Variables 
@@ -41,6 +39,7 @@ bool isUsingControllerMenu = false;
 bool isMainMenuShown = false;
 bool isTitleBgSet = false;
 bool isRestartedForLinux = false;
+bool isUsingCustomSaveDir = false;
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const float BORDER_THRESHOLD = 140.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
@@ -122,7 +121,7 @@ static void ReadConfig()
 	DisableRemasteredModels = iniReader.ReadInteger("General", "DisableRemasteredModels", 0) == 1;
 	EnableDevConsole = iniReader.ReadInteger("General", "EnableDevConsole", 0) == 1;
 	ToggleConsoleBindKey = iniReader.ReadString("General", "ToggleConsoleBindKey", "F2");
-	CustomSavePath = iniReader.ReadString("General", "CustomSavePath", "0");
+	CustomSavePath = iniReader.ReadString("General", "CustomSavePath", "");
 
 	// Display
 	ConsolePortHUD = iniReader.ReadInteger("Display", "ConsolePortHUD", 0) == 1;
@@ -148,66 +147,33 @@ static void ReadConfig()
 	// Set to monitor's refresh rate
 	if (CustomFPSLimit == -1)
 	{
-		DEVMODE devMode = {};
-		devMode.dmSize = sizeof(DEVMODE);
-
-		if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &devMode))
-		{
-			CustomFPSLimit = devMode.dmDisplayFrequency;
-		}
+		CustomFPSLimit = SystemHelper::GetCurrentDisplayFrequency();
 	}
 
+	isUsingCustomSaveDir = (CustomSavePath != NULL) && (CustomSavePath[0] != '\0');
 	CvarHooking = FixFullscreenSetting || AutoResolution || EnableDevConsole || EnableVsync || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60);
 }
 
 #pragma region
 
-typedef int(__cdecl* sub_4158F0)(char*, char);
+typedef char* (__cdecl* sub_417400)();
+sub_417400 GetSavePath = nullptr;
 
-static int CallCmd(char* command, char flag) {
-	sub_4158F0 Cmd = (sub_4158F0)0x4158F0;
-
-	return Cmd(command, flag);
-}
-
-static void __cdecl ResizeCursor(bool Hide)
+static char* __cdecl GetSavePath_Hook()
 {
-	int ImageNum = MemoryHelper::ReadMemory<int>(0x1BCCEEC, false);
-	int ImageIndex = 0x1BCCEF0;
-
-	const int originalWidth = 640;
-	const int originalHeight = 480;
-
-	for (int i = 0; i < ImageNum; ++i)
+	if (isUsingCustomSaveDir)
 	{
-		const char* currentTexture = (const char*)ImageIndex;
+		static char modifiedSavePath[MAX_PATH];
+		strcpy(modifiedSavePath, CustomSavePath);
 
-		if (strcmp(currentTexture, "gfx/2d/mouse_arrow.tga") == 0)
-		{
-			// Calculate scale factors
-			float widthScale = static_cast<float>(currentWidth) / originalWidth;
-			float heightScale = static_cast<float>(currentHeight) / originalHeight;
-
-			// Use the smallest scale factor to maintain the aspect ratio
-			float scaleFactor = std::min(widthScale, heightScale);
-
-			// Calculate the new scaled sizes
-			int scaledMouseWidth = static_cast<int>(16 * scaleFactor);
-			int scaledMouseHeight = static_cast<int>(32 * scaleFactor);
-
-			if (Hide)
-			{
-				scaledMouseWidth = 0;
-				scaledMouseHeight = 0;
-			}
-
-			MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, scaledMouseWidth, false);
-			MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, scaledMouseHeight, false);
-			break;
+		// Append a backslash if not already present
+		size_t len = strlen(modifiedSavePath);
+		if (modifiedSavePath[len - 1] != '\\') {
+			strcat(modifiedSavePath, "\\");
 		}
-
-		ImageIndex += 0x80;
+		return modifiedSavePath;
 	}
+	return GetSavePath();
 }
 
 typedef int(__cdecl* sub_41D1E0)();
@@ -215,27 +181,23 @@ sub_41D1E0 CheckDiskFreeSpace = nullptr;
 
 static int __cdecl CheckDiskFreeSpace_Hook()
 {
+	char* savePath = GetSavePath_Hook();
+	char fullPath[MAX_PATH] = { 0 };
 	char drivePath[MAX_PATH] = { 0 };
 	unsigned __int64 freeBytesAvailable = 0;
 	unsigned __int64 totalNumberOfBytes = 0;
 	unsigned __int64 totalNumberOfFreeBytes = 0;
 
-	// Fix 1: Retrieve the folder that the game utilizes for saving data. In the 2000 version, save data was stored within the game files, but this has not been updated for the 2011 version
-	if (SUCCEEDED(SHGetFolderPathA(NULL, 32773, NULL, 0, drivePath))) {
-		drivePath[3] = '\0';  // Keep only "C:\", null-terminate after the third character
+	if (GetDiskFreeSpaceExA(savePath, (PULARGE_INTEGER)&freeBytesAvailable, (PULARGE_INTEGER)&totalNumberOfBytes, (PULARGE_INTEGER)&totalNumberOfFreeBytes))
+	{
+		// Convert the available free bytes to KB
+		unsigned __int64 freeSpaceInKB = freeBytesAvailable >> 10;
 
-		// Get the free disk space on the drive
-		if (GetDiskFreeSpaceExA(drivePath, (PULARGE_INTEGER)&freeBytesAvailable, (PULARGE_INTEGER)&totalNumberOfBytes, (PULARGE_INTEGER)&totalNumberOfFreeBytes))
-		{
-			// Convert the available free bytes to KB
-			unsigned __int64 freeSpaceInKB = freeBytesAvailable >> 10;
+		// If the free space is >= 0x80000000, cap it at 0x7FFFFFFF instead of -1
+		if (freeSpaceInKB >= 0x80000000)
+			freeSpaceInKB = 0x7FFFFFFF;
 
-			// Fix 2: If the free space is >= 0x80000000, cap it at 0x7FFFFFFF instead of -1
-			if (freeSpaceInKB >= 0x80000000)
-				freeSpaceInKB = 0x7FFFFFFF;
-
-			return (int)freeSpaceInKB;
-		}
+		return (int)freeSpaceInKB;
 	}
 
 	// Return a default value if something goes wrong
@@ -374,7 +336,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		float scale_factor = current_height / 720.0f; // Original height of the image is 720
 
 		// Scale the width and height proportionally
-		resolution_width = 320.0f * scale_factor;  // Original width is 160
+		resolution_width = 160.0f * scale_factor;  // Original width is 160
 		resolution_height = current_height;        // Match the screen height
 
 		// Align the image to the left edge to cover the black border precisely
@@ -386,7 +348,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		float scale_factor = current_height / 720.0f; // Original height of the image is 720
 
 		// Scale the width and height proportionally
-		resolution_width = 320.0f * scale_factor;  // Original width is 160
+		resolution_width = 160.0f * scale_factor;  // Original width is 160
 		resolution_height = current_height;        // Match the screen height
 
 		// Position the image to align precisely with the right black border
@@ -405,13 +367,13 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 
 		if (!isCursorResized && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
 		{
-			ResizeCursor(isUsingControllerMenu);
+			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
 			isCursorResized = true;
 		}
 
 		if (!isMainMenuShown && strstr(ShaderName, "main") != NULL)
 		{
-			ResizeCursor(isUsingControllerMenu);
+			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
 			isMainMenuShown = true;
 
 			MemoryHelper::WriteMemory<char>(0x4082C3, 0x1B, true);
@@ -501,9 +463,6 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 	return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 }
 
-typedef int(__cdecl* sub_44A300)(unsigned int, const char*);
-sub_44A300 GetTga = (sub_44A300)STATIC_MAP_FUNC_ADDR;
-
 typedef void(__cdecl* nullsub_4)();
 nullsub_4 SetUIBorder = nullptr;
 
@@ -511,7 +470,7 @@ static void __cdecl SetUIBorder_Hook()
 {
 	if (isDialog) return;
 
-	int border = GetTga(18, "border1_left");
+	int border = GameHelper::GetTga(18, "border1_left");
 	RenderShader_Hook(LEFT_BORDER_X_ID, 0, 0, 0, 0.0, 0.0, 1.0, 1.0, *(DWORD*)(border + 4));
 	RenderShader_Hook(RIGHT_BORDER_X_ID, 0, 0, 0, 1.0, 0.0, 0.0, 1.0, *(DWORD*)(border + 4));
 }
@@ -740,14 +699,12 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 
 	if (AutoResolution && strcmp(var_name, "r_mode") == 0 && strcmp(value, "0") == 0)
 	{
+		MessageBoxA(NULL, std::to_string(flag).c_str(), "Base Address Info", MB_OK | MB_ICONINFORMATION);
 		// Since this code is executed after, do it before
-		typedef signed int(__cdecl* sub_46F850)();
-		sub_46F850 FetchDisplayResolutions = (sub_46F850)0x46F850;
-		FetchDisplayResolutions();
+		GameHelper::FetchDisplayResolutions();
 
 		// Find the correct r_mode for the current resolution
-		int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-		int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+		auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
 		int resolutionNum = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_NUM, false);
 
 		for (int i = 0; i < resolutionNum; i++)
@@ -840,11 +797,7 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 	// Check if a controller is connected
 	if (!isUsingControllerMenu)
 	{
-		// XInputGetState
-		typedef int(__cdecl* sub_463130)();
-		sub_463130 IsControllerConnected = (sub_463130)0x463130;
-
-		if (IsControllerConnected() == 1)
+		if (GameHelper::IsControllerConnected() == 1)
 		{
 			isUsingControllerMenu = true;
 
@@ -878,7 +831,6 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 		langPrefix = newLangPrefix;
 	}
 
-	// To do: refactor this
 	if (isUsingControllerMenu && ui_path != NULL && strcmp(ui_path, "ui/controls.urc") == 0)
 	{
 		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/controls2.urc") + 1);
@@ -947,7 +899,7 @@ static int __cdecl PushMenu_Hook(const char* menu_name)
 	if (!isTitleBgSet && strcmp(menu_name, "main") == 0)
 	{
 		isTitleBgSet = true;
-		ResizeCursor(true);
+		GameHelper::ResizeCursor(true, currentWidth, currentHeight);
 		return PushMenu("title");
 	}
 	else
@@ -993,7 +945,7 @@ static void __cdecl PlayIntroMusic_Hook()
 {
 	if (FixProton && !isRestartedForLinux)
 	{
-		CallCmd("vid_restart\n", 0);
+		GameHelper::CallCmd("vid_restart\n", 0);
 		isRestartedForLinux = true;
 	}
 	PlayIntroMusic();
@@ -1285,7 +1237,7 @@ static void ApplyPreventAlice2OnExit()
 {
 	if (!PreventAlice2OnExit) return;
 
-	MemoryHelper::MakeNOP(0x4642F0, 0x05, true);
+	MemoryHelper::MakeNOP(0x4642F0, 5, true);
 }
 
 static void ApplyLanguageId()
@@ -1366,15 +1318,19 @@ static void ApplyEnableDevConsole()
 {
 	if (!EnableDevConsole) return;
 
-	typedef int(__cdecl* tGetKeyId)(char*);
-	tGetKeyId GetKeyId = (tGetKeyId)KEY_STRING_TO_KEY_NUM_FUNC_ADDR;
-
-	int toggleConsoleKeyId = GetKeyId(ToggleConsoleBindKey);
+	int toggleConsoleKeyId = GameHelper::GetKeyId(ToggleConsoleBindKey);
 
 	char cmpInstruction[] = { 0x81, 0xFF };
 	MemoryHelper::WriteMemoryRaw(0x40823A, cmpInstruction, sizeof(cmpInstruction), true);
 	MemoryHelper::WriteMemory<int>(0x40823C, toggleConsoleKeyId, true);
 	MemoryHelper::MakeNOP(0x408240, 6, true);
+}
+
+static void ApplyCustomSavePath()
+{
+	if (!isUsingCustomSaveDir && !FixHardDiskFull) return;
+
+	ApplyHook((void*)0x417400, &GetSavePath_Hook, reinterpret_cast<LPVOID*>(&GetSavePath));
 }
 
 static void ApplyEnableControllerIcons()
@@ -1452,6 +1408,7 @@ static void ApplyResolutionChangeHook()
 static void Init()
 {
 	ReadConfig();
+	// Fixes
 	ApplyFixSoundRandomization();
 	ApplyFixHardDiskFull();
 	ApplyFixSaveScreenshotBufferOverflow();
@@ -1462,6 +1419,7 @@ static void Init()
 	ApplyFixDPIScaling();
 	ApplyFixMenuTransitionTiming();
 	ApplyFixProton();
+	// General
 	ApplyLaunchWithoutAlice2();
 	ApplyPreventAlice2OnExit();
 	ApplyLanguageId();
@@ -1469,13 +1427,17 @@ static void Init()
 	ApplyUseOriginalIntroVideos();
 	ApplyDisableRemasteredModels();
 	ApplyEnableDevConsole();
+	ApplyCustomSavePath();
+	// Display
 	ApplyEnableControllerIcons();
 	ApplyHideConsoleAtLaunch();
 	ApplyDisableLetterbox();
 	ApplyForceBorderlessFullscreen();
 	ApplyCustomResolution();
 	ApplyEnableAltF4Close();
+	// Graphics
 	ApplyCustomFOV();
+	// Misc
 	ApplyCvarTweaks();
 	ApplyResolutionChangeHook();
 }
@@ -1505,17 +1467,17 @@ static BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID l
 {
 	switch (ul_reason_for_call)
 	{
-	case DLL_PROCESS_ATTACH:
-	{
-		LoadProxyLibrary();
-		Init();
-		break;
-	}
-	case DLL_THREAD_ATTACH:
-	case DLL_THREAD_DETACH:
-	case DLL_PROCESS_DETACH:
-		break;
-	}
+		case DLL_PROCESS_ATTACH:
+		{
+			LoadProxyLibrary();
+			Init();
+			break;
+		}
+		case DLL_THREAD_ATTACH:
+		case DLL_THREAD_DETACH:
+		case DLL_PROCESS_DETACH:
+			break;
+		}
 	return TRUE;
 }
 

@@ -92,3 +92,88 @@ namespace MemoryHelper
 		return value;
 	}
 };
+
+namespace GameHelper
+{
+	typedef int(__cdecl* sub_4158F0)(char*, char);
+	sub_4158F0 CallCmd = (sub_4158F0)0x4158F0;
+
+	typedef signed int(__cdecl* sub_46F850)();
+	sub_46F850 FetchDisplayResolutions = (sub_46F850)0x46F850;
+
+	typedef int(__cdecl* sub_4076F0)(char*);
+	sub_4076F0 GetKeyId = (sub_4076F0)0x4076F0;
+
+	typedef int(__cdecl* sub_44A300)(unsigned int, const char*);
+	sub_44A300 GetTga = (sub_44A300)0x44A300;
+
+	// XInputGetState
+	typedef int(__cdecl* sub_463130)();
+	sub_463130 IsControllerConnected = (sub_463130)0x463130;
+
+	static void __cdecl ResizeCursor(bool Hide, int width, int height)
+	{
+		int ImageNum = MemoryHelper::ReadMemory<int>(0x1BCCEEC, false);
+		int ImageIndex = 0x1BCCEF0;
+
+		const int originalWidth = 640;
+		const int originalHeight = 480;
+
+		for (int i = 0; i < ImageNum; ++i)
+		{
+			const char* currentTexture = (const char*)ImageIndex;
+
+			if (strcmp(currentTexture, "gfx/2d/mouse_arrow.tga") == 0)
+			{
+				// Calculate scale factors
+				float widthScale = static_cast<float>(width) / originalWidth;
+				float heightScale = static_cast<float>(height) / originalHeight;
+
+				// Use the smallest scale factor to maintain the aspect ratio
+				float scaleFactor = std::min(widthScale, heightScale);
+
+				// Calculate the new scaled sizes
+				int scaledMouseWidth = static_cast<int>(16 * scaleFactor);
+				int scaledMouseHeight = static_cast<int>(32 * scaleFactor);
+
+				if (Hide)
+				{
+					scaledMouseWidth = 0;
+					scaledMouseHeight = 0;
+				}
+
+				MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, scaledMouseWidth, false);
+				MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, scaledMouseHeight, false);
+				break;
+			}
+
+			ImageIndex += 0x80;
+		}
+	}
+};
+
+namespace SystemHelper
+{
+	static DWORD GetCurrentDisplayFrequency()
+	{
+		DEVMODE devMode = {};
+		devMode.dmSize = sizeof(DEVMODE);
+
+		if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &devMode))
+		{
+			return devMode.dmDisplayFrequency;
+		}
+	}
+
+	static std::pair<DWORD, DWORD> GetScreenResolution()
+	{
+		DEVMODE devMode = {};
+		devMode.dmSize = sizeof(DEVMODE);
+
+		if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &devMode))
+		{
+			return { devMode.dmPelsWidth, devMode.dmPelsHeight };
+		}
+		return { 0, 0 };
+	}
+};

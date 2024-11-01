@@ -176,7 +176,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\dllmain.h" />
-    <ClInclude Include="..\src\MemoryHelper.hpp" />
+    <ClInclude Include="..\src\helper.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
