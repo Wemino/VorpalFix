@@ -8,6 +8,7 @@
 #include <Windows.h>
 #include <VersionHelpers.h>
 #include <ShellScalingAPI.h>
+#include <GL/gl.h>
 
 // =============================
 // Memory Addresses 
@@ -42,6 +43,8 @@ bool isRestartedForLinux = false;
 bool isUsingCustomSaveDir = false;
 bool skipAutoResolution = false;
 bool setAlice2Path = false;
+bool isTexParameterfHooked = false;
+bool isAnisotropyRetrieved = false;
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const float BORDER_THRESHOLD = 140.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
@@ -92,6 +95,8 @@ int CustomResolutionHeight = 0;
 bool EnableAltF4Close = 0;
 
 // Graphics
+bool AnisotropicTextureFiltering = false;
+float MaxAnisotropy = 0;
 bool TrilinearTextureFiltering = false;
 bool EnhancedLOD = false;
 int CustomFPSLimit = 0;
@@ -143,6 +148,8 @@ static void ReadConfig()
 	EnableAltF4Close = iniReader.ReadInteger("Display", "EnableAltF4Close", 0);
 
 	// Graphics
+	AnisotropicTextureFiltering = iniReader.ReadInteger("Graphics", "AnisotropicTextureFiltering", 1) == 1;
+	MaxAnisotropy = iniReader.ReadFloat("Graphics", "MaxAnisotropy", 0);
 	TrilinearTextureFiltering = iniReader.ReadInteger("Graphics", "TrilinearTextureFiltering", 1) == 1;
 	EnhancedLOD = iniReader.ReadInteger("Graphics", "EnhancedLOD", 1) == 1;
 	CustomFPSLimit = iniReader.ReadInteger("Graphics", "CustomFPSLimit", 60);
@@ -153,6 +160,12 @@ static void ReadConfig()
 	if (CustomFPSLimit == -1)
 	{
 		CustomFPSLimit = SystemHelper::GetCurrentDisplayFrequency();
+	}
+
+	// UseConsoleTitleScreen rely on FixStretchedGUI
+	if (!FixStretchedGUI && UseConsoleTitleScreen)
+	{
+		UseConsoleTitleScreen = false;
 	}
 
 	isUsingCustomSaveDir = (CustomSavePath != NULL) && (CustomSavePath[0] != '\0');
@@ -188,8 +201,6 @@ sub_41D1E0 CheckDiskFreeSpace = nullptr;
 static int __cdecl CheckDiskFreeSpace_Hook()
 {
 	char* savePath = GetSavePath_Hook();
-	char fullPath[MAX_PATH] = { 0 };
-	char drivePath[MAX_PATH] = { 0 };
 	unsigned __int64 freeBytesAvailable = 0;
 	unsigned __int64 totalNumberOfBytes = 0;
 	unsigned __int64 totalNumberOfFreeBytes = 0;
@@ -321,6 +332,59 @@ static int __cdecl SetFMVPosition_Hook(int x_position, int y_position, int resol
 	y_position = (resolution_height - video_height) / 2;
 
 	return SetFMVPosition(x_position, y_position, video_width, video_height, a5, a6, a7);
+}
+
+static void ApplyHook(void* addr, LPVOID hookFunc, LPVOID* originalFunc)
+{
+	if (!isMHInitialized)
+	{
+		if (MH_Initialize() == MH_OK)
+		{
+			isMHInitialized = true;
+		}
+		else
+		{
+			MessageBoxA(NULL, "Failed to initialize MinHook!", "Error", MB_ICONERROR | MB_OK);
+			return;
+		}
+	}
+
+	if (MH_CreateHook(addr, hookFunc, originalFunc) != MH_OK)
+	{
+		char errorMsg[0x100];
+		sprintf_s(errorMsg, "Failed to create hook at address: %p", addr);
+		MessageBoxA(NULL, errorMsg, "Error", MB_ICONERROR | MB_OK);
+		return;
+	}
+
+	if (MH_EnableHook(addr) != MH_OK)
+	{
+		char errorMsg[0x100];
+		sprintf_s(errorMsg, "Failed to enable hook at address: %p", addr);
+		MessageBoxA(NULL, errorMsg, "Error", MB_ICONERROR | MB_OK);
+		return;
+	}
+}
+
+typedef int(__stdcall* opengl32_glTexParameterf)(int, int, float);
+opengl32_glTexParameterf original_glTexParameterf = nullptr;
+
+static int __stdcall glTexParameterf_Hook(int target, int pname, float param)
+{
+	// Check if the param is a valid mipmap filter mode
+	if (param >= 0x2700 && param <= 0x2703)
+	{
+		if (!isAnisotropyRetrieved && MaxAnisotropy == 0)
+		{
+			// Retrieve the maximum anisotropy level supported by the hardware
+			glGetFloatv(0x84FF, &MaxAnisotropy);
+			isAnisotropyRetrieved = true;
+		}
+
+		original_glTexParameterf(target, pname, param);
+		return original_glTexParameterf(target, 0x84FE, (float)MaxAnisotropy);
+	}
+	return original_glTexParameterf(target, pname, param);
 }
 
 typedef int(__cdecl* sub_48FC00)(float, float, float, float, float, float, float, float, int);
@@ -589,11 +653,13 @@ static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 	// Do it once
 	if (!isResolutionApplied)
 	{
-		if (CustomResolution)
+		if (CustomResolution && !ForceBorderlessFullscreen)
 		{
-			int pointer = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_PTR_ADDR, false);
-			MemoryHelper::WriteMemory<int>(pointer + 0x20, 0, false);
+			// Set current resolution mode to 0
+			int r_mode_ptr = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_PTR_ADDR, false);
+			MemoryHelper::WriteMemory<int>(r_mode_ptr + 0x20, 0, false);
 
+			// Replace resolution 0 with the custom one
 			MemoryHelper::WriteMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR, CustomResolutionWidth, false);
 			MemoryHelper::WriteMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR, CustomResolutionHeight, false);
 
@@ -601,7 +667,16 @@ static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 		}
 	}
 
-	return QGL_Init(lpLibFileName);
+	int result = QGL_Init(lpLibFileName);
+
+	if (!isTexParameterfHooked && AnisotropicTextureFiltering)
+	{
+		int glTexParameterf_ptr = MemoryHelper::ReadMemory<int>(0x1BB8EF0, false);
+		ApplyHook((void*)glTexParameterf_ptr, &glTexParameterf_Hook, reinterpret_cast<LPVOID*>(&original_glTexParameterf));
+		isTexParameterfHooked = true;
+	}
+
+	return result;
 }
 
 typedef int(__stdcall* sub_46C600)(HWND, UINT, HDC, HWND);
@@ -698,8 +773,6 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 
 	if (setAlice2Path && strcmp(var_name, "s_Alice2URL") == 0)
 	{
-		MessageBoxA(NULL, ALICE2_DEFAULT_PATH, "", MB_OK | MB_ICONINFORMATION);
-		MessageBoxA(NULL, Alice2Path, "", MB_OK | MB_ICONINFORMATION);
 		value = Alice2Path;
 		flag = 0x10;
 	}
@@ -975,38 +1048,6 @@ static void __cdecl PlayIntroMusic_Hook()
 #pragma endregion Hooks with MinHook
 
 #pragma region
-
-static void ApplyHook(void* addr, LPVOID hookFunc, LPVOID* originalFunc)
-{
-	if (!isMHInitialized)
-	{
-		if (MH_Initialize() == MH_OK)
-		{
-			isMHInitialized = true;
-		}
-		else
-		{
-			MessageBoxA(NULL, "Failed to initialize MinHook!", "Error", MB_ICONERROR | MB_OK);
-			return;
-		}
-	}
-
-	if (MH_CreateHook(addr, hookFunc, originalFunc) != MH_OK)
-	{
-		char errorMsg[0x100];
-		sprintf_s(errorMsg, "Failed to create hook at address: %p", addr);
-		MessageBoxA(NULL, errorMsg, "Error", MB_ICONERROR | MB_OK);
-		return;
-	}
-
-	if (MH_EnableHook(addr) != MH_OK)
-	{
-		char errorMsg[0x100];
-		sprintf_s(errorMsg, "Failed to enable hook at address: %p", addr);
-		MessageBoxA(NULL, errorMsg, "Error", MB_ICONERROR | MB_OK);
-		return;
-	}
-}
 
 static void ApplyFixSoundRandomization()
 {
@@ -1387,9 +1428,9 @@ static void ApplyForceBorderlessFullscreen()
 	ApplyHook(&CreateWindowExA, &CreateWindowExA_Hook, (LPVOID*)&fpCreateWindowExA);
 }
 
-static void ApplyCustomResolution()
+static void ApplyCustomResolutionAndAnisotropic()
 {
-	if (!CustomResolution || ForceBorderlessFullscreen) return;
+	if (!CustomResolution && !AnisotropicTextureFiltering) return;
 
 	ApplyHook((void*)0x47ABE0, &QGL_Init_Hook, reinterpret_cast<LPVOID*>(&QGL_Init));
 }
@@ -1454,7 +1495,7 @@ static void Init()
 	ApplyHideConsoleAtLaunch();
 	ApplyDisableLetterbox();
 	ApplyForceBorderlessFullscreen();
-	ApplyCustomResolution();
+	ApplyCustomResolutionAndAnisotropic();
 	ApplyEnableAltF4Close();
 	// Graphics
 	ApplyCustomFOV();

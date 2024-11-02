@@ -141,6 +141,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>$(SolutionDir)src\winmm.def</ModuleDefinitionFile>
+      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>echo f | xcopy $(SolutionDir)$(ProjectName)\VorpalFix.ini $(SolutionDir)bin\$(Configuration)\VorpalFix.ini /Y </Command>
