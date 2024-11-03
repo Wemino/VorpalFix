@@ -46,7 +46,6 @@ bool setAlice2Path = false;
 bool isTexParameterfHooked = false;
 bool isAnisotropyRetrieved = false;
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
-const float BORDER_THRESHOLD = 140.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
 const int RIGHT_BORDER_X_ID = 0x2000000;
 const char* ALICE2_DEFAULT_PATH = "..\\..\\Alice2\\Binaries\\Win32\\AliceMadnessReturns.exe";
@@ -389,6 +388,7 @@ static int __stdcall glTexParameterf_Hook(int target, int pname, float param)
 
 typedef int(__cdecl* sub_48FC00)(float, float, float, float, float, float, float, float, int);
 sub_48FC00 RenderShader = nullptr;
+bool isSet = false;
 
 static int __cdecl RenderShader_Hook(float x_position, float y_position, float resolution_width, float resolution_height, float a5, float a6, float a7, float a8, int ShaderHandle)
 {
@@ -438,6 +438,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		if (!isCursorResized && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
 		{
 			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
+			GameHelper::ResizePopupMessage(currentWidth, currentHeight);
 			isCursorResized = true;
 		}
 
@@ -495,6 +496,12 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 
 		// Full screen effects
 		if (strcmp(ShaderName, "textures/special/drugfade") == 0 || strcmp(ShaderName, "textures/special/icefade") == 0)
+		{
+			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+		}
+
+		// Pop-up message
+		if (strcmp(ShaderName, "ui/control/press_any_key") == 0)
 		{
 			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
@@ -896,8 +903,8 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 			isUsingControllerMenu = true;
 
 			// Disable mouse navigation
-			MemoryHelper::MakeNOP(0x40675E, 0x2, true);
-			MemoryHelper::MakeNOP(0x40676E, 0x2, true);
+			MemoryHelper::MakeNOP(0x40675E, 2, true);
+			MemoryHelper::MakeNOP(0x40676E, 2, true);
 		}
 	}
 
@@ -1223,6 +1230,7 @@ static void ApplyFixStretchedGUI()
 	ApplyHook((void*)0x44B100, &SetUIBorder_Hook, reinterpret_cast<LPVOID*>(&SetUIBorder)); // Add the borders
 	ApplyHook((void*)0x4C0A10, &GetGlyphInfo_Hook, reinterpret_cast<LPVOID*>(&GetGlyphInfo)); // Font Scaling
 	ApplyHook((void*)0x4C5D30, &SetAliceMirrorViewportParams_Hook, reinterpret_cast<LPVOID*>(&SetAliceMirrorViewportParams)); // Scale Alice's 3D model in the settings menu
+	MemoryHelper::MakeNOP(0x4D2AB1, 7, true); // dark rectangle when reassigning a control
 }
 
 typedef HRESULT(WINAPI* SetProcessDpiAwarenessProc)(PROCESS_DPI_AWARENESS);

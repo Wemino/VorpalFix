@@ -111,7 +111,7 @@ namespace GameHelper
 	typedef int(__cdecl* sub_463130)();
 	sub_463130 IsControllerConnected = (sub_463130)0x463130;
 
-	static void __cdecl ResizeCursor(bool Hide, int width, int height)
+	static void __cdecl ResizeCursor(bool hide, int width, int height)
 	{
 		int ImageNum = MemoryHelper::ReadMemory<int>(0x1BCCEEC, false);
 		int ImageIndex = 0x1BCCEF0;
@@ -119,7 +119,7 @@ namespace GameHelper
 		const int originalWidth = 640;
 		const int originalHeight = 480;
 
-		for (int i = 0; i < ImageNum; ++i)
+		for (int i = 0; i < ImageNum; i++)
 		{
 			const char* currentTexture = (const char*)ImageIndex;
 
@@ -136,7 +136,7 @@ namespace GameHelper
 				int scaledMouseWidth = static_cast<int>(16 * scaleFactor);
 				int scaledMouseHeight = static_cast<int>(32 * scaleFactor);
 
-				if (Hide)
+				if (hide)
 				{
 					scaledMouseWidth = 0;
 					scaledMouseHeight = 0;
@@ -145,6 +145,33 @@ namespace GameHelper
 				MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, scaledMouseWidth, false);
 				MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, scaledMouseHeight, false);
 				break;
+			}
+
+			ImageIndex += 0x80;
+		}
+	}
+
+	static void __cdecl ResizePopupMessage(int width, int height)
+	{
+		int ImageNum = MemoryHelper::ReadMemory<int>(0x1BCCEEC, false);
+		int ImageIndex = 0x1BCCEF0;
+
+		for (int i = 0; i < ImageNum; i++)
+		{
+			const char* currentTexture = (const char*)ImageIndex;
+
+			if (strcmp(currentTexture, "ui/control/press_any_key.tga") == 0)
+			{
+				int image_width = MemoryHelper::ReadMemory<int>(ImageIndex + 0x48, false);
+
+				float current_width = static_cast<float>(width);
+				float current_height = static_cast<float>(height);
+
+				float target_width = current_height * 4.0f / 3.0f;
+				float scale_factor = target_width / current_width;
+				image_width *= scale_factor;
+
+				MemoryHelper::WriteMemory<int>(ImageIndex + 0x48, image_width, false);
 			}
 
 			ImageIndex += 0x80;
