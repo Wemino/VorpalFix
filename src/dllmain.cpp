@@ -17,7 +17,6 @@ const int CURRENT_WIDTH_ADDR = 0x1C4798C;
 const int CURRENT_HEIGHT_ADDR = 0x1C47990;
 const int CURRENT_LANG = 0x7CF868;
 const int IS_CURSOR_VISIBLE = 0x11C02E0;
-const int STARTUP_STATE_ADDR = 0x7CCA20;
 const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
 const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
@@ -28,7 +27,6 @@ const int DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
 // =============================
 // Variables 
 // =============================
-bool isMHInitialized = false;
 bool isDialog = false;
 bool isResolutionApplied = false;
 bool CvarHooking = false;
@@ -45,6 +43,7 @@ bool skipAutoResolution = false;
 bool setAlice2Path = false;
 bool isTexParameterfHooked = false;
 bool isAnisotropyRetrieved = false;
+int currentDialogLines = 0;
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
 const int RIGHT_BORDER_X_ID = 0x2000000;
@@ -333,38 +332,6 @@ static int __cdecl SetFMVPosition_Hook(int x_position, int y_position, int resol
 	return SetFMVPosition(x_position, y_position, video_width, video_height, a5, a6, a7);
 }
 
-static void ApplyHook(void* addr, LPVOID hookFunc, LPVOID* originalFunc)
-{
-	if (!isMHInitialized)
-	{
-		if (MH_Initialize() == MH_OK)
-		{
-			isMHInitialized = true;
-		}
-		else
-		{
-			MessageBoxA(NULL, "Failed to initialize MinHook!", "Error", MB_ICONERROR | MB_OK);
-			return;
-		}
-	}
-
-	if (MH_CreateHook(addr, hookFunc, originalFunc) != MH_OK)
-	{
-		char errorMsg[0x100];
-		sprintf_s(errorMsg, "Failed to create hook at address: %p", addr);
-		MessageBoxA(NULL, errorMsg, "Error", MB_ICONERROR | MB_OK);
-		return;
-	}
-
-	if (MH_EnableHook(addr) != MH_OK)
-	{
-		char errorMsg[0x100];
-		sprintf_s(errorMsg, "Failed to enable hook at address: %p", addr);
-		MessageBoxA(NULL, errorMsg, "Error", MB_ICONERROR | MB_OK);
-		return;
-	}
-}
-
 typedef int(__stdcall* opengl32_glTexParameterf)(int, int, float);
 opengl32_glTexParameterf original_glTexParameterf = nullptr;
 
@@ -552,6 +519,15 @@ static void __cdecl SetUIBorder_Hook()
 	RenderShader_Hook(RIGHT_BORDER_X_ID, 0, 0, 0, 1.0, 0.0, 0.0, 1.0, *(DWORD*)(border + 4));
 }
 
+typedef void(__thiscall* sub_452CF0)(int);
+sub_452CF0 ShowDialogBoxText = nullptr;
+
+static void __fastcall ShowDialogBoxText_Hook(int this_ptr, int* _ECX)
+{
+	currentDialogLines = MemoryHelper::ReadMemory<int>(this_ptr + 0x1D8, false);
+	ShowDialogBoxText(this_ptr);
+}
+
 typedef int(__thiscall* sub_4C0A10)(int, float, float, int, int, float, float, float, float, float);
 sub_4C0A10 GetGlyphInfo = nullptr;
 
@@ -595,6 +571,11 @@ static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_po
 		// Adjust the position of the text for the dialog box
 		if (isDialog)
 		{
+			// 2 lines of dialog, lower it's position in the dialog box
+			if (currentDialogLines == 4)
+			{
+				adjusted_font_y_position += 4.0f;
+			}
 			adjusted_font_x_position = (font_x_position * (target_width / 640.0f)) + horizontal_offset / 1.65f;
 		}
 
@@ -679,7 +660,7 @@ static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 	if (!isTexParameterfHooked && AnisotropicTextureFiltering)
 	{
 		int glTexParameterf_ptr = MemoryHelper::ReadMemory<int>(0x1BB8EF0, false);
-		ApplyHook((void*)glTexParameterf_ptr, &glTexParameterf_Hook, reinterpret_cast<LPVOID*>(&original_glTexParameterf));
+		HookHelper::ApplyHook((void*)glTexParameterf_ptr, &glTexParameterf_Hook, reinterpret_cast<LPVOID*>(&original_glTexParameterf));
 		isTexParameterfHooked = true;
 	}
 
@@ -1142,7 +1123,7 @@ static void ApplyFixHardDiskFull()
 {
 	if (!FixHardDiskFull) return;
 
-	ApplyHook((void*)0x41D1E0, &CheckDiskFreeSpace_Hook, reinterpret_cast<LPVOID*>(&CheckDiskFreeSpace));
+	HookHelper::ApplyHook((void*)0x41D1E0, &CheckDiskFreeSpace_Hook, reinterpret_cast<LPVOID*>(&CheckDiskFreeSpace));
 }
 
 static void ApplyFixSaveScreenshotBufferOverflow()
@@ -1207,7 +1188,7 @@ static void ApplyFixStretchedHUD()
 {
 	if (!FixStretchedHUD && !FixStretchedGUI) return;
 
-	ApplyHook((void*)0x446050, &SetHUDPosition_Hook, reinterpret_cast<LPVOID*>(&SetHUDPosition));
+	HookHelper::ApplyHook((void*)0x446050, &SetHUDPosition_Hook, reinterpret_cast<LPVOID*>(&SetHUDPosition));
 
 	// hud_item_foldout
 	MemoryHelper::WriteMemory<float>(0x5218A8, 258.5f, true);
@@ -1219,17 +1200,18 @@ static void ApplyFixStretchedFMV()
 {
 	if (!FixStretchedFMV) return;
 
-	ApplyHook((void*)0x490130, &SetFMVPosition_Hook, reinterpret_cast<LPVOID*>(&SetFMVPosition));
+	HookHelper::ApplyHook((void*)0x490130, &SetFMVPosition_Hook, reinterpret_cast<LPVOID*>(&SetFMVPosition));
 }
 
 static void ApplyFixStretchedGUI()
 {
 	if (!FixStretchedGUI) return;
 
-	ApplyHook((void*)0x48FC00, &RenderShader_Hook, reinterpret_cast<LPVOID*>(&RenderShader)); // UI Scaling
-	ApplyHook((void*)0x44B100, &SetUIBorder_Hook, reinterpret_cast<LPVOID*>(&SetUIBorder)); // Add the borders
-	ApplyHook((void*)0x4C0A10, &GetGlyphInfo_Hook, reinterpret_cast<LPVOID*>(&GetGlyphInfo)); // Font Scaling
-	ApplyHook((void*)0x4C5D30, &SetAliceMirrorViewportParams_Hook, reinterpret_cast<LPVOID*>(&SetAliceMirrorViewportParams)); // Scale Alice's 3D model in the settings menu
+	HookHelper::ApplyHook((void*)0x48FC00, &RenderShader_Hook, reinterpret_cast<LPVOID*>(&RenderShader)); // UI Scaling
+	HookHelper::ApplyHook((void*)0x44B100, &SetUIBorder_Hook, reinterpret_cast<LPVOID*>(&SetUIBorder)); // Add the borders
+	HookHelper::ApplyHook((void*)0x4C0A10, &GetGlyphInfo_Hook, reinterpret_cast<LPVOID*>(&GetGlyphInfo)); // Font Scaling
+	HookHelper::ApplyHook((void*)0x4C5D30, &SetAliceMirrorViewportParams_Hook, reinterpret_cast<LPVOID*>(&SetAliceMirrorViewportParams)); // Scale Alice's 3D model in the settings menu
+	HookHelper::ApplyHook((void*)0x452CF0, &ShowDialogBoxText_Hook, reinterpret_cast<LPVOID*>(&ShowDialogBoxText));
 	MemoryHelper::MakeNOP(0x4D2AB1, 7, true); // dark rectangle when reassigning a control
 }
 
@@ -1293,7 +1275,7 @@ static void ApplyFixProton()
 {
 	if (!FixProton) return;
 
-	ApplyHook((void*)0x429600, &PlayIntroMusic_Hook, reinterpret_cast<LPVOID*>(&PlayIntroMusic));
+	HookHelper::ApplyHook((void*)0x429600, &PlayIntroMusic_Hook, reinterpret_cast<LPVOID*>(&PlayIntroMusic));
 }
 
 static void ApplyLaunchWithoutAlice2()
@@ -1319,10 +1301,10 @@ static void ApplyUseConsoleTitleScreen()
 {
 	if (!UseConsoleTitleScreen) return;
 
-	ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, reinterpret_cast<LPVOID*>(&LoadUI));
-	ApplyHook((void*)0x44C1B0, &PushMenu_Hook, reinterpret_cast<LPVOID*>(&PushMenu));
-	ApplyHook((void*)0x44C4F0, &TriggerMainMenu_Hook, reinterpret_cast<LPVOID*>(&TriggerMainMenu));
-	ApplyHook((void*)0x449DF0, &IsGameStarted_Hook, reinterpret_cast<LPVOID*>(&IsGameStarted));
+	HookHelper::ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, reinterpret_cast<LPVOID*>(&LoadUI));
+	HookHelper::ApplyHook((void*)0x44C1B0, &PushMenu_Hook, reinterpret_cast<LPVOID*>(&PushMenu));
+	HookHelper::ApplyHook((void*)0x44C4F0, &TriggerMainMenu_Hook, reinterpret_cast<LPVOID*>(&TriggerMainMenu));
+	HookHelper::ApplyHook((void*)0x449DF0, &IsGameStarted_Hook, reinterpret_cast<LPVOID*>(&IsGameStarted));
 }
 
 static void ApplyUseOriginalIntroVideos()
@@ -1381,7 +1363,7 @@ static void ApplyDisableRemasteredModels()
 {
 	if (!DisableRemasteredModels) return;
 
-	ApplyHook((void*)0x43E030, &FS_ZipLoading_Hook, reinterpret_cast<LPVOID*>(&FS_ZipLoading));
+	HookHelper::ApplyHook((void*)0x43E030, &FS_ZipLoading_Hook, reinterpret_cast<LPVOID*>(&FS_ZipLoading));
 }
 
 static void ApplyEnableDevConsole()
@@ -1400,7 +1382,7 @@ static void ApplyCustomSavePath()
 {
 	if (!isUsingCustomSaveDir && !FixHardDiskFull) return;
 
-	ApplyHook((void*)0x417400, &GetSavePath_Hook, reinterpret_cast<LPVOID*>(&GetSavePath));
+	HookHelper::ApplyHook((void*)0x417400, &GetSavePath_Hook, reinterpret_cast<LPVOID*>(&GetSavePath));
 }
 
 static void ApplyEnableControllerIcons()
@@ -1409,10 +1391,10 @@ static void ApplyEnableControllerIcons()
 
 	if (!UseConsoleTitleScreen)
 	{
-		ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, reinterpret_cast<LPVOID*>(&LoadUI));
+		HookHelper::ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, reinterpret_cast<LPVOID*>(&LoadUI));
 	}
 
-	ApplyHook((void*)0x423740, &AliceHeadMovementCoordinates_Hook, reinterpret_cast<LPVOID*>(&AliceHeadMovementCoordinates));
+	HookHelper::ApplyHook((void*)0x423740, &AliceHeadMovementCoordinates_Hook, reinterpret_cast<LPVOID*>(&AliceHeadMovementCoordinates));
 }
 
 static void ApplyHideConsoleAtLaunch()
@@ -1426,49 +1408,49 @@ static void ApplyDisableLetterbox()
 {
 	if (!DisableLetterbox) return;
 
-	ApplyHook((void*)0x42CFF0, &LoadGameDLL_Hook, reinterpret_cast<LPVOID*>(&LoadGameDLL));
+	HookHelper::ApplyHook((void*)0x42CFF0, &LoadGameDLL_Hook, reinterpret_cast<LPVOID*>(&LoadGameDLL));
 }
 
 static void ApplyForceBorderlessFullscreen()
 {
 	if (!ForceBorderlessFullscreen) return;
 
-	ApplyHook(&CreateWindowExA, &CreateWindowExA_Hook, (LPVOID*)&fpCreateWindowExA);
+	HookHelper::ApplyHook(&CreateWindowExA, &CreateWindowExA_Hook, (LPVOID*)&fpCreateWindowExA);
 }
 
 static void ApplyCustomResolutionAndAnisotropic()
 {
 	if (!CustomResolution && !AnisotropicTextureFiltering) return;
 
-	ApplyHook((void*)0x47ABE0, &QGL_Init_Hook, reinterpret_cast<LPVOID*>(&QGL_Init));
+	HookHelper::ApplyHook((void*)0x47ABE0, &QGL_Init_Hook, reinterpret_cast<LPVOID*>(&QGL_Init));
 }
 
 static void ApplyEnableAltF4Close()
 {
 	if (!EnableAltF4Close) return;
 
-	ApplyHook((void*)0x46C600, &lpfnWndProc_MSG_Hook, reinterpret_cast<LPVOID*>(&lpfnWndProc_MSG));
+	HookHelper::ApplyHook((void*)0x46C600, &lpfnWndProc_MSG_Hook, reinterpret_cast<LPVOID*>(&lpfnWndProc_MSG));
 }
 
 static void ApplyCustomFOV()
 {
 	if (!AutoFOV && FOV == 90.0) return;
 
-	ApplyHook((void*)0x420390, &UpdateFOV, reinterpret_cast<LPVOID*>(&MSG_DoStuff));
+	HookHelper::ApplyHook((void*)0x420390, &UpdateFOV, reinterpret_cast<LPVOID*>(&MSG_DoStuff));
 }
 
 static void ApplyCvarTweaks()
 {
 	if (!CvarHooking) return;
 
-	ApplyHook((void*)0x419910, &Cvar_Set_Hook, reinterpret_cast<LPVOID*>(&Cvar_Set));
+	HookHelper::ApplyHook((void*)0x419910, &Cvar_Set_Hook, reinterpret_cast<LPVOID*>(&Cvar_Set));
 }
 
 static void ApplyResolutionChangeHook()
 {
 	if (!AutoFOV && !FixStretchedGUI) return;
 
-	ApplyHook((void*)0x46FC70, &GLW_CreatePFD_Hook, reinterpret_cast<LPVOID*>(&GLW_CreatePFD));
+	HookHelper::ApplyHook((void*)0x46FC70, &GLW_CreatePFD_Hook, reinterpret_cast<LPVOID*>(&GLW_CreatePFD));
 }
 
 #pragma endregion Apply Patches
@@ -1512,26 +1494,6 @@ static void Init()
 	ApplyResolutionChangeHook();
 }
 
-static void LoadProxyLibrary()
-{
-	wchar_t systemPath[MAX_PATH];
-	GetSystemDirectoryW(systemPath, MAX_PATH);
-	lstrcatW(systemPath, L"\\winmm.dll");
-
-	HINSTANCE hL = LoadLibraryExW(systemPath, 0, LOAD_WITH_ALTERED_SEARCH_PATH);
-	if (!hL)
-	{
-		DWORD errorCode = GetLastError();
-		wchar_t errorMessage[512];
-
-		FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorCode, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), errorMessage, sizeof(errorMessage) / sizeof(wchar_t), NULL);
-		MessageBoxW(NULL, errorMessage, L"Error Loading winmm.dll", MB_ICONERROR);
-		return;
-	}
-
-	winmm.ProxySetup(hL);
-}
-
 
 static BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
@@ -1539,7 +1501,7 @@ static BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID l
 	{
 		case DLL_PROCESS_ATTACH:
 		{
-			LoadProxyLibrary();
+			SystemHelper::LoadProxyLibrary();
 			Init();
 			break;
 		}
