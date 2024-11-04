@@ -1,0 +1,215 @@
+menu "quit"		640 480 NONE 0.5
+bgcolor			0 0 0 1
+borderstyle		NONE
+bgfill			0 0 0 1
+fullscreen		1
+fadeoverlay		0.5
+
+allowactivate	true
+keycommand		y quit
+keycommand		n popmenu
+
+// Background
+resource
+Label
+{
+	name			"Default"
+	rect			0 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	0 ui/quit/quitA
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	1 ui/quit/quitB
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			512 0 128 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	2 ui/quit/quitC
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			0 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	3 ui/quit/quitD
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	4 ui/quit/quitE
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			512 256 128 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	5 ui/quit/quitF
+	allowactivate	false
+}
+
+// BUTTONS
+resource
+Button
+{
+	name			"Default"
+	rect			410 251 64 32
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	stuffcommand	"quit"
+	hovershader		"ui/quit/yes_glow"
+	allowactivate	true
+	ordernumber		1
+	keycommand		y quit
+	keycommand		n popmenu
+	hoversound		sound/ui/loadsave_h.wav
+	clicksound		sound/ui/loadsave_c.wav
+}
+resource
+Button
+{
+	name			"Default"
+	rect			478 251 64 32
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	stuffcommand	"popmenu"
+	hovershader		"ui/quit/no_glow"
+//	allowactivate	false
+	ordernumber		2
+	keycommand		y quit
+	keycommand		n popmenu
+	hoversound		sound/ui/loadsave_h.wav
+	clicksound		sound/ui/loadsave_c.wav
+}
+
+resource
+Button
+{
+	name			"Default"
+	rect			351 411 256 64
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	stuffcommand	"pushmenu credits"
+	hovershader		"ui/quit/credits_glow"
+//	allowactivate	false
+	ordernumber		3
+	keycommand		y quit
+	keycommand		n popmenu
+	hoversound		sound/ui/loadsave_h.wav
+	clicksound		sound/ui/loadsave_c.wav
+}
+
+// Button Callouts: 
+resource
+Button
+{
+	title			"Changer"
+	name			"Default"
+	rect			200 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			35 8
+} 
+resource
+Button
+{
+	name			"Default"
+	rect			205 405 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"dpad_xbox"	
+	allowactivate	false
+}
+resource
+Button
+{
+	title			"Valider"
+	name			"Default"
+	rect			50 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			35 8
+} 
+resource
+Button
+{
+	name			"Default"
+	rect			55 405 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"a_button_xbox"	
+	allowactivate	false
+} 
+// RETURN BUTTON
+resource
+Button
+{
+	title			"Retour"
+	name			"Default"
+	rect			350 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			35 8
+	stuffcommand	"popmenu"
+} 
+resource
+Button
+{
+	name			"Default"
+	rect			355 405 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"b_button_xbox"	
+	allowactivate	false
+}
+end.
