@@ -418,7 +418,7 @@ Label
 resource
 Label
 {
-	title			"Move"
+	title			"Menu Navigation"
 	name			"Default"
 	rect			0 270 167 24
 	fgcolor			1.00 1.00 1.00 1.00
@@ -431,7 +431,7 @@ Label
 resource
 Label
 {
-	title			"Menu Navigation"
+	title			"Move"
 	name			"Default"
 	rect			120 376 167 24
 	fgcolor			1.00 1.00 1.00 1.00
