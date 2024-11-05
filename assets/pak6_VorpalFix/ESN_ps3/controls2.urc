@@ -438,7 +438,7 @@ Label
 resource
 Label
 {
-	title			"Desplazarse"
+	title			"Moverse"
 	name			"Default"
 	rect			0 270 167 24
 	fgcolor			1.00 1.00 1.00 1.00
@@ -451,20 +451,7 @@ Label
 resource
 Label
 {
-	title			"por el menú"
-	name			"Default"
-	rect			0 285 167 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	groupid			"group_control"
-	font			"asrafel"
-	fontjustify		right top
-	fontscale		0.8
-}
-resource
-Label
-{
-	title			"Moverse"
+	title			"Desplazarse por el menú"
 	name			"Default"
 	rect			120 376 167 24
 	fgcolor			1.00 1.00 1.00 1.00
