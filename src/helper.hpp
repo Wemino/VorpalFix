@@ -113,10 +113,59 @@ namespace GameHelper
 	typedef int(__cdecl* sub_463130)();
 	sub_463130 IsControllerConnected = (sub_463130)0x463130;
 
+	void UpdateUIPath(char** ui_path, const char* originalPath, const char* newSuffix, const char* langPrefix, bool UsePS3ControllerIcons)
+	{
+		if (*ui_path != NULL && strcmp(*ui_path, originalPath) == 0)
+		{
+			free(*ui_path);
+
+			size_t prefixLen = strlen(langPrefix);
+			const char* ps3Suffix = "_ps3";
+			if (UsePS3ControllerIcons) 
+			{
+				prefixLen += strlen(ps3Suffix);
+			}
+
+			*ui_path = (char*)malloc(prefixLen + strlen(newSuffix) + 1);
+			if (*ui_path != NULL)
+			{
+				if (UsePS3ControllerIcons) 
+				{
+					sprintf(*ui_path, "%s%s%s", langPrefix, ps3Suffix, newSuffix);
+				}
+				else 
+				{
+					sprintf(*ui_path, "%s%s", langPrefix, newSuffix);
+				}
+			}
+		}
+	}
+
+	int FindShaderIndex(const char* texturePath)
+	{
+		int ShaderNum = MemoryHelper::ReadMemory<int>(0x1BCCEEC, false);
+		int ShaderIndex = 0x1BCCEF0;
+
+		for (int i = 0; i < ShaderNum; i++)
+		{
+			const char* currentTexture = (const char*)ShaderIndex;
+
+			if (strcmp(currentTexture, texturePath) == 0)
+			{
+				return ShaderIndex;
+			}
+
+			ShaderIndex += 0x80;
+		}
+
+		return -1;
+	}
+
 	static void __cdecl ResizeCursor(bool hide, int width, int height)
 	{
-		int ImageNum = MemoryHelper::ReadMemory<int>(0x1BCCEEC, false);
-		int ImageIndex = 0x1BCCEF0;
+		int ImageIndex = FindShaderIndex("gfx/2d/mouse_arrow.tga");
+
+		if (ImageIndex == -1) return;
 
 		const int originalWidth = 640;
 		const int originalHeight = 480;
@@ -124,72 +173,49 @@ namespace GameHelper
 		const int mouseWidth = 16;
 		const int mouseHeight = 32;
 
-		for (int i = 0; i < ImageNum; i++)
+		if (hide)
 		{
-			const char* currentTexture = (const char*)ImageIndex;
+			MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, 0, false);
+			MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, 0, false);
+			return;
+		}
 
-			if (strcmp(currentTexture, "gfx/2d/mouse_arrow.tga") == 0)
-			{
-				if (hide)
-				{
-					MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, 0, false);
-					MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, 0, false);
-					break;
-				}
+		float widthScale = static_cast<float>(width) / originalWidth;
+		float heightScale = static_cast<float>(height) / originalHeight;
 
-				// Calculate scale factors
-				float widthScale = static_cast<float>(width) / originalWidth;
-				float heightScale = static_cast<float>(height) / originalHeight;
+		float scaleFactor = std::min(widthScale, heightScale);
 
-				// Use the smallest scale factor to maintain the aspect ratio
-				float scaleFactor = std::min(widthScale, heightScale);
+		int scaledMouseWidth = static_cast<int>(mouseWidth * scaleFactor);
+		int scaledMouseHeight = static_cast<int>(mouseHeight * scaleFactor);
 
-				// Calculate the new scaled sizes
-				int scaledMouseWidth = static_cast<int>(mouseWidth * scaleFactor);
-				int scaledMouseHeight = static_cast<int>(mouseHeight * scaleFactor);
-
-				if (DisableCursorScaling)
-				{
-					MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, mouseWidth, false);
-					MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, mouseHeight, false);
-				}
-				else
-				{
-					MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, scaledMouseWidth, false);
-					MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, scaledMouseHeight, false);
-				}
-				break;
-			}
-
-			ImageIndex += 0x80;
+		if (DisableCursorScaling)
+		{
+			MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, mouseWidth, false);
+			MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, mouseHeight, false);
+		}
+		else
+		{
+			MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, scaledMouseWidth, false);
+			MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, scaledMouseHeight, false);
 		}
 	}
 
 	static void __cdecl ResizePopupMessage(int width, int height)
 	{
-		int ImageNum = MemoryHelper::ReadMemory<int>(0x1BCCEEC, false);
-		int ImageIndex = 0x1BCCEF0;
+		int ImageIndex = FindShaderIndex("ui/control/press_any_key.tga");
 
-		for (int i = 0; i < ImageNum; i++)
-		{
-			const char* currentTexture = (const char*)ImageIndex;
+		if (ImageIndex == -1) return;
 
-			if (strcmp(currentTexture, "ui/control/press_any_key.tga") == 0)
-			{
-				int image_width = MemoryHelper::ReadMemory<int>(ImageIndex + 0x48, false);
+		int image_width = MemoryHelper::ReadMemory<int>(ImageIndex + 0x48, false);
 
-				float current_width = static_cast<float>(width);
-				float current_height = static_cast<float>(height);
+		float current_width = static_cast<float>(width);
+		float current_height = static_cast<float>(height);
 
-				float target_width = current_height * 4.0f / 3.0f;
-				float scale_factor = target_width / current_width;
-				image_width *= scale_factor;
+		float target_width = current_height * 4.0f / 3.0f;
+		float scale_factor = target_width / current_width;
+		image_width = static_cast<int>(image_width * scale_factor);
 
-				MemoryHelper::WriteMemory<int>(ImageIndex + 0x48, image_width, false);
-			}
-
-			ImageIndex += 0x80;
-		}
+		MemoryHelper::WriteMemory<int>(ImageIndex + 0x48, image_width, false);
 	}
 };
 
