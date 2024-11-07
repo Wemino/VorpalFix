@@ -1,3 +1,4 @@
+#undef PlaySound
 struct winmm
 {
     FARPROC CloseDriver;
@@ -7,6 +8,9 @@ struct winmm
     FARPROC GetDriverModuleHandle;
     FARPROC NotifyCallbackData;
     FARPROC OpenDriver;
+    FARPROC PlaySound;
+    FARPROC PlaySoundA;
+    FARPROC PlaySoundW;
     FARPROC SendDriverMessage;
     FARPROC WOW32DriverCallback;
     FARPROC WOW32ResolveMultiMediaHandle;
@@ -199,6 +203,9 @@ struct winmm
         GetDriverModuleHandle = GetProcAddress(hL, "GetDriverModuleHandle");
         NotifyCallbackData = GetProcAddress(hL, "NotifyCallbackData");
         OpenDriver = GetProcAddress(hL, "OpenDriver");
+        PlaySound = GetProcAddress(hL, "PlaySound");
+        PlaySoundA = GetProcAddress(hL, "PlaySoundA");
+        PlaySoundW = GetProcAddress(hL, "PlaySoundW");
         SendDriverMessage = GetProcAddress(hL, "SendDriverMessage");
         WOW32DriverCallback = GetProcAddress(hL, "WOW32DriverCallback");
         WOW32ResolveMultiMediaHandle = GetProcAddress(hL, "WOW32ResolveMultiMediaHandle");
@@ -391,6 +398,9 @@ __declspec(naked) void Hook_DrvGetModuleHandle() { _asm { jmp[winmm.DrvGetModule
 __declspec(naked) void Hook_GetDriverModuleHandle() { _asm { jmp[winmm.GetDriverModuleHandle] } }
 __declspec(naked) void Hook_NotifyCallbackData() { _asm { jmp[winmm.NotifyCallbackData] } }
 __declspec(naked) void Hook_OpenDriver() { _asm { jmp[winmm.OpenDriver] } }
+__declspec(naked) void Hook_PlaySound() { _asm { jmp[winmm.PlaySound] } }
+__declspec(naked) void Hook_PlaySoundA() { _asm { jmp[winmm.PlaySoundA] } }
+__declspec(naked) void Hook_PlaySoundW() { _asm { jmp[winmm.PlaySoundW] } }
 __declspec(naked) void Hook_SendDriverMessage() { _asm { jmp[winmm.SendDriverMessage] } }
 __declspec(naked) void Hook_WOW32DriverCallback() { _asm { jmp[winmm.WOW32DriverCallback] } }
 __declspec(naked) void Hook_WOW32ResolveMultiMediaHandle() { _asm { jmp[winmm.WOW32ResolveMultiMediaHandle] } }

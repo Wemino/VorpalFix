@@ -7,6 +7,9 @@ EXPORTS
 	GetDriverModuleHandle = Hook_GetDriverModuleHandle
 	NotifyCallbackData = Hook_NotifyCallbackData
 	OpenDriver = Hook_OpenDriver
+	PlaySound = Hook_PlaySound
+	PlaySoundA = Hook_PlaySoundA
+	PlaySoundW = Hook_PlaySoundW
 	SendDriverMessage = Hook_SendDriverMessage
 	WOW32DriverCallback = Hook_WOW32DriverCallback
 	WOW32ResolveMultiMediaHandle = Hook_WOW32ResolveMultiMediaHandle
