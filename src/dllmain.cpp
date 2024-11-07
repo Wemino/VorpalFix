@@ -356,7 +356,6 @@ static int __stdcall glTexParameterf_Hook(int target, int pname, float param)
 
 typedef int(__cdecl* sub_48FC00)(float, float, float, float, float, float, float, float, int);
 sub_48FC00 RenderShader = nullptr;
-bool isSet = false;
 
 static int __cdecl RenderShader_Hook(float x_position, float y_position, float resolution_width, float resolution_height, float a5, float a6, float a7, float a8, int ShaderHandle)
 {
