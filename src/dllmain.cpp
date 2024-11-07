@@ -43,7 +43,7 @@ bool skipAutoResolution = false;
 bool setAlice2Path = false;
 bool isTexParameterfHooked = false;
 bool isAnisotropyRetrieved = false;
-int currentDialogLines = 0;
+int currentDialogLines = 0; // 3 = 1 line, 4 = 2 lines [...]
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
 const int RIGHT_BORDER_X_ID = 0x2000000;
@@ -137,6 +137,7 @@ static void ReadConfig()
 	UsePS3ControllerIcons = iniReader.ReadInteger("Display", "UsePS3ControllerIcons", 0) == 1;
 	HideConsoleAtLaunch = iniReader.ReadInteger("Display", "HideConsoleAtLaunch", 1) == 1;
 	DisableLetterbox = iniReader.ReadInteger("Display", "DisableLetterbox", 0) == 1;
+	GameHelper::DisableCursorScaling = iniReader.ReadInteger("Display", "DisableCursorScaling", 0) == 1;
 	ForceBorderlessFullscreen = iniReader.ReadInteger("Display", "ForceBorderlessFullscreen", 0) == 1;
 	EnableVsync = iniReader.ReadInteger("Display", "EnableVsync", 0) == 1;
 	AutoResolution = iniReader.ReadInteger("Display", "AutoResolution", 1) == 1;
@@ -945,8 +946,8 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 
 	if (isUsingControllerMenu && ui_path != NULL && strcmp(ui_path, "ui/quit.urc") == 0)
 	{
-		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/quit.urc") + 1);
-		sprintf(ui_path, "%s/quit.urc", langPrefix);
+		ui_path = (char*)malloc(strlen(langPrefix) + strlen("/quit2.urc") + 1);
+		sprintf(ui_path, "%s/quit2.urc", langPrefix);
 	}
 
 	return LoadUI(ptr, ui_path);

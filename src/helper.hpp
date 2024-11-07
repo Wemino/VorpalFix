@@ -95,6 +95,8 @@ namespace MemoryHelper
 
 namespace GameHelper
 {
+	bool DisableCursorScaling = false;
+
 	typedef int(__cdecl* sub_4158F0)(char*, char);
 	sub_4158F0 CallCmd = (sub_4158F0)0x4158F0;
 
@@ -119,12 +121,22 @@ namespace GameHelper
 		const int originalWidth = 640;
 		const int originalHeight = 480;
 
+		const int mouseWidth = 16;
+		const int mouseHeight = 32;
+
 		for (int i = 0; i < ImageNum; i++)
 		{
 			const char* currentTexture = (const char*)ImageIndex;
 
 			if (strcmp(currentTexture, "gfx/2d/mouse_arrow.tga") == 0)
 			{
+				if (hide)
+				{
+					MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, 0, false);
+					MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, 0, false);
+					break;
+				}
+
 				// Calculate scale factors
 				float widthScale = static_cast<float>(width) / originalWidth;
 				float heightScale = static_cast<float>(height) / originalHeight;
@@ -133,17 +145,19 @@ namespace GameHelper
 				float scaleFactor = std::min(widthScale, heightScale);
 
 				// Calculate the new scaled sizes
-				int scaledMouseWidth = static_cast<int>(16 * scaleFactor);
-				int scaledMouseHeight = static_cast<int>(32 * scaleFactor);
+				int scaledMouseWidth = static_cast<int>(mouseWidth * scaleFactor);
+				int scaledMouseHeight = static_cast<int>(mouseHeight * scaleFactor);
 
-				if (hide)
+				if (DisableCursorScaling)
 				{
-					scaledMouseWidth = 0;
-					scaledMouseHeight = 0;
+					MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, mouseWidth, false);
+					MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, mouseHeight, false);
 				}
-
-				MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, scaledMouseWidth, false);
-				MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, scaledMouseHeight, false);
+				else
+				{
+					MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, scaledMouseWidth, false);
+					MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, scaledMouseHeight, false);
+				}
 				break;
 			}
 
