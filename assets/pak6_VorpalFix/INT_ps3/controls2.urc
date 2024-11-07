@@ -624,6 +624,74 @@ Button
 	allowactivate	false
 	groupid			"group_audio_video"
 }
+// RESOLUTION
+resource
+Label
+{
+	title			"Resolution"
+	name			"ResolutionTxt"
+	rect			68 294 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio_video"
+	font			"asrafel"
+	fontjustify		left center
+	
+}
+resource
+List
+{
+	name			"Default"
+	rect			88 310 200 20
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio_video"
+	font			"asrafel"
+	fontjustify		center top
+	
+
+	highlighttextwidget "ResolutionTxt"
+	ordernumber		10
+
+	linkcvar		"r_mode"
+}
+// FULLSCREEN
+resource
+Label
+{
+	title			"Fullscreen"
+	name			"FullscreenTxt"
+	rect			68 342 210 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio_video"
+	font			"asrafel"
+	fontjustify		left center
+	
+}
+resource
+CheckBox
+{
+	name			"Default"
+	rect			260 342 16 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio_video"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"r_fullscreen"
+
+	highlighttextwidget "FullscreenTxt"
+	ordernumber		11
+
+	checked_shader		"ui/control/checkbox_checked"
+	unchecked_shader	"ui/control/checkbox_unchecked"
+	
+}
 // CANCEL BUTTON
 resource
 Button
