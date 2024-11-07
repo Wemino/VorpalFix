@@ -43,7 +43,6 @@ bool skipAutoResolution = false;
 bool setAlice2Path = false;
 bool isTexParameterfHooked = false;
 bool isAnisotropyRetrieved = false;
-int currentDialogLines = 0; // 3 = 1 line, 4 = 2 lines [...]
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
 const int RIGHT_BORDER_X_ID = 0x2000000;
@@ -524,7 +523,13 @@ sub_452CF0 ShowDialogBoxText = nullptr;
 
 static void __fastcall ShowDialogBoxText_Hook(int this_ptr, int* _ECX)
 {
-	currentDialogLines = MemoryHelper::ReadMemory<int>(this_ptr + 0x1D8, false);
+	int currentDialogLines = MemoryHelper::ReadMemory<int>(this_ptr + 0x1D8, false);
+
+	// 2 lines of dialog, lower it's position in the dialog box
+	if (currentDialogLines == 4)
+	{
+		MemoryHelper::WriteMemory<int>(this_ptr + 0x1D8, 3, false);
+	}
 	ShowDialogBoxText(this_ptr);
 }
 
@@ -571,11 +576,6 @@ static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_po
 		// Adjust the position of the text for the dialog box
 		if (isDialog)
 		{
-			// 2 lines of dialog, lower it's position in the dialog box
-			if (currentDialogLines == 4)
-			{
-				adjusted_font_y_position += 4.0f;
-			}
 			adjusted_font_x_position = (font_x_position * (target_width / 640.0f)) + horizontal_offset / 1.65f;
 		}
 
