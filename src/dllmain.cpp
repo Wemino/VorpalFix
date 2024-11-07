@@ -774,9 +774,15 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 
 	if (AutoResolution && !skipAutoResolution && strcmp(var_name, "r_mode") == 0)
 	{
+		// From config.cfg
 		if (flag != 33)
 		{
-			// From config.cfg
+			// Workaround to make the game remember 640x480, otherwise it won't be saved to config.cfg
+			if (strcmp(value, "0") == 0)
+			{
+				// 640x480
+				value = "-1";
+			}
 			skipAutoResolution = true;
 		}
 		else if (strcmp(value, "0") == 0)
