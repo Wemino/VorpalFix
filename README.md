@@ -1,5 +1,5 @@
 # VorpalFix
-A plugin that addresses a variety of technical issues and adds quality-of-life improvements to the 2011 remaster of American McGee's Alice.
+A fix that addresses a variety of technical issues and adds quality-of-life improvements to the 2011 remaster of American McGee's Alice.
 
 ## Features
 ### Fixes
@@ -12,25 +12,30 @@ A plugin that addresses a variety of technical issues and adds quality-of-life i
 - Fix GUI stretching in widescreen resolutions. [Before & After](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/gui.gif)
 - Fix DPI Scaling on high-DPI displays.
 - Fix the fullscreen setting not saving.
+- Fix menu timing issues during rapid transitions.
+- Workaround for a Proton specific issue related to the menus when playing on Linux.
 
 ### General
 - Allow the game to launch without Alice: Madness Returns.
 - Prevent Alice: Madness Returns from launching on exit. (when installed with Alice: Madness Returns)
 - Allow to switch the game's supported language. (English, German, French, or Spanish)
+- Restore the "American McGee's Alice" title screen from the Xbox 360/PlayStation 3 version.
 - Provide the option to display the EA and Rogue Entertainment intro videos that were disabled in the remaster.
 - Allow the option to disable the use of the remastered models.
 - Allow the use of the developer console from the original game.
+- Allow the option to set a custom path for saving the game's data.
  
 ### Display
-- Provide the option to use the HUD position similar to the PS3/Xbox360 console version.
+- Provide the option to use the HUD position similar to the Xbox 360/PlayStation 3 console version.
 - Enable support for Xbox controller icons in the menus when a controller is detected during startup.
-- Provide an option to display PS3 controller icons in place of Xbox controller icons.
+- Provide an option to display PlayStation 3 controller icons in place of Xbox controller icons.
 - Provide the option to hide the popup console at launch.
 - Provide the option to launch the game in borderless fullscreen mode.
 - Provide the option to enable VSync.
 - Custom resolution settings.
 
 ### Graphics
+- Add support for Anisotropic Texture Filtering to enhance texture clarity and reduce blurriness at oblique viewing angles.
 - Allow to enable trilinear texture filtering for better texture quality.
 - Force highest quality models with enhanced LOD.
 - Allow to set a custom frame rate limit, with the option to match the monitor’s refresh rate.
@@ -38,7 +43,7 @@ A plugin that addresses a variety of technical issues and adds quality-of-life i
 
 ## How to Install
 > [!NOTE]
-> This plugin will only work on the 2011 remaster of American McGee's Alice and **will not work on the 2000 version** of the game.
+> This fix will only work on the 2011 remaster of American McGee's Alice and **will not work on the 2000 version** of the game.
 >
 > **Download**: [VorpalFix.zip](https://github.com/Wemino/VorpalFix/releases/latest/download/VorpalFix.zip)
 >
@@ -48,12 +53,11 @@ A plugin that addresses a variety of technical issues and adds quality-of-life i
 > [!WARNING]
 > To launch the game on Steam Deck or Linux, open the game’s properties in Steam and include `WINEDLLOVERRIDES="winmm.dll=n,b" %command%` in the launch options.
 
-## Plugin Configuration
-- Modify the `VorpalFix.ini` file to adjust the plugin’s settings.
+## Fix Configuration
+- Modify the VorpalFix.ini file to adjust the settings for the fix.
 
 ## Credits
 - [MinHook](https://github.com/TsudaKageyu/minhook) for hooking.
-- [injector](https://github.com/thelink2012/injector) for memory patching.
 - [Leanny](https://github.com/Leanny) help with some algorithms.
 
 ## Licensing Exception
