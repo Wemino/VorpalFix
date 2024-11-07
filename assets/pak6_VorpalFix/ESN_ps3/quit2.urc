@@ -137,7 +137,7 @@ Button
 {
 	title			"Cambiar"
 	name			"Default"
-	rect			200 400 100 35
+	rect			375 385 100 35
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -151,7 +151,7 @@ resource
 Button
 {
 	name			"Default"
-	rect			205 405 24 24
+	rect			380 390 24 24
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -163,7 +163,7 @@ Button
 {
 	title			"Seleccionar"
 	name			"Default"
-	rect			50 400 130 35
+	rect			245 426 130 35
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -177,7 +177,7 @@ resource
 Button
 {
 	name			"Default"
-	rect			55 405 24 24
+	rect			250 431 24 24
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -190,7 +190,7 @@ Button
 {
 	title			"Atrás"
 	name			"Default"
-	rect			350 400 100 35
+	rect			505 385 100 35
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -205,7 +205,7 @@ resource
 Button
 {
 	name			"Default"
-	rect			355 405 24 24
+	rect			510 390 24 24
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
