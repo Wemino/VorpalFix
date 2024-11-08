@@ -698,6 +698,31 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 		isCursorResized = false;
 	}
 
+	if (FixSaveScreenshotBufferOverflow)
+	{
+		// currentWidth is not a multiple of 4?
+		if (currentWidth % 4 != 0)
+		{
+			// Adjust the width to be the largest multiple of 4 less than currentWidth
+			int safeWidth = currentWidth - (currentWidth % 4);
+			MemoryHelper::WriteMemory<int>(0x513E40, safeWidth, true);
+
+			// Redirect the width read by sub_46D280 to the safe width
+			MemoryHelper::WriteMemory<int>(0x46D28B, 0x513E40, true);
+			MemoryHelper::WriteMemory<int>(0x46D307, 0x513E40, true);
+			MemoryHelper::WriteMemory<int>(0x46D321, 0x513E40, true);
+			MemoryHelper::WriteMemory<int>(0x46D3B7, 0x513E40, true);
+		}
+		else
+		{
+			// If width is safe, redirect to the original address
+			MemoryHelper::WriteMemory<int>(0x46D28B, 0x1C4798C, true);
+			MemoryHelper::WriteMemory<int>(0x46D307, 0x1C4798C, true);
+			MemoryHelper::WriteMemory<int>(0x46D321, 0x1C4798C, true);
+			MemoryHelper::WriteMemory<int>(0x46D3B7, 0x1C4798C, true);
+		}
+	}
+
 	return GLW_CreatePFD(pPFD, colorbits, depthbits, stencilbits, stereo);
 }
 
@@ -1089,26 +1114,6 @@ static void ApplyFixHardDiskFull()
 	HookHelper::ApplyHook((void*)0x41D1E0, &CheckDiskFreeSpace_Hook, reinterpret_cast<LPVOID*>(&CheckDiskFreeSpace));
 }
 
-static void ApplyFixSaveScreenshotBufferOverflow()
-{
-	if (!FixSaveScreenshotBufferOverflow) return;
-
-	// JMP Redirect
-	MemoryHelper::MakeJMP(0x0046D292, 0x00513850, true);
-
-	char leaInstruction[] = { 0x8D, 0x04, 0x40 };
-	char addInstruction[] = { 0x05 };
-	char pushInstruction[] = { 0x57, 0x50 };
-
-	MemoryHelper::WriteMemoryRaw(0x00513850, leaInstruction, sizeof(leaInstruction), true);
-	MemoryHelper::WriteMemoryRaw(0x00513853, addInstruction, sizeof(addInstruction), true);
-	MemoryHelper::WriteMemory<int>(0x00513854, 0x1000, true); // Hack: Increase the buffer size by 0x1000
-	MemoryHelper::WriteMemoryRaw(0x00513858, pushInstruction, sizeof(pushInstruction), true);
-
-	// Back to the function
-	MemoryHelper::MakeJMP(0x0051385A, 0x0046D297, true);
-}
-
 static void ApplyFixBlinkingAnimationSpeed()
 {
 	if (!FixBlinkingAnimationSpeed) return;
@@ -1432,7 +1437,7 @@ static void ApplyCvarTweaks()
 
 static void ApplyResolutionChangeHook()
 {
-	if (!AutoFOV && !FixStretchedGUI) return;
+	if (!AutoFOV && !FixStretchedGUI && !FixSaveScreenshotBufferOverflow) return;
 
 	HookHelper::ApplyHook((void*)0x46FC70, &GLW_CreatePFD_Hook, reinterpret_cast<LPVOID*>(&GLW_CreatePFD));
 }
@@ -1447,7 +1452,6 @@ static void Init()
 	// Fixes
 	ApplyFixSoundRandomization();
 	ApplyFixHardDiskFull();
-	ApplyFixSaveScreenshotBufferOverflow();
 	ApplyFixBlinkingAnimationSpeed();
 	ApplyFixStretchedHUD();
 	ApplyFixStretchedFMV();
