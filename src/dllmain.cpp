@@ -72,6 +72,7 @@ char* Alice2Path = nullptr;
 int LanguageId = 0;
 bool UseConsoleTitleScreen = false;
 bool UseOriginalIntroVideos = false;
+bool Disable8BitAudioAsDefault = false;
 bool DisableRemasteredModels = false;
 bool EnableDevConsole = false;
 char* ToggleConsoleBindKey = nullptr;
@@ -124,6 +125,7 @@ static void ReadConfig()
 	Alice2Path = iniReader.ReadString("General", "Alice2Path", ALICE2_DEFAULT_PATH);
 	LanguageId = iniReader.ReadInteger("General", "LanguageId", 0);
 	UseOriginalIntroVideos = iniReader.ReadInteger("General", "UseOriginalIntroVideos", 0) == 1;
+	Disable8BitAudioAsDefault = iniReader.ReadInteger("General", "Disable8BitAudioAsDefault", 1) == 1;
 	UseConsoleTitleScreen = iniReader.ReadInteger("General", "UseConsoleTitleScreen", 0) == 1;
 	DisableRemasteredModels = iniReader.ReadInteger("General", "DisableRemasteredModels", 0) == 1;
 	EnableDevConsole = iniReader.ReadInteger("General", "EnableDevConsole", 0) == 1;
@@ -1330,6 +1332,14 @@ static void ApplyUseOriginalIntroVideos()
 	MemoryHelper::WriteMemory(0x0044E409, 0x00513B90, true);
 }
 
+static void ApplyDisable8BitAudioAsDefault()
+{
+	if (!Disable8BitAudioAsDefault) return;
+
+	// s_loadas8bit "1" -> "0"
+	MemoryHelper::WriteMemory<int>(0x427607, 0x5151BC, true);
+}
+
 static void ApplyDisableRemasteredModels()
 {
 	if (!DisableRemasteredModels) return;
@@ -1448,6 +1458,7 @@ static void Init()
 	ApplyLanguageId();
 	ApplyUseConsoleTitleScreen();
 	ApplyUseOriginalIntroVideos();
+	ApplyDisable8BitAudioAsDefault();
 	ApplyDisableRemasteredModels();
 	ApplyEnableDevConsole();
 	ApplyCustomSavePath();
@@ -1464,7 +1475,6 @@ static void Init()
 	ApplyCvarTweaks();
 	ApplyResolutionChangeHook();
 }
-
 
 static BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
