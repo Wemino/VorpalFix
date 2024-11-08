@@ -41,7 +41,6 @@ bool isRestartedForLinux = false;
 bool isUsingCustomSaveDir = false;
 bool skipAutoResolution = false;
 bool setAlice2Path = false;
-bool isTexParameterfHooked = false;
 bool isAnisotropyRetrieved = false;
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
@@ -657,16 +656,7 @@ static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 		}
 	}
 
-	int result = QGL_Init(lpLibFileName);
-
-	if (!isTexParameterfHooked && AnisotropicTextureFiltering)
-	{
-		int glTexParameterf_ptr = MemoryHelper::ReadMemory<int>(0x1BB8EF0, false);
-		HookHelper::ApplyHook((void*)glTexParameterf_ptr, &glTexParameterf_Hook, reinterpret_cast<LPVOID*>(&original_glTexParameterf));
-		isTexParameterfHooked = true;
-	}
-
-	return result;
+	return QGL_Init(lpLibFileName);
 }
 
 typedef int(__stdcall* sub_46C600)(HWND, UINT, HDC, HWND);
@@ -1399,9 +1389,9 @@ static void ApplyForceBorderlessFullscreen()
 	HookHelper::ApplyHook(&CreateWindowExA, &CreateWindowExA_Hook, (LPVOID*)&fpCreateWindowExA);
 }
 
-static void ApplyCustomResolutionAndAnisotropic()
+static void ApplyCustomResolution()
 {
-	if (!CustomResolution && !AnisotropicTextureFiltering) return;
+	if (!CustomResolution) return;
 
 	HookHelper::ApplyHook((void*)0x47ABE0, &QGL_Init_Hook, reinterpret_cast<LPVOID*>(&QGL_Init));
 }
@@ -1411,6 +1401,19 @@ static void ApplyEnableAltF4Close()
 	if (!EnableAltF4Close) return;
 
 	HookHelper::ApplyHook((void*)0x46C600, &lpfnWndProc_MSG_Hook, reinterpret_cast<LPVOID*>(&lpfnWndProc_MSG));
+}
+
+static void ApplyAnisotropicTextureFiltering()
+{
+	if (!AnisotropicTextureFiltering) return;
+
+	HMODULE openglLibrary = LoadLibraryA("opengl32");
+
+	if (openglLibrary)
+	{
+		FARPROC glTexParameterf_ptr = GetProcAddress(openglLibrary, "glTexParameterf");
+		HookHelper::ApplyHook((void*)glTexParameterf_ptr, &glTexParameterf_Hook, reinterpret_cast<LPVOID*>(&original_glTexParameterf));
+	}
 }
 
 static void ApplyCustomFOV()
@@ -1467,9 +1470,10 @@ static void Init()
 	ApplyHideConsoleAtLaunch();
 	ApplyDisableLetterbox();
 	ApplyForceBorderlessFullscreen();
-	ApplyCustomResolutionAndAnisotropic();
+	ApplyCustomResolution();
 	ApplyEnableAltF4Close();
 	// Graphics
+	ApplyAnisotropicTextureFiltering();
 	ApplyCustomFOV();
 	// Misc
 	ApplyCvarTweaks();
