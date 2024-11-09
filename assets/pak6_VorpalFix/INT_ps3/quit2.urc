@@ -137,7 +137,7 @@ Button
 {
 	title			"Change"
 	name			"Default"
-	rect			400 430 100 35
+	rect			490 400 100 35
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -151,7 +151,7 @@ resource
 Button
 {
 	name			"Default"
-	rect			405 435 24 24
+	rect			495 405 24 24
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -163,7 +163,7 @@ Button
 {
 	title			"Select"
 	name			"Default"
-	rect			270 430 100 35
+	rect			340 400 100 35
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -177,39 +177,11 @@ resource
 Button
 {
 	name			"Default"
-	rect			275 435 24 24
+	rect			345 405 24 24
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
 	shader			"cross_button_ps3"	
-	allowactivate	false
-}
-// RETURN BUTTON
-resource
-Button
-{
-	title			"Back"
-	name			"Default"
-	rect			530 430 100 35
-	fgcolor			0.199 0.043 0.043 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			ui/buttons/plaque
-	hovershader		ui/buttons/plaque_hover
-	font			"asrafel"
-	fontjustify		center center
-	fontpos			35 8
-	stuffcommand	"popmenu"
-} 
-resource
-Button
-{
-	name			"Default"
-	rect			535 435 24 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			"circle_button_ps3"	
 	allowactivate	false
 }
 end.
