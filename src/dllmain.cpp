@@ -900,7 +900,7 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 	}
 
 	// Check if a controller is connected
-	if (!isUsingControllerMenu)
+	if (EnableControllerIcons && !isUsingControllerMenu)
 	{
 		if (GameHelper::IsControllerConnected() == 1)
 		{
