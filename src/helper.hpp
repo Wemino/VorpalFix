@@ -113,34 +113,6 @@ namespace GameHelper
 	typedef int(__cdecl* sub_463130)();
 	sub_463130 IsControllerConnected = (sub_463130)0x463130;
 
-	void UpdateUIPath(char** ui_path, const char* originalPath, const char* newSuffix, const char* langPrefix, bool UsePS3ControllerIcons)
-	{
-		if (*ui_path != NULL && strcmp(*ui_path, originalPath) == 0)
-		{
-			free(*ui_path);
-
-			size_t prefixLen = strlen(langPrefix);
-			const char* ps3Suffix = "_ps3";
-			if (UsePS3ControllerIcons) 
-			{
-				prefixLen += strlen(ps3Suffix);
-			}
-
-			*ui_path = (char*)malloc(prefixLen + strlen(newSuffix) + 1);
-			if (*ui_path != NULL)
-			{
-				if (UsePS3ControllerIcons) 
-				{
-					sprintf(*ui_path, "%s%s%s", langPrefix, ps3Suffix, newSuffix);
-				}
-				else 
-				{
-					sprintf(*ui_path, "%s%s", langPrefix, newSuffix);
-				}
-			}
-		}
-	}
-
 	int FindShaderIndex(const char* texturePath)
 	{
 		int ShaderNum = MemoryHelper::ReadMemory<int>(0x1BCCEEC, false);

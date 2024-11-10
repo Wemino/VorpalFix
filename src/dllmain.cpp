@@ -916,25 +916,63 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 	{
 		if (!isUsingControllerMenu)
 		{
-			GameHelper::UpdateUIPath(&ui_path, "ui/title.urc", "/title.urc", langPrefix, false);
+			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/title.urc") + 1);
+			sprintf(ui_path, "%s/title.urc", langPrefix);
 
 			// Press Enter
 			MemoryHelper::WriteMemory<char>(0x4082C3, 0x0D, true);
 		}
 		else
 		{
-			GameHelper::UpdateUIPath(&ui_path, "ui/title.urc", "/title_console.urc", langPrefix, false);
+			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/title_console.urc") + 1);
+			sprintf(ui_path, "%s/title_console.urc", langPrefix);
 		}
 	}
 
-	if (isUsingControllerMenu) 
+	if (isUsingControllerMenu)
 	{
-		GameHelper::UpdateUIPath(&ui_path, "ui/controls.urc", "/controls2.urc", langPrefix, UsePS3ControllerIcons);
-		GameHelper::UpdateUIPath(&ui_path, "ui/credits.urc", "/credits2.urc", langPrefix, UsePS3ControllerIcons);
-		GameHelper::UpdateUIPath(&ui_path, "ui/loadsave.urc", "/loadsave2.urc", langPrefix, UsePS3ControllerIcons);
-		GameHelper::UpdateUIPath(&ui_path, "ui/main.urc", "/main2.urc", langPrefix, UsePS3ControllerIcons);
-		GameHelper::UpdateUIPath(&ui_path, "ui/newgame.urc", "/newgame2.urc", langPrefix, UsePS3ControllerIcons);
-		GameHelper::UpdateUIPath(&ui_path, "ui/quit.urc", "/quit2.urc", langPrefix, UsePS3ControllerIcons);
+		if (UsePS3ControllerIcons)
+		{
+			char* newLangPrefix = (char*)malloc(strlen(langPrefix) + strlen("_ps3") + 1);
+			sprintf(newLangPrefix, "%s_ps3", langPrefix);
+			langPrefix = newLangPrefix;
+		}
+
+		if (ui_path != NULL && strcmp(ui_path, "ui/controls.urc") == 0)
+		{
+			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/controls2.urc") + 1);
+			sprintf(ui_path, "%s/controls2.urc", langPrefix);
+		}
+
+		if (ui_path != NULL && strcmp(ui_path, "ui/credits.urc") == 0)
+		{
+			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/credits2.urc") + 1);
+			sprintf(ui_path, "%s/credits2.urc", langPrefix);
+		}
+
+		if (ui_path != NULL && strcmp(ui_path, "ui/loadsave.urc") == 0)
+		{
+			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/loadsave2.urc") + 1);
+			sprintf(ui_path, "%s/loadsave2.urc", langPrefix);
+		}
+
+		if (ui_path != NULL && strcmp(ui_path, "ui/main.urc") == 0)
+		{
+			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/main2.urc") + 1);
+			sprintf(ui_path, "%s/main2.urc", langPrefix);
+		}
+
+		if (ui_path != NULL && strcmp(ui_path, "ui/newgame.urc") == 0)
+		{
+			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/newgame2.urc") + 1);
+			sprintf(ui_path, "%s/newgame2.urc", langPrefix);
+		}
+
+		if (ui_path != NULL && strcmp(ui_path, "ui/quit.urc") == 0)
+		{
+			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/quit2.urc") + 1);
+			sprintf(ui_path, "%s/quit2.urc", langPrefix);
+		}
 	}
 
 	return LoadUI(ptr, ui_path);
