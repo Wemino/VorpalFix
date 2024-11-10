@@ -59,7 +59,7 @@ A fix that addresses a variety of technical issues and adds quality-of-life impr
 ## Credits
 - [MinHook](https://github.com/TsudaKageyu/minhook) for hooking.
 - [Leanny](https://github.com/Leanny) help with some algorithms.
-- [CRASHARKI](https://github.com/CRASHARKI) help with fixing the menu
+- [CRASHARKI](https://github.com/CRASHARKI) help with fixing and improving the menu.
 
 ## Licensing Exception
 This project is licensed under the GPL 3.0. However, Electronic Arts (EA) has explicit permission to use, modify, or bundle this code without being required to release the source code of any derivative works under the GPL 3.0, if they wish to re-release *American McGee's Alice*.
