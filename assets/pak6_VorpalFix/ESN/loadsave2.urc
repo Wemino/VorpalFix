@@ -432,7 +432,7 @@ Button
 resource
 Button
 {
-	title			"LADEN"
+	title			"CARGAR"
 	name			"LoadingButton"
 	rect			300 400 100 35
 	fgcolor			0.199 0.043 0.043 1.00
@@ -453,7 +453,7 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	shader			"cross_button_ps3"	
+	shader			"a_button_xbox"	
 	allowactivate	false
 }
 
@@ -461,7 +461,7 @@ Button
 resource
 Button
 {
-	title			"Speichern"
+	title			"GUARDAR"
 	name			"SaveButton"
 	rect			400 400 110 35
 	fgcolor			0.199 0.043 0.043 1.00
@@ -482,7 +482,7 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	shader			"square_button_ps3"	
+	shader			"x_button_xbox"	
 	allowactivate	false
 }
 
@@ -490,7 +490,7 @@ Button
 resource
 Button
 {
-	title			"LÖSCHEN"
+	title			"BORRAR"
 	name			"DeleteButton"
 	rect			510 400 100 35
 	fgcolor			0.199 0.043 0.043 1.00
@@ -511,7 +511,7 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	shader			"tri_button_ps3"	
+	shader			"y_button_xbox"	
 	allowactivate	false
 }
 
@@ -600,7 +600,7 @@ Label
 resource
 Button
 {
-	title			"Zurück"
+	title			"Atrás"
 	name			"Default"
 	rect			510 355 100 35
 	fgcolor			0.199 0.043 0.043 1.00
@@ -621,7 +621,7 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	shader			"circle_button_ps3"	
+	shader			"b_button_xbox"	
 	allowactivate	false
 }
 end.

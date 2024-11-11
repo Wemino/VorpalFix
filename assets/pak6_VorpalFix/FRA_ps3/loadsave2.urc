@@ -591,7 +591,7 @@ Button
 {
 	title			"Retour"
 	name			"Default"
-	rect			100 400 100 35
+	rect			515 355 100 35
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -606,7 +606,7 @@ resource
 Button
 {
 	name			"Default"
-	rect			105 405 24 24
+	rect			520 360 24 24
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"

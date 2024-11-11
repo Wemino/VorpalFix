@@ -6,12 +6,17 @@ bgfill 0 0 0 1
 fullscreen 1
 //fadein 0.5
 //vidmode 3 
-//include "ui/common.inc" 
+
+//include "ui/common.inc"
+
 showcommand		"widgetcommand LoadSaveList resetpage\n"
 showcommand		"widgetcommand LoadSaveList CheckErrorState\n"
 showcommand		"widgetcommand LoadSaveList disablegroup delete_group\n"
 showcommand		"widgetcommand LoadSaveList enablegroup bigshot_group\n"
-hidecommand		"widgetcommand MsgBackground disable; widgetcommand DiskFull disable\n" 
+
+
+hidecommand		"widgetcommand MsgBackground disable; widgetcommand DiskFull disable\n"
+
 // List
 resource
 FakkLoadGameClass
@@ -22,7 +27,8 @@ FakkLoadGameClass
 	bgcolor			0.00 0.00 0.00 0.70
 	borderstyle		"NONE"
 	neverdraw
-} 
+}
+
 // BIG PREVIEW
 resource
 Label
@@ -47,6 +53,18 @@ Label
 	borderstyle		"NONE"
 	groupid			"bigshot_group"
 }
+resource
+Label
+{
+	name			"bigcover_black"
+	rect			358 101 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 1.00
+	borderstyle		"NONE"
+	fadein			1.0
+	inversealpha
+}
+
 // LOAD SHOTS
 resource
 Button
@@ -95,7 +113,6 @@ Label
 	rect			21 314 128 90
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
-
 	staticshader	15 ui/load/blank
 	borderstyle		"NONE"
 }
@@ -108,7 +125,8 @@ Label
 	bgcolor			0.00 0.00 0.00 0.00
 	staticshader	17 ui/load/blank
 	borderstyle		"NONE"
-} 
+}
+
 resource
 Label
 {
@@ -119,7 +137,25 @@ Label
 	borderstyle		"NONE"
 	shader			ui/loadgame/deleteconfirm
 	disable
-} 
+}
+
+// PAGE NUM INDICATOR
+resource
+Label
+{
+	title			""
+	name			"PageNum"
+	rect			151 412 20 20
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	font			"asrafel"
+	fontjustify		center center
+	fontscale		0.70
+	fontspacing		1.0
+	fontangle		1.5
+}
+
 // Background
 resource
 Label
@@ -187,6 +223,7 @@ Label
 	staticshader	5 ui/load/loadF
 	allowactivate	false
 } 
+
 // 1st
 resource
 Button
@@ -214,9 +251,13 @@ Button
 	borderstyle		"NONE"
 	groupid			"lsd_group"
 	clicksound		"sound/ui/projector_long.wav"
+	
+
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 1" 350
-} 
+	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
+}
+
 // 2st
 resource
 Button
@@ -248,8 +289,9 @@ Button
 
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 2" 350
+	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
+}
 
-} 
 // 3rd
 resource
 Button
@@ -281,8 +323,9 @@ Button
 
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 3" 350
+	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
+}
 
-} 
 // 4th
 resource
 Button
@@ -314,8 +357,9 @@ Button
 
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 4" 350
+	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
+}
 
-} 
 // 5th
 resource
 Button
@@ -347,8 +391,9 @@ Button
 
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 5" 350
+	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
+}
 
-} 
 // 6th
 resource
 Button
@@ -378,11 +423,11 @@ Button
 	clicksound		"sound/ui/projector_long.wav"
 	
 
-
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 6" 350
+	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
+}
 
-} 
 // LOAD BUTTONS
 resource
 Button
@@ -485,6 +530,7 @@ Label
 	fontspacing		1
 	fontscale		0.8
 } 
+
 resource
 Label
 {
@@ -499,7 +545,8 @@ Label
 	fontangle		2.1
 	fontspacing		1
 	fontscale		0.85
-} 
+}
+
 resource
 Label
 {
@@ -536,6 +583,7 @@ Button
 	disable
 	stuffcommand	"widgetcommand LoadSaveList disablegroup delete_group\n"
 } 
+
 resource
 Label
 {
@@ -547,13 +595,14 @@ Label
 	shader			ui/load/disk_full
 	disable
 } 
+
 // RETURN BUTTON
 resource
 Button
 {
 	title			"Back"
 	name			"Default"
-	rect			100 400 100 35
+	rect			500 355 100 35
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -568,7 +617,7 @@ resource
 Button
 {
 	name			"Default"
-	rect			105 405 24 24
+	rect			505 360 24 24
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"

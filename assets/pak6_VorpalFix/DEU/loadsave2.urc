@@ -453,7 +453,7 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	shader			"cross_button_ps3"	
+	shader			"a_button_xbox"	
 	allowactivate	false
 }
 
@@ -482,7 +482,7 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	shader			"square_button_ps3"	
+	shader			"x_button_xbox"	
 	allowactivate	false
 }
 
@@ -511,7 +511,7 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	shader			"tri_button_ps3"	
+	shader			"y_button_xbox"	
 	allowactivate	false
 }
 
@@ -621,7 +621,7 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	shader			"circle_button_ps3"	
+	shader			"b_button_xbox"	
 	allowactivate	false
 }
 end.
