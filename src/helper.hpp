@@ -1,3 +1,5 @@
+#include <filesystem>
+
 namespace MemoryHelper
 {
 	template <typename T> static bool WriteMemory(uintptr_t address, T value, bool disableProtection = true)
@@ -193,6 +195,8 @@ namespace GameHelper
 
 namespace SystemHelper
 {
+	namespace fs = std::filesystem;
+
 	static DWORD GetCurrentDisplayFrequency()
 	{
 		DEVMODE devMode = {};
@@ -214,6 +218,29 @@ namespace SystemHelper
 			return { devMode.dmPelsWidth, devMode.dmPelsHeight };
 		}
 		return { 0, 0 };
+	}
+
+	std::vector<std::string> GetLocPk3Files(const std::string& path) 
+	{
+		std::vector<std::string> pk3Files;
+
+		if (!fs::exists(path) || !fs::is_directory(path))
+		{
+			return pk3Files;
+		}
+
+		for (const auto& entry : std::filesystem::recursive_directory_iterator(path)) 
+		{
+			if (entry.is_regular_file() && entry.path().extension() == ".pk3") 
+			{
+				std::string relativePath = entry.path().string();
+				relativePath = relativePath.substr(relativePath.find("loc/"));
+
+				pk3Files.push_back(relativePath);
+			}
+		}
+
+		return pk3Files;
 	}
 
 	static void LoadProxyLibrary()

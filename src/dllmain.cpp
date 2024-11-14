@@ -42,6 +42,9 @@ bool isUsingCustomSaveDir = false;
 bool skipAutoResolution = false;
 bool setAlice2Path = false;
 bool isAnisotropyRetrieved = false;
+bool hasLookedForLocalizationFiles = false;
+size_t localizationFilesToLoad = 0;
+std::vector<std::string> pk3LocFiles;
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
 const int RIGHT_BORDER_X_ID = 0x2000000;
@@ -62,6 +65,7 @@ bool FixStretchedGUI = false;
 bool FixDPIScaling = false;
 bool FixFullscreenSetting = false;
 bool FixMenuTransitionTiming = false;
+bool FixLocalizationFiles = false;
 bool FixProton = false;
 
 // General
@@ -115,7 +119,9 @@ static void ReadConfig()
 	FixStretchedGUI = iniReader.ReadInteger("Fixes", "FixStretchedGUI", 1) == 1;
 	FixDPIScaling = iniReader.ReadInteger("Fixes", "FixDPIScaling", 1) == 1;
 	FixFullscreenSetting = iniReader.ReadInteger("Fixes", "FixFullscreenSetting", 1) == 1;
+	FixLocalizationFiles = iniReader.ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
 	FixMenuTransitionTiming = iniReader.ReadInteger("Fixes", "FixMenuTransitionTiming", 1) == 1;
+
 	FixProton = iniReader.ReadInteger("Fixes", "FixProton", 0) == 1;
 
 	// General
@@ -1059,6 +1065,65 @@ static void __cdecl PlayIntroMusic_Hook()
 	PlayIntroMusic();
 }
 
+typedef char*(__cdecl* sub_4615F0)();
+sub_4615F0 LoadLocalizationFile = nullptr;
+
+static const char* __cdecl LoadLocalizationFile_Hook()
+{
+	if (!hasLookedForLocalizationFiles)
+	{
+		int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG, false);
+
+		std::string searchPath = "";
+		switch (lang)
+		{
+			case 1: searchPath = "base/loc/DEU/"; break;
+			case 2: searchPath = "base/loc/FRA/"; break;
+			case 3: searchPath = "base/loc/ESN/"; break;
+			default: searchPath = "base/loc/INT/"; break;
+		}
+
+		// Get *.pk3 inside "base/loc/<lang>/"
+		pk3LocFiles = SystemHelper::GetLocPk3Files(searchPath);
+
+		// Get the number of files to load
+	    localizationFilesToLoad = pk3LocFiles.size();
+
+		// Loop back to this function if we got more than one file to load
+		if (localizationFilesToLoad > 0)
+		{
+			// Fix esp
+			char opCodeArray[] = { 0x83, 0xEC, 0x0C };
+			MemoryHelper::WriteMemoryRaw(0x0041CB4B, opCodeArray, sizeof(opCodeArray), true);
+
+			// Loop back to 4615F0 for every files
+			MemoryHelper::MakeCALL(0x0041CB4E, 0x0041CB32, true);
+		}
+
+		// Load the original localization file
+		hasLookedForLocalizationFiles = true;
+		return LoadLocalizationFile();
+	}
+
+	// If we still have files to load
+	if (localizationFilesToLoad > 0)
+	{
+		localizationFilesToLoad--;
+
+		if (localizationFilesToLoad == 0)
+		{
+			// No more files, restore original instructions
+			char opCodeArray[] = { 0x33, 0xFF, 0x39, 0x7C, 0x24, 0x0C, 0x7E, 0x3F };
+			MemoryHelper::WriteMemoryRaw(0x0041CB4B, opCodeArray, sizeof(opCodeArray), true);
+		}
+
+		// Return the wanted file from 
+		return pk3LocFiles[localizationFilesToLoad].c_str();
+	}
+
+	return LoadLocalizationFile();
+}
+
 #pragma endregion Hooks with MinHook
 
 #pragma region
@@ -1275,6 +1340,13 @@ static void ApplyFixMenuTransitionTiming()
 	if (!FixMenuTransitionTiming) return;
 
 	MemoryHelper::WriteMemory<int>(0x4082FC, 0x3200, true);
+}
+
+static void ApplyFixLocalizationFiles()
+{
+	if (!FixLocalizationFiles) return;
+
+	HookHelper::ApplyHook((void*)0x4615F0, &LoadLocalizationFile_Hook, reinterpret_cast<LPVOID*>(&LoadLocalizationFile));
 }
 
 static void ApplyFixProton()
@@ -1496,6 +1568,7 @@ static void Init()
 	ApplyFixStretchedGUI();
 	ApplyFixDPIScaling();
 	ApplyFixMenuTransitionTiming();
+	ApplyFixLocalizationFiles();
 	ApplyFixProton();
 	// General
 	ApplyLaunchWithoutAlice2();
