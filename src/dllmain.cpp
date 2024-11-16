@@ -23,6 +23,10 @@ const int DISPLAY_MODE_NUM = 0x7D40C8;
 const int DISPLAY_MODE_PTR_ADDR = 0x1C463E8;
 const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
 const int DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
+const int CODE_CAVE_SOUND = 0x513490;
+const int CODE_CAVE_INTRO = 0x513B90;
+const int CODE_CAVE_BLINK = 0x513E08;
+const int CODE_CAVE_WIDTH = 0x513E40;
 
 // =============================
 // Variables 
@@ -45,6 +49,7 @@ bool isAnisotropyRetrieved = false;
 bool hasLookedForLocalizationFiles = false;
 size_t localizationFilesToLoad = 0;
 std::vector<std::string> pk3LocFiles;
+
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
 const int RIGHT_BORDER_X_ID = 0x2000000;
@@ -96,7 +101,6 @@ int CustomResolutionHeight = 0;
 bool EnableAltF4Close = 0;
 
 // Graphics
-bool AnisotropicTextureFiltering = false;
 float MaxAnisotropy = 0;
 bool TrilinearTextureFiltering = false;
 bool EnhancedLOD = false;
@@ -121,7 +125,6 @@ static void ReadConfig()
 	FixFullscreenSetting = iniReader.ReadInteger("Fixes", "FixFullscreenSetting", 1) == 1;
 	FixLocalizationFiles = iniReader.ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
 	FixMenuTransitionTiming = iniReader.ReadInteger("Fixes", "FixMenuTransitionTiming", 1) == 1;
-
 	FixProton = iniReader.ReadInteger("Fixes", "FixProton", 0) == 1;
 
 	// General
@@ -153,8 +156,7 @@ static void ReadConfig()
 	EnableAltF4Close = iniReader.ReadInteger("Display", "EnableAltF4Close", 0);
 
 	// Graphics
-	AnisotropicTextureFiltering = iniReader.ReadInteger("Graphics", "AnisotropicTextureFiltering", 1) == 1;
-	MaxAnisotropy = iniReader.ReadFloat("Graphics", "MaxAnisotropy", 0);
+	MaxAnisotropy = iniReader.ReadFloat("Graphics", "MaxAnisotropy", 16);
 	TrilinearTextureFiltering = iniReader.ReadInteger("Graphics", "TrilinearTextureFiltering", 1) == 1;
 	EnhancedLOD = iniReader.ReadInteger("Graphics", "EnhancedLOD", 1) == 1;
 	CustomFPSLimit = iniReader.ReadInteger("Graphics", "CustomFPSLimit", 60);
@@ -173,12 +175,51 @@ static void ReadConfig()
 		UseConsoleTitleScreen = false;
 	}
 
+	// Check if the user has specified a custom save directory
 	isUsingCustomSaveDir = (CustomSavePath != NULL) && (CustomSavePath[0] != '\0');
+
+	// If specified, format the custom save path
+	if (isUsingCustomSaveDir)
+	{
+		static char formattedSavePath[MAX_PATH];
+
+		// Ensure the custom save path fits within the buffer
+		strncpy(formattedSavePath, CustomSavePath, MAX_PATH - 1);
+		formattedSavePath[MAX_PATH - 1] = '\0';
+
+		// Append a backslash if not already present
+		size_t len = strlen(formattedSavePath);
+		if (len > 0 && formattedSavePath[len - 1] != '\\')
+		{
+			// Ensure there's enough space to add the backslash
+			if (len < MAX_PATH - 1)
+			{
+				formattedSavePath[len] = '\\';
+				formattedSavePath[len + 1] = '\0';
+			}
+		}
+
+		CustomSavePath = formattedSavePath;
+	}
+
+	// Check if a custom path is set for Alice: Madness Returns
 	setAlice2Path = strcmp(Alice2Path, ALICE2_DEFAULT_PATH) != 0;
+
+	// Hook CvarSet only if necessary
 	CvarHooking = FixFullscreenSetting || AutoResolution || EnableDevConsole || EnableVsync || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60) || setAlice2Path;
 }
 
 #pragma region
+
+/****************************************************
+ * Function: GetSavePath_Hook
+ *
+ * Description:
+ *    Return the current save directory
+ *
+ * Used For:
+ *    FixHardDiskFull & CustomSavePath
+ ****************************************************/
 
 typedef char* (__cdecl* sub_417400)();
 sub_417400 GetSavePath = nullptr;
@@ -187,18 +228,21 @@ static char* __cdecl GetSavePath_Hook()
 {
 	if (isUsingCustomSaveDir)
 	{
-		static char modifiedSavePath[MAX_PATH];
-		strcpy(modifiedSavePath, CustomSavePath);
-
-		// Append a backslash if not already present
-		size_t len = strlen(modifiedSavePath);
-		if (modifiedSavePath[len - 1] != '\\') {
-			strcat(modifiedSavePath, "\\");
-		}
-		return modifiedSavePath;
+		return CustomSavePath;
 	}
 	return GetSavePath();
 }
+
+/****************************************************
+ * Function: CheckDiskFreeSpace_Hook
+ *
+ * Description:
+ *    Calculate the free space on the disk used to 
+ *    store the save data
+ *
+ * Used For:
+ *    FixHardDiskFull
+ ****************************************************/
 
 typedef int(__cdecl* sub_41D1E0)();
 sub_41D1E0 CheckDiskFreeSpace = nullptr;
@@ -226,20 +270,30 @@ static int __cdecl CheckDiskFreeSpace_Hook()
 	return 2048;
 }
 
+/****************************************************
+ * Function: SetHUDPosition_Hook
+ *
+ * Description:
+ *    Adjust the HUD position and scaling for non-4:3 
+ *    aspect ratios
+ *
+ * Used For:
+ *    FixStretchedHUD & ConsolePortHUD
+ ****************************************************/
+
 typedef int(__cdecl* sub_446050)(float, float, float, float, int, float*, float*, float*, int, const char*, __int16, float*, float*, float, float, int);
 sub_446050 SetHUDPosition = nullptr;
 
 static int __cdecl SetHUDPosition_Hook(float x_position, float y_position, float resolution_width, float resolution_height, int a5, float* a6, float* a7, float* a8, int a9, const char* a10, __int16 a11, float* a12, float* a13, float a14, float a15, int a16)
 {
 	float current_aspect_ratio = resolution_width / resolution_height;
-	float scaleX = 1.0f;
 
 	double hud_object_x_position = (x_position * 640.0) / resolution_width;
 	float resolution_width_original = resolution_width;
 
-	if (current_aspect_ratio > ASPECT_RATIO_4_3 && FixStretchedHUD)
+	if (FixStretchedHUD && current_aspect_ratio > ASPECT_RATIO_4_3)
 	{
-		scaleX = ASPECT_RATIO_4_3 / current_aspect_ratio;
+		float scaleX = ASPECT_RATIO_4_3 / current_aspect_ratio;
 
 		if (x_position > 0)
 		{
@@ -316,16 +370,24 @@ static int __cdecl SetHUDPosition_Hook(float x_position, float y_position, float
 	return SetHUDPosition(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16);
 }
 
+/****************************************************
+ * Function: SetFMVPosition_Hook
+ *
+ * Description:
+ *    Adjust the FMV position and scaling for non-4:3
+ *    aspect ratios
+ *
+ * Used For:
+ *    FixStretchedFMV
+ ****************************************************/
+
 typedef int(__cdecl* sub_490130)(int, int, int, int, int, int, int);
 sub_490130 SetFMVPosition = nullptr;
 
 static int __cdecl SetFMVPosition_Hook(int x_position, int y_position, int resolution_width, int resolution_height, int a5, int a6, int a7)
 {
-	int video_width;
-	int video_height;
-
-	video_height = resolution_height;
-	video_width = static_cast<int>(video_height * ASPECT_RATIO_4_3);
+	int video_height = resolution_height;
+	int video_width = static_cast<int>(video_height * ASPECT_RATIO_4_3);
 
 	if (video_width > resolution_width)
 	{
@@ -339,26 +401,16 @@ static int __cdecl SetFMVPosition_Hook(int x_position, int y_position, int resol
 	return SetFMVPosition(x_position, y_position, video_width, video_height, a5, a6, a7);
 }
 
-typedef int(__stdcall* opengl32_glTexParameterf)(int, int, float);
-opengl32_glTexParameterf original_glTexParameterf = nullptr;
-
-static int __stdcall glTexParameterf_Hook(int target, int pname, float param)
-{
-	// Check if the param is a valid mipmap filter mode
-	if (param >= 0x2700 && param <= 0x2703)
-	{
-		if (!isAnisotropyRetrieved && MaxAnisotropy == 0)
-		{
-			// Retrieve the maximum anisotropy level supported by the hardware
-			glGetFloatv(0x84FF, &MaxAnisotropy);
-			isAnisotropyRetrieved = true;
-		}
-
-		original_glTexParameterf(target, pname, param);
-		return original_glTexParameterf(target, 0x84FE, (float)MaxAnisotropy);
-	}
-	return original_glTexParameterf(target, pname, param);
-}
+/****************************************************
+ * Function: RenderShader_Hook
+ *
+ * Description:
+ *    Adjust the menu position and scaling for non-4:3
+ *    aspect ratios
+ *
+ * Used For:
+ *    FixStretchedGUI & UseConsoleTitleScreen
+ ****************************************************/
 
 typedef int(__cdecl* sub_48FC00)(float, float, float, float, float, float, float, float, int);
 sub_48FC00 RenderShader = nullptr;
@@ -379,8 +431,8 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		float scale_factor = current_height / 720.0f; // Original height of the image is 720
 
 		// Scale the width and height proportionally
-		resolution_width = 160.0f * scale_factor;  // Original width is 160
-		resolution_height = current_height;        // Match the screen height
+		resolution_width = 160.0f * scale_factor;
+		resolution_height = current_height;
 
 		// Align the image to the left edge to cover the black border precisely
 		x_position = black_border_width - resolution_width;
@@ -391,8 +443,8 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		float scale_factor = current_height / 720.0f; // Original height of the image is 720
 
 		// Scale the width and height proportionally
-		resolution_width = 160.0f * scale_factor;  // Original width is 160
-		resolution_height = current_height;        // Match the screen height
+		resolution_width = 160.0f * scale_factor;
+		resolution_height = current_height;
 
 		// Position the image to align precisely with the right black border
 		x_position = current_width - black_border_width;
@@ -408,21 +460,26 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
 
+		// Resize the mouse when needed
 		if (!isCursorResized && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
 		{
 			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
-			GameHelper::ResizePopupMessage(currentWidth, currentHeight);
+			GameHelper::ResizePopupMessage(currentWidth, currentHeight); // Does not scale well
 			isCursorResized = true;
 		}
 
+		// Once we get to the main menu
 		if (!isMainMenuShown && strstr(ShaderName, "main") != NULL)
 		{
+			// Resize the cursor if hidden for the title screen
 			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
 			isMainMenuShown = true;
 
+			// Hack: Change back to 'Escape' to enter the main menu instead of 'Enter'
 			MemoryHelper::WriteMemory<char>(0x4082C3, 0x1B, true);
 		}
 
+		// Scale the legalplate
 		if (!isMainMenuShown && strstr(ShaderName, "legalplate") != NULL)
 		{
 			if (current_width > 1280)
@@ -439,6 +496,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
 
+		// Scale the title screen
 		if (!isMainMenuShown && strcmp(ShaderName, "title_bg") == 0)
 		{
 			float image_aspect_ratio = 1280.0f / 720.0f;
@@ -479,6 +537,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
 
+		// Scale the UI
 		if (current_aspect_ratio >= ASPECT_RATIO_4_3)
 		{
 			float target_width = current_height * ASPECT_RATIO_4_3;
@@ -513,6 +572,17 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 	return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 }
 
+/****************************************************
+ * Function: SetUIBorder_Hook
+ * 
+ * Description:
+ *    Adds borders to hide the pillarbox when scaling
+ *    the menu
+ * 
+ * Used For:
+ *    FixStretchedGUI
+ ****************************************************/
+
 typedef void(__cdecl* nullsub_4)();
 nullsub_4 SetUIBorder = nullptr;
 
@@ -524,6 +594,17 @@ static void __cdecl SetUIBorder_Hook()
 	RenderShader_Hook(LEFT_BORDER_X_ID, 0, 0, 0, 0.0, 0.0, 1.0, 1.0, *(DWORD*)(border + 4));
 	RenderShader_Hook(RIGHT_BORDER_X_ID, 0, 0, 0, 1.0, 0.0, 0.0, 1.0, *(DWORD*)(border + 4));
 }
+
+/****************************************************
+ * Function: ShowDialogBoxText_Hook
+ *
+ * Description:
+ *    Adjust the vertical alignment of the text in
+ *    the dialog box for two-line messages
+ * 
+ * Used For:
+ *    FixStretchedGUI
+ ****************************************************/
 
 typedef void(__thiscall* sub_452CF0)(int);
 sub_452CF0 ShowDialogBoxText = nullptr;
@@ -539,6 +620,16 @@ static void __fastcall ShowDialogBoxText_Hook(int this_ptr, int* _ECX)
 	}
 	ShowDialogBoxText(this_ptr);
 }
+
+/****************************************************
+ * Function: GetGlyphInfo_Hook
+ *
+ * Description:
+ *    Scale the font
+ *
+ * Used For:
+ *    FixStretchedGUI
+ ****************************************************/
 
 typedef int(__thiscall* sub_4C0A10)(int, float, float, int, int, float, float, float, float, float);
 sub_4C0A10 GetGlyphInfo = nullptr;
@@ -594,6 +685,17 @@ static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_po
 	}
 }
 
+/****************************************************
+ * Function: SetAliceMirrorViewportParams_Hook
+ *
+ * Description:
+ *    Adjust the scaling and position of Alice's 3D
+ *    model in the settings menu
+ *
+ * Used For:
+ *    FixStretchedGUI
+ ****************************************************/
+
 typedef DWORD* (__cdecl* sub_4C5D30)(DWORD*, float, float, float, float, float);
 sub_4C5D30 SetAliceMirrorViewportParams = nullptr;
 
@@ -609,9 +711,6 @@ static DWORD* __cdecl SetAliceMirrorViewportParams_Hook(DWORD* a1, float param_x
 
 	float current_aspect_ratio = current_width / current_height;
 
-	float scale_x = current_width / 640.0f;
-	float scale_y = current_height / 480.0f;
-
 	if (current_aspect_ratio > ASPECT_RATIO_4_3)
 	{
 		float aspect_ratio_adjustment = ASPECT_RATIO_4_3 / current_aspect_ratio;
@@ -626,6 +725,16 @@ static DWORD* __cdecl SetAliceMirrorViewportParams_Hook(DWORD* a1, float param_x
 	return renderEntity;
 }
 
+/****************************************************
+ * Function: FS_ZipLoading_Hook
+ *
+ * Description:
+ *    Function used to open and load the pk3 files
+ *
+ * Used For:
+ *    DisableRemasteredModels
+ ****************************************************/
+
 typedef FILE(__cdecl* sub_43E030)(const char*);
 sub_43E030 FS_ZipLoading = nullptr;
 
@@ -639,6 +748,17 @@ static FILE __cdecl FS_ZipLoading_Hook(const char* FileName)
 
 	return FS_ZipLoading(FileName);
 }
+
+/****************************************************
+ * Function: QGL_Init_Hook
+ *
+ * Description:
+ *    Function used to adjust the resolution settings
+ *    before the initialization of OpenGL
+ *
+ * Used For:
+ *    CustomResolution
+ ****************************************************/
 
 typedef int(__cdecl* sub_47ABE0)(LPCSTR);
 sub_47ABE0 QGL_Init = nullptr;
@@ -665,11 +785,23 @@ static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 	return QGL_Init(lpLibFileName);
 }
 
+/****************************************************
+ * Function: lpfnWndProc_MSG_Hook
+ *
+ * Description:
+ *    Hack to force the game to exit if Alt+F4 is
+ *    pressed
+ *
+ * Used For:
+ *    EnableAltF4Close
+ ****************************************************/
+
 typedef int(__stdcall* sub_46C600)(HWND, UINT, HDC, HWND);
 sub_46C600 lpfnWndProc_MSG = nullptr;
 
 static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, HDC hdc, HWND lParam)
 {
+	// Alt+F4
 	if ((GetAsyncKeyState(VK_MENU) & 0x8000) != 0 && (GetAsyncKeyState(VK_F4) & 0x8000) != 0)
 	{
 		Msg = WM_CLOSE;
@@ -699,6 +831,7 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 		FOV = 2.0 * atan(tan(vFOV / 2.0) * current_aspect_ratio) * 180.0 / M_PI;
 	}
 
+	// New cursor size
 	if (isMainMenuShown)
 	{
 		isCursorResized = false;
@@ -758,16 +891,18 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		flag = 0x10;
 	}
 
-	if (EnhancedLOD && strcmp(var_name, "r_lodbias") == 0)
+	if (EnhancedLOD)
 	{
-		value = "-2";
-		flag = 0x10;
-	}
-
-	if (EnhancedLOD && strcmp(var_name, "r_lodCurveError") == 0)
-	{
-		value = "10000";
-		flag = 0x10;
+		if (strcmp(var_name, "r_lodbias") == 0)
+		{
+			value = "-2";
+			flag = 0x10;
+		}
+		else if (strcmp(var_name, "r_lodCurveError") == 0)
+		{
+			value = "10000";
+			flag = 0x10;
+		}
 	}
 
 	if (EnableDevConsole && strcmp(var_name, "ui_console") == 0)
@@ -779,6 +914,12 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	if (EnableVsync && strcmp(var_name, "r_swapInterval") == 0)
 	{
 		value = "1";
+		flag = 0x10;
+	}
+
+	if (ForceBorderlessFullscreen && strcmp(var_name, "r_fullscreen") == 0)
+	{
+		value = "0";
 		flag = 0x10;
 	}
 
@@ -918,6 +1059,7 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 		}
 	}
 
+	// Use the proper title screen file
 	if (UseConsoleTitleScreen && ui_path != NULL && strcmp(ui_path, "ui/title.urc") == 0)
 	{
 		if (!isUsingControllerMenu)
@@ -925,7 +1067,7 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/title.urc") + 1);
 			sprintf(ui_path, "%s/title.urc", langPrefix);
 
-			// Press Enter
+			// Hack: Use 'Enter' instead of 'Escape' for TriggerMainMenu()
 			MemoryHelper::WriteMemory<char>(0x4082C3, 0x0D, true);
 		}
 		else
@@ -935,6 +1077,7 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 		}
 	}
 
+	// Override using the menus located inside 'pak6_VorpalFix.pk3'
 	if (isUsingControllerMenu)
 	{
 		if (UsePS3ControllerIcons)
@@ -989,6 +1132,7 @@ sub_423740 AliceHeadMovementCoordinates = nullptr;
 
 static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
 {
+	// Used to check if we are in the menu
 	int isCursorShown = MemoryHelper::ReadMemory<int>(IS_CURSOR_VISIBLE, false);
 
 	// Make sure Alice is not looking at the top left of the screen
@@ -1007,13 +1151,16 @@ static int __cdecl PushMenu_Hook(const char* menu_name)
 {
 	if (FixMenuTransitionTiming && strcmp(menu_name, "newgame") == 0)
 	{
+		// Clicking too fast and one time on any difficulty won't remove the menu from the FMV, add a delay
 		MemoryHelper::WriteMemory<int>(0x12EF948, 1200, false);
 	}
 
-	if (!isTitleBgSet && strcmp(menu_name, "main") == 0)
+	// Override the main menu with the title screen
+	if (!isTitleBgSet && UseConsoleTitleScreen && strcmp(menu_name, "main") == 0)
 	{
-		isTitleBgSet = true;
+		// Hide the cursor
 		GameHelper::ResizeCursor(true, currentWidth, currentHeight);
+		isTitleBgSet = true;
 		return PushMenu("title");
 	}
 	else
@@ -1033,6 +1180,7 @@ static void __cdecl TriggerMainMenu_Hook(int a1)
 	}
 	else
 	{
+		// Hack to force the main menu, otherwise black screen
 		PushMenu_Hook("main");
 	}
 }
@@ -1048,6 +1196,7 @@ static int __cdecl IsGameStarted_Hook()
 	}
 	else
 	{
+		// Block loadgame/savegame commands on the title screen
 		return 0;
 	}
 }
@@ -1057,12 +1206,44 @@ sub_429600 PlayIntroMusic = nullptr;
 
 static void __cdecl PlayIntroMusic_Hook()
 {
+	// Restart the engine to show the menu correctly
 	if (FixProton && !isRestartedForLinux)
 	{
 		GameHelper::CallCmd("vid_restart\n", 0);
 		isRestartedForLinux = true;
 	}
 	PlayIntroMusic();
+}
+
+typedef int(__stdcall* opengl32_glTexParameterf)(int, int, float);
+opengl32_glTexParameterf original_glTexParameterf = nullptr;
+
+static int __stdcall glTexParameterf_Hook(int target, int pname, float param)
+{
+	// Check if the param is a valid mipmap filter mode
+	if (param >= 0x2700 && param <= 0x2703)
+	{
+		if (!isAnisotropyRetrieved)
+		{
+			// Retrieve the maximum anisotropy level supported by the hardware
+			float maxAnisotropy;
+			glGetFloatv(0x84FF, &maxAnisotropy);
+
+			// Check if the user's MaxAnisotropy exceeds the hardware's capability
+			if (MaxAnisotropy > maxAnisotropy)
+			{
+				// Adjust to hardware-supported level
+				MaxAnisotropy = maxAnisotropy;
+			}
+
+			isAnisotropyRetrieved = true;
+		}
+
+		original_glTexParameterf(target, pname, param);
+		return original_glTexParameterf(target, 0x84FE, (float)MaxAnisotropy);
+	}
+
+	return original_glTexParameterf(target, pname, param);
 }
 
 typedef char*(__cdecl* sub_4615F0)();
@@ -1117,7 +1298,7 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 			MemoryHelper::WriteMemoryRaw(0x0041CB4B, opCodeArray, sizeof(opCodeArray), true);
 		}
 
-		// Return the wanted file from 
+		// Return the file path
 		return pk3LocFiles[localizationFilesToLoad].c_str();
 	}
 
@@ -1202,12 +1383,12 @@ static void ApplyFixSoundRandomization()
 		0x83, 0xC4, 0x0C, 0xC3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90
 	};
 
-	MemoryHelper::WriteMemoryRaw(0x00513490, portedInstructions, sizeof(portedInstructions), true);
+	MemoryHelper::WriteMemoryRaw(CODE_CAVE_SOUND, portedInstructions, sizeof(portedInstructions), true);
 
-	MemoryHelper::MakeCALL(0x00402131, 0x005137A0, true);
-	MemoryHelper::MakeJMP(0x004348BF, 0x005137A0, true);
-	MemoryHelper::MakeJMP(0x0043491F, 0x005136B0, true);
-	MemoryHelper::MakeJMP(0x0043494F, 0x00513720, true);
+	MemoryHelper::MakeCALL(0x00402131, CODE_CAVE_SOUND + 0x310, true);
+	MemoryHelper::MakeJMP(0x004348BF, CODE_CAVE_SOUND + 0x310, true);
+	MemoryHelper::MakeJMP(0x0043491F, CODE_CAVE_SOUND + 0x220, true);
+	MemoryHelper::MakeJMP(0x0043494F, CODE_CAVE_SOUND + 0x290, true);
 }
 
 static void ApplyFixHardDiskFull()
@@ -1225,34 +1406,32 @@ static void ApplyFixBlinkingAnimationSpeed()
 	int blinkRate = 20;
 
 	// First JMP Redirect
-	MemoryHelper::MakeJMP(0x4C6367, 0x513E08, true);
+	MemoryHelper::MakeJMP(0x4C6367, CODE_CAVE_BLINK, true);
 
 	char cmpInstruction[] = { 0x81, 0xF9 };
 	char addInstruction[] = { 0x8B, 0xF0 };
 
-	MemoryHelper::WriteMemoryRaw(0x513E08, cmpInstruction, sizeof(cmpInstruction), true);
-	MemoryHelper::WriteMemory<int>(0x513E0A, 100 * CustomFPSLimit / blinkRate, true);
-	MemoryHelper::WriteMemoryRaw(0x513E0E, addInstruction, sizeof(addInstruction), true);
+	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK, cmpInstruction, sizeof(cmpInstruction), true);
+	MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x2, 100 * CustomFPSLimit / blinkRate, true);
+	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK + 0x6, addInstruction, sizeof(addInstruction), true);
 
 	// Back to the function
-	MemoryHelper::MakeJMP(0x513E10, 0x4C636C, true);
+	MemoryHelper::MakeJMP(CODE_CAVE_BLINK + 0x8, 0x4C636C, true);
 
 	// Second JMP Redirect
-	MemoryHelper::MakeJMP(0x4C638D, 0x513E20, true);
+	MemoryHelper::MakeJMP(0x4C638D, CODE_CAVE_BLINK + 0x18, true);
 
 	char imulInstruction[] = { 0x69, 0xC0 };
-	//char subInstruction[] = { 0x2B, 0xC8 };
 
-	MemoryHelper::WriteMemoryRaw(0x513E20, imulInstruction, sizeof(imulInstruction), true);
-	MemoryHelper::WriteMemory<int>(0x513E22, 100 * CustomFPSLimit / blinkRate, true);
-	//MemoryHelper::WriteMemoryRaw(0x513E26, subInstruction, sizeof(subInstruction), true); // ???
-	MemoryHelper::MakeNOP(0x513E26, 2, true);
+	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK + 0x18, imulInstruction, sizeof(imulInstruction), true);
+	MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x1A, 100 * CustomFPSLimit / blinkRate, true);
+	MemoryHelper::MakeNOP(CODE_CAVE_BLINK + 0x1E, 2, true);
 
-	MemoryHelper::WriteMemoryRaw(0x513E28, cmpInstruction, sizeof(cmpInstruction), true);
-	MemoryHelper::WriteMemory<int>(0x513E2A, 4 * CustomFPSLimit / 60, true);
+	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK + 0x20, cmpInstruction, sizeof(cmpInstruction), true);
+	MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x22, 4 * CustomFPSLimit / 60, true);
 
 	// Back to the function
-	MemoryHelper::MakeJMP(0x513E2E, 0x4C6395, true);
+	MemoryHelper::MakeJMP(CODE_CAVE_BLINK + 0x26, 0x4C6395, true);
 }
 
 static void ApplyFixStretchedHUD()
@@ -1286,52 +1465,55 @@ static void ApplyFixStretchedGUI()
 	MemoryHelper::MakeNOP(0x4D2AB1, 7, true); // dark rectangle when reassigning a control
 }
 
-typedef HRESULT(WINAPI* SetProcessDpiAwarenessProc)(PROCESS_DPI_AWARENESS);
-typedef BOOL(WINAPI* SetProcessDpiAwarenessContextProc)(DPI_AWARENESS_CONTEXT);
-
 static void ApplyFixDPIScaling()
 {
 	if (!FixDPIScaling) return;
 
+	HMODULE library = nullptr;
+
 	if (IsWindows10OrGreater())
 	{
-		HMODULE user32 = LoadLibrary(L"user32.dll");
-		if (user32)
+		library = LoadLibrary(L"user32.dll");
+		if (library)
 		{
-			auto setDpiAwarenessContext = (SetProcessDpiAwarenessContextProc)GetProcAddress(user32, "SetProcessDpiAwarenessContext");
+			typedef BOOL(WINAPI* SetProcessDpiAwarenessContextProc)(DPI_AWARENESS_CONTEXT);
+			auto setDpiAwarenessContext = (SetProcessDpiAwarenessContextProc)GetProcAddress(library, "SetProcessDpiAwarenessContext");
 			if (setDpiAwarenessContext)
 			{
 				setDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 			}
-			FreeLibrary(user32);
 		}
 	}
 	else if (IsWindows8Point1OrGreater())
 	{
-		HMODULE shcore = LoadLibrary(L"shcore.dll");
-		if (shcore)
+		library = LoadLibrary(L"shcore.dll");
+		if (library)
 		{
-			auto setDpiAwareness = (SetProcessDpiAwarenessProc)GetProcAddress(shcore, "SetProcessDpiAwareness");
+			typedef HRESULT(WINAPI* SetProcessDpiAwarenessProc)(PROCESS_DPI_AWARENESS);
+			auto setDpiAwareness = (SetProcessDpiAwarenessProc)GetProcAddress(library, "SetProcessDpiAwareness");
 			if (setDpiAwareness)
 			{
 				setDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 			}
-			FreeLibrary(shcore);
 		}
 	}
 	else if (IsWindows7OrGreater())
 	{
-		HMODULE user32 = LoadLibrary(L"user32.dll");
-		if (user32)
+		library = LoadLibrary(L"user32.dll");
+		if (library)
 		{
 			typedef BOOL(WINAPI* SetProcessDPIAwareProc)();
-			auto setProcessDPIAware = (SetProcessDPIAwareProc)GetProcAddress(user32, "SetProcessDPIAware");
+			auto setProcessDPIAware = (SetProcessDPIAwareProc)GetProcAddress(library, "SetProcessDPIAware");
 			if (setProcessDPIAware)
 			{
 				setProcessDPIAware();
 			}
-			FreeLibrary(user32);
 		}
+	}
+
+	if (library)
+	{
+		FreeLibrary(library);
 	}
 }
 
@@ -1339,6 +1521,9 @@ static void ApplyFixMenuTransitionTiming()
 {
 	if (!FixMenuTransitionTiming) return;
 
+	HookHelper::ApplyHook((void*)0x44C1B0, &PushMenu_Hook, reinterpret_cast<LPVOID*>(&PushMenu));
+
+	// Increase the time allowed to skip the intro so that the game can load properly
 	MemoryHelper::WriteMemory<int>(0x4082FC, 0x3200, true);
 }
 
@@ -1360,14 +1545,14 @@ static void ApplyLaunchWithoutAlice2()
 {
 	if (!LaunchWithoutAlice2) return;
 
-	MemoryHelper::WriteMemory<int>(0x526A84, 0x00, true);
+	MemoryHelper::MakeNOP(0x46560A, 8, true);
 }
 
 static void ApplyPreventAlice2OnExit()
 {
 	if (!PreventAlice2OnExit) return;
 
-	MemoryHelper::MakeNOP(0x4642F0, 5, true);
+	MemoryHelper::WriteMemory<int>(0x559A08, 0, false);
 }
 
 static void ApplyLanguageId()
@@ -1379,8 +1564,13 @@ static void ApplyUseConsoleTitleScreen()
 {
 	if (!UseConsoleTitleScreen) return;
 
+	// Already hooked if 'FixMenuTransitionTiming' is used
+	if (!FixMenuTransitionTiming)
+	{
+		HookHelper::ApplyHook((void*)0x44C1B0, &PushMenu_Hook, reinterpret_cast<LPVOID*>(&PushMenu));
+	}
+
 	HookHelper::ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, reinterpret_cast<LPVOID*>(&LoadUI));
-	HookHelper::ApplyHook((void*)0x44C1B0, &PushMenu_Hook, reinterpret_cast<LPVOID*>(&PushMenu));
 	HookHelper::ApplyHook((void*)0x44C4F0, &TriggerMainMenu_Hook, reinterpret_cast<LPVOID*>(&TriggerMainMenu));
 	HookHelper::ApplyHook((void*)0x449DF0, &IsGameStarted_Hook, reinterpret_cast<LPVOID*>(&IsGameStarted));
 }
@@ -1431,10 +1621,10 @@ static void ApplyUseOriginalIntroVideos()
 		0x72, 0x6F, 0x71, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	};
 
-	MemoryHelper::WriteMemoryRaw(0x00513B90, portedIntroData, sizeof(portedIntroData), true);
+	MemoryHelper::WriteMemoryRaw(CODE_CAVE_INTRO, portedIntroData, sizeof(portedIntroData), true);
 
-	MemoryHelper::MakeJMP(0x0044D91F, 0x00513B90, true);
-	MemoryHelper::WriteMemory(0x0044E409, 0x00513B90, true);
+	MemoryHelper::MakeJMP(0x0044D91F, CODE_CAVE_INTRO, true);
+	MemoryHelper::WriteMemory(0x0044E409, CODE_CAVE_INTRO, true);
 }
 
 static void ApplyDisable8BitAudioAsDefault()
@@ -1459,6 +1649,8 @@ static void ApplyEnableDevConsole()
 	int toggleConsoleKeyId = GameHelper::GetKeyId(ToggleConsoleBindKey);
 
 	char cmpInstruction[] = { 0x81, 0xFF };
+
+	// cmp toggleConsoleKeyId instead of cmp 0x60 and cmp 0x7E
 	MemoryHelper::WriteMemoryRaw(0x40823A, cmpInstruction, sizeof(cmpInstruction), true);
 	MemoryHelper::WriteMemory<int>(0x40823C, toggleConsoleKeyId, true);
 	MemoryHelper::MakeNOP(0x408240, 6, true);
@@ -1475,6 +1667,7 @@ static void ApplyEnableControllerIcons()
 {
 	if (!EnableControllerIcons) return;
 
+	// Already hooked if 'UseConsoleTitleScreen' is used
 	if (!UseConsoleTitleScreen)
 	{
 		HookHelper::ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, reinterpret_cast<LPVOID*>(&LoadUI));
@@ -1487,6 +1680,7 @@ static void ApplyHideConsoleAtLaunch()
 {
 	if (!HideConsoleAtLaunch) return;
 
+	// ShowWindow(hWndParent, 10) -> ShowWindow(hWndParent, 0)
 	MemoryHelper::WriteMemory<char>(0x46C28F, 0x00, true);
 }
 
@@ -1520,7 +1714,7 @@ static void ApplyEnableAltF4Close()
 
 static void ApplyAnisotropicTextureFiltering()
 {
-	if (!AnisotropicTextureFiltering) return;
+	if (MaxAnisotropy == 0) return;
 
 	HMODULE openglLibrary = LoadLibraryA("opengl32");
 
