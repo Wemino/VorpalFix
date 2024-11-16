@@ -187,18 +187,18 @@ AutoScroll
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Carole Celle"
 	addline			" " 
-	
+
 	addline			"Translation Coordinator"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Clare Parkes"
 	addline			"Rebecca Gordon"
-	addline			" " 
-	
+	addline			" "
+
 	addline			"Language Testing Project Manager"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Sylvain Caburrosso"
-	addline			" " 
-	
+	addline			" "
+
 	addline			"Localization Testing"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Colin Clarke"
@@ -448,7 +448,7 @@ AutoScroll
 	addline			"Karen 'Scout' Sparks"
 	addline			"Marlena Troncoso"
 	addline			" " 
-	
+
 	addline			"Dog"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Spike"
@@ -511,7 +511,7 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	shader			"circle_button_ps3"	
+	shader			"b_button_xbox"	
 	allowactivate	false
 	direction		from_point 0.5 250 0
 	groupid			"group_page1"

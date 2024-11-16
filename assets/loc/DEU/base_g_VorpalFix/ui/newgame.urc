@@ -126,85 +126,25 @@ Button
 	hoversound		sound/ui/loadsave_h.wav
 	clicksound		sound/ui/loadsave_c.wav
 }
-// Button Callouts: 
-resource
-Button
-{
-	title			"Wechseln"
-	name			"Default"
-	rect			200 400 115 35
-	fgcolor			0.199 0.043 0.043 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			ui/buttons/plaque
-	hovershader		ui/buttons/plaque_hover
-	font			"asrafel"
-	fontjustify		center center
-	fontpos			35 8
-} 
-resource
-Button
-{
-	name			"Default"
-	rect			205 405 24 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			"dpad_ps3"	
-	allowactivate	false
-}
-resource
-Button
-{
-	title			"Auswählen"
-	name			"Default"
-	rect			50 400 130 35
-	fgcolor			0.199 0.043 0.043 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			ui/buttons/plaque
-	hovershader		ui/buttons/plaque_hover
-	font			"asrafel"
-	fontjustify		center center
-	fontpos			35 8
-} 
-resource
-Button
-{
-	name			"Default"
-	rect			55 405 24 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			"cross_button_ps3"	
-	allowactivate	false
-}
+
 // RETURN BUTTON
 resource
 Button
 {
 	title			"Zurück"
 	name			"Default"
-	rect			350 400 100 35
+	rect			0 455 75 25
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	shader			ui/buttons/plaque
-	hovershader		ui/buttons/plaque_hover
+	shader			ui/buttons/tab
+	hovershader		ui/buttons/tab_hover
+	stuffcommand	"popmenu"
 	font			"asrafel"
 	fontjustify		center center
-	fontpos			35 8
-	stuffcommand	"popmenu"
-} 
-resource
-Button
-{
-	name			"Default"
-	rect			355 405 24 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			"circle_button_ps3"	
-	allowactivate	false
+	fontpos			25 5
+	fontscale		0.8
+	direction		from_bottom 0.5
 }
+
 end.

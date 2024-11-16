@@ -5,7 +5,7 @@ borderstyle NONE
 bgfill 0 0 0 1
 fullscreen 1
 //fadein 0.5
-//vidmode 3 
+//vidmode 3
 
 //include "ui/common.inc"
 
@@ -13,8 +13,8 @@ showcommand		"widgetcommand LoadSaveList resetpage\n"
 showcommand		"widgetcommand LoadSaveList CheckErrorState\n"
 showcommand		"widgetcommand LoadSaveList disablegroup delete_group\n"
 showcommand		"widgetcommand LoadSaveList enablegroup bigshot_group\n"
-
-
+showcommand		"widgetcommand bigcover_left resetmotion out\n"
+showcommand		"widgetcommand bigcover_right resetmotion out\n"
 hidecommand		"widgetcommand MsgBackground disable; widgetcommand DiskFull disable\n"
 
 // List
@@ -63,6 +63,38 @@ Label
 	borderstyle		"NONE"
 	fadein			1.0
 	inversealpha
+}
+resource
+Label
+{
+	name			"bigcover_left"
+	rect			381 149 131 166
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	shader			ui/load/cover_left.tga
+//	staticshader	18 ui/load/lenscap
+	borderstyle		"NONE"
+	groupid			"bigshot_group"
+	disable
+	direction		from_point 0.180 -190 0
+	waitcommand		"widgetcommand bigcover_left resetmotion in" 0
+	waitcommand		"widgetcommand bigcover_left resetmotion out" 500
+}
+resource
+Label
+{
+	name			"bigcover_right"
+	rect			448 143 143 166
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	shader			ui/load/cover_right.tga
+//	staticshader	18 ui/load/lenscap
+	borderstyle		"NONE"
+	groupid			"bigshot_group"
+	disable
+	direction		from_point 0.180 190 0
+	waitcommand		"widgetcommand bigcover_right resetmotion in" 0
+	waitcommand		"widgetcommand bigcover_right resetmotion out" 500
 }
 
 // LOAD SHOTS
@@ -222,7 +254,7 @@ Label
 	borderstyle		"NONE"
 	staticshader	5 ui/load/loadF
 	allowactivate	false
-} 
+}
 
 // 1st
 resource
@@ -251,8 +283,8 @@ Button
 	borderstyle		"NONE"
 	groupid			"lsd_group"
 	clicksound		"sound/ui/projector_long.wav"
-	
-
+	waitcommand		"widgetcommand bigcover_left triggerwait" 0
+	waitcommand		"widgetcommand bigcover_right triggerwait" 0
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 1" 350
 	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
@@ -285,8 +317,8 @@ Button
 	borderstyle		"NONE"
 	groupid			"lsd_group"
 	clicksound		"sound/ui/projector_long.wav"
-	
-
+	waitcommand		"widgetcommand bigcover_left triggerwait" 0
+	waitcommand		"widgetcommand bigcover_right triggerwait" 0
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 2" 350
 	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
@@ -319,8 +351,8 @@ Button
 	borderstyle		"NONE"
 	groupid			"lsd_group"
 	clicksound		"sound/ui/projector_long.wav"
-	
-
+	waitcommand		"widgetcommand bigcover_left triggerwait" 0
+	waitcommand		"widgetcommand bigcover_right triggerwait" 0
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 3" 350
 	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
@@ -353,8 +385,8 @@ Button
 	borderstyle		"NONE"
 	groupid			"lsd_group"
 	clicksound		"sound/ui/projector_long.wav"
-	
-
+	waitcommand		"widgetcommand bigcover_left triggerwait" 0
+	waitcommand		"widgetcommand bigcover_right triggerwait" 0
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 4" 350
 	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
@@ -387,8 +419,8 @@ Button
 	borderstyle		"NONE"
 	groupid			"lsd_group"
 	clicksound		"sound/ui/projector_long.wav"
-	
-
+	waitcommand		"widgetcommand bigcover_left triggerwait" 0
+	waitcommand		"widgetcommand bigcover_right triggerwait" 0
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 5" 350
 	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
@@ -421,8 +453,8 @@ Button
 	borderstyle		"NONE"
 	groupid			"lsd_group"
 	clicksound		"sound/ui/projector_long.wav"
-	
-
+	waitcommand		"widgetcommand bigcover_left triggerwait" 0
+	waitcommand		"widgetcommand bigcover_right triggerwait" 0
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 6" 350
 	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
@@ -432,87 +464,96 @@ Button
 resource
 Button
 {
-	title			"Load"
 	name			"LoadingButton"
-	rect			300 400 100 35
-	fgcolor			0.199 0.043 0.043 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			ui/buttons/plaque
-	hovershader		ui/buttons/plaque_hover
-	font			"asrafel"
-	fontjustify		center center
-	fontscale		0.8
-	fontpos			35 8
-} 
-resource
-Button
-{
-	name			"Default"
-	rect			305 405 24 24
+	rect			369 389 64 64
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
+	shader			ui/load/pushbtn_large
+	hovershader		ui/loadgame/pushbtn_large_lit
+	stuffcommand	"widgetcommand LoadSaveList disablegroup delete_group; widgetcommand LoadSaveList loadgame\n"
+	mouseEnterCmd	"widgetcommand DateTime title Cargar"
 	borderstyle		"NONE"
-	shader			"a_button_xbox"	
-	allowactivate	false
+	hoversound		"sound/ui/hover_3.wav"
+	clicksound		"sound/ui/click_4.wav"
+	groupid			"lsd_group"
 }
 
 // SAVE BUTTON
 resource
 Button
 {
-	title			"Save"
 	name			"SaveButton"
-	rect			400 400 100 35
-	fgcolor			0.199 0.043 0.043 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			ui/buttons/plaque
-	hovershader		ui/buttons/plaque_hover
-	font			"asrafel"
-	fontjustify		center center
-	fontscale		0.8
-	fontpos			35 8
-} 
-resource
-Button
-{
-	name			"Default"
-	rect			405 405 24 24
+	rect			465 386 64 64
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
+	shader			ui/load/pushbtn_large
+	hovershader		ui/loadgame/pushbtn_large_lit
+	stuffcommand	"widgetcommand LoadSaveList disablegroup delete_group; widgetcommand LoadSaveList savegame\n"
+	mouseEnterCmd	"widgetcommand DateTime title Guardar"
 	borderstyle		"NONE"
-	shader			"x_button_xbox"	
-	allowactivate	false
+	hoversound		"sound/ui/hover_3.wav"
+	clicksound		"sound/ui/click_4.wav"
+	groupid			"lsd_group"
 }
 
 // DELETE BUTTON
 resource
 Button
 {
-	title			"Delete"
 	name			"DeleteButton"
-	rect			500 400 100 35
-	fgcolor			0.199 0.043 0.043 1.00
+	rect			561 382 64 64
+	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
+	shader			ui/load/pushbtn_large
+	hovershader		ui/loadgame/pushbtn_large_lit
+//	stuffcommand	"widgetcommand LoadSaveList removegame"
+	stuffcommand	"widgetcommand LoadSaveList enablegroup delete_group\n"
+	mouseEnterCmd	"widgetcommand DateTime title Borrar"
 	borderstyle		"NONE"
-	shader			ui/buttons/plaque
-	hovershader		ui/buttons/plaque_hover
-	font			"asrafel"
-	fontjustify		center center
-	fontscale		0.8
-	fontpos			35 8
-} 
+	hoversound		"sound/ui/hover_3.wav"
+	clicksound		"sound/ui/click_4.wav"
+	groupid			"lsd_group"
+}
+
 resource
 Button
 {
-	name			"Default"
-	rect			505 405 24 24
+	name			"PrevButton"
+	rect			140 430 22 22
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
+	shader			ui/load/pushbtn_med
+	hovershader		ui/loadgame/pushbtn_med_lit
 	borderstyle		"NONE"
-	shader			"y_button_xbox"	
-	allowactivate	false
+	groupid			"lsd_group"
+	hoversound		"sound/ui/hover_3.wav"
+	stuffcommand	"widgetcommand PrevButton triggerwait\n"
+	clicksound		"sound/ui/projector_long.wav"
+	waitcommand		"widgetcommand bigcover_left triggerwait" 0
+	waitcommand		"widgetcommand bigcover_right triggerwait" 0
+	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
+	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
+	waitcommand		"widgetcommand LoadSaveList prevpage" 350
+}
+resource
+Button
+{
+	name			"NextButton"
+	rect			162 429 22 22
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	shader			ui/load/pushbtn_med
+	hovershader		ui/loadgame/pushbtn_med_lit
+	borderstyle		"NONE"
+	groupid			"lsd_group"
+	hoversound		"sound/ui/hover_3.wav"
+	stuffcommand	"widgetcommand NextButton triggerwait\n"
+	clicksound		"sound/ui/projector_long.wav"
+	waitcommand		"widgetcommand bigcover_left triggerwait" 0
+	waitcommand		"widgetcommand bigcover_right triggerwait" 0
+	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
+	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
+	waitcommand		"widgetcommand LoadSaveList nextpage" 350
 }
 
 resource
@@ -529,7 +570,7 @@ Label
 	fontangle		2.1
 	fontspacing		1
 	fontscale		0.85
-} 
+}
 
 resource
 Label
@@ -558,6 +599,7 @@ Label
 	shader			ui/load/deletetext
 	groupid			"delete_group"
 	disable
+	fadein			0.5
 }
 resource
 Button
@@ -582,46 +624,38 @@ Button
 	groupid			"delete_group"
 	disable
 	stuffcommand	"widgetcommand LoadSaveList disablegroup delete_group\n"
-} 
+}
 
 resource
 Label
 {
 	name			"DiskFull"
-	rect			358 197 256 64
+	rect			358 165 256 128
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
 	shader			ui/load/disk_full
 	disable
-} 
+}
 
 // RETURN BUTTON
 resource
 Button
 {
-	title			"Back"
+	title			"Volver"
 	name			"Default"
-	rect			500 355 100 35
+	rect			0 455 75 25
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	shader			ui/buttons/plaque
-	hovershader		ui/buttons/plaque_hover
+	shader			ui/buttons/tab
+	hovershader		ui/buttons/tab_hover
+	stuffcommand	"popmenu"
 	font			"asrafel"
 	fontjustify		center center
-	fontpos			35 8
-	stuffcommand	"popmenu"
-} 
-resource
-Button
-{
-	name			"Default"
-	rect			505 360 24 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			"b_button_xbox"	
-	allowactivate	false
+	fontpos			25 5
+	fontscale		0.8
+	direction		from_bottom 0.5
 }
+
 end.
