@@ -206,7 +206,7 @@ static void ReadConfig()
 	setAlice2Path = strcmp(Alice2Path, ALICE2_DEFAULT_PATH) != 0;
 
 	// Hook CvarSet only if necessary
-	CvarHooking = FixFullscreenSetting || AutoResolution || EnableDevConsole || EnableVsync || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60) || setAlice2Path;
+	CvarHooking = FixFullscreenSetting || AutoResolution || EnableDevConsole || EnableVsync || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60) || setAlice2Path || ForceBorderlessFullscreen;
 }
 
 #pragma region
@@ -789,26 +789,38 @@ static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
  * Function: lpfnWndProc_MSG_Hook
  *
  * Description:
- *    Hack to force the game to exit if Alt+F4 is
- *    pressed
+ *    Force the game to exit if Alt+F4 is pressed
  *
  * Used For:
  *    EnableAltF4Close
  ****************************************************/
 
-typedef int(__stdcall* sub_46C600)(HWND, UINT, HDC, HWND);
+typedef int(__stdcall* sub_46C600)(HWND, UINT, int, LPARAM);
 sub_46C600 lpfnWndProc_MSG = nullptr;
 
-static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, HDC hdc, HWND lParam)
+static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, int wParam, LPARAM lParam)
 {
 	// Alt+F4
-	if ((GetAsyncKeyState(VK_MENU) & 0x8000) != 0 && (GetAsyncKeyState(VK_F4) & 0x8000) != 0)
+	if (Msg == WM_SYSKEYDOWN && wParam == VK_F4 && (GetAsyncKeyState(VK_MENU) & 0x8000))
 	{
 		Msg = WM_CLOSE;
 	}
 
-	return lpfnWndProc_MSG(hWnd, Msg, hdc, lParam);
+	return lpfnWndProc_MSG(hWnd, Msg, wParam, lParam);
 }
+
+/****************************************************
+ * Function: GLW_CreatePFD_Hook
+ *
+ * Description:
+ *    Hooks into the resolution update process to
+ *    manage related variable adjustments, including
+ *    FOV value and correcting the screenshot buffer 
+ *    size to ensure it's a multiple of 4
+ *
+ * Used For:
+ *    FixSaveScreenshotBufferOverflow & FixStretchedGUI & AutoFOV
+ ****************************************************/
 
 typedef int(__cdecl* sub_46FC70)(void*, unsigned __int8, char, unsigned __int8, int);
 sub_46FC70 GLW_CreatePFD = nullptr;
@@ -865,6 +877,18 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 	return GLW_CreatePFD(pPFD, colorbits, depthbits, stencilbits, stereo);
 }
 
+/****************************************************
+ * Function: UpdateFOV
+ *
+ * Description:
+ *    Updates the Field of View (FOV) from the snapshot
+ *    received from the server. If the FOV needs to be
+ *    changed, it is updated accordingly
+ *
+ * Used For:
+ *    AutoFOV & FOV
+ ****************************************************/
+
 typedef void(__cdecl* sub_420390)(DWORD*, int, int*);
 sub_420390 MSG_DoStuff = nullptr;
 
@@ -879,6 +903,21 @@ static void __cdecl UpdateFOV(DWORD* a1, int a2, int* a3)
 
 	MSG_DoStuff(a1, a2, a3);
 }
+
+/****************************************************
+ * Function: Cvar_Set_Hook
+ *
+ * Description:
+ *    Intercepts and updates cvars, enforcing read-only 
+ *    status by setting flag to 0x10
+ * 
+ * Used For:
+ *    FixFullscreenSetting & AutoResolution & 
+ *    EnableDevConsole & EnableVsync & 
+ *    TrilinearTextureFiltering & EnhancedLOD & 
+ *    CustomFPSLimit & Alice2Path &
+ *    ForceBorderlessFullscreen
+ ****************************************************/
 
 typedef int(__cdecl* sub_419910)(const char*, const char*, int);
 sub_419910 Cvar_Set = nullptr;
@@ -985,6 +1024,17 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	return Cvar_Set(var_name, value, flag);
 }
 
+/****************************************************
+ * Function: LoadGameDLL_Hook
+ *
+ * Description:
+ *    Used to patch "fgamex86.dll" immediately after 
+ *    it is loaded into memory
+ *
+ * Used For:
+ *    DisableLetterbox
+ ****************************************************/
+
 typedef int(__cdecl* sub_42CFF0)();
 sub_42CFF0 LoadGameDLL = nullptr;
 
@@ -1009,6 +1059,17 @@ static int __cdecl LoadGameDLL_Hook()
 	return result;
 }
 
+/****************************************************
+ * Function: CreateWindowExA_Hook
+ *
+ * Description:
+ *    Used to force borderless fullscreen when the
+ *    main window is initialized
+ *
+ * Used For:
+ *    ForceBorderlessFullscreen
+ ****************************************************/
+
 typedef HWND(WINAPI* CreateWindowExA_t)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
 CreateWindowExA_t fpCreateWindowExA = NULL;
 
@@ -1030,6 +1091,17 @@ static HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 
 	return fpCreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
 }
+
+/****************************************************
+ * Function: LoadUI_Hook
+ *
+ * Description:
+ *    Load the menu files from 'pak6_VorpalFix.pk3'
+ *    when required
+ *
+ * Used For:
+ *    UseConsoleTitleScreen & EnableControllerIcons
+ ****************************************************/
 
 typedef DWORD(__thiscall* sub_4C1AC0)(DWORD*, char*);
 sub_4C1AC0 LoadUI = nullptr;
@@ -1144,6 +1216,16 @@ static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
 	return AliceHeadMovementCoordinates(a1, a2);
 }
 
+/****************************************************
+ * Function: PushMenu_Hook
+ *
+ * Description:
+ *    Hook of the "pushmenu" command
+ *
+ * Used For:
+ *    UseConsoleTitleScreen & FixMenuTransitionTiming
+ ****************************************************/
+
 typedef int(__cdecl* sub_44C1B0)(const char*);
 sub_44C1B0 PushMenu = nullptr;
 
@@ -1169,6 +1251,17 @@ static int __cdecl PushMenu_Hook(const char* menu_name)
 	}
 }
 
+/****************************************************
+ * Function: TriggerMainMenu_Hook
+ *
+ * Description:
+ *    Hook of the function used to trigger the main
+ *    menu when 'Escape' is pressed
+ *
+ * Used For:
+ *    UseConsoleTitleScreen
+ ****************************************************/
+
 typedef void(__cdecl* sub_44C4F0)(int);
 sub_44C4F0 TriggerMainMenu = nullptr;
 
@@ -1180,10 +1273,22 @@ static void __cdecl TriggerMainMenu_Hook(int a1)
 	}
 	else
 	{
-		// Hack to force the main menu, otherwise black screen
+		// Hack to force the main menu when on the title screen, otherwise black screen
 		PushMenu_Hook("main");
 	}
 }
+
+/****************************************************
+ * Function: IsGameStarted_Hook
+ *
+ * Description:
+ *    Hook of the function used by the "loadgame" and
+ *    "savegame" commands, to determine if those can
+ *    be used
+ *
+ * Used For:
+ *    UseConsoleTitleScreen
+ ****************************************************/
 
 typedef int(__cdecl* sub_449DF0)();
 sub_449DF0 IsGameStarted = nullptr;
@@ -1201,6 +1306,17 @@ static int __cdecl IsGameStarted_Hook()
 	}
 }
 
+/****************************************************
+ * Function: PlayIntroMusic_Hook
+ *
+ * Description:
+ *    Hook of the function used to play the music of
+ *    the main menu
+ *
+ * Used For:
+ *    FixProton
+ ****************************************************/
+
 typedef void(__cdecl* sub_429600)();
 sub_429600 PlayIntroMusic = nullptr;
 
@@ -1214,6 +1330,16 @@ static void __cdecl PlayIntroMusic_Hook()
 	}
 	PlayIntroMusic();
 }
+
+/****************************************************
+ * Function: glTexParameterf_Hook
+ *
+ * Description:
+ *    Hook of 'glTexParameterf' from OpenGL
+ *
+ * Used For:
+ *    MaxAnisotropy
+ ****************************************************/
 
 typedef int(__stdcall* opengl32_glTexParameterf)(int, int, float);
 opengl32_glTexParameterf original_glTexParameterf = nullptr;
@@ -1245,6 +1371,17 @@ static int __stdcall glTexParameterf_Hook(int target, int pname, float param)
 
 	return original_glTexParameterf(target, pname, param);
 }
+
+/****************************************************
+ * Function: LoadLocalizationFile_Hook
+ *
+ * Description:
+ *    Hook of the function used to load the localization
+ *    files inside "base/loc/"
+ *
+ * Used For:
+ *    FixLocalizationFiles
+ ****************************************************/
 
 typedef char*(__cdecl* sub_4615F0)();
 sub_4615F0 LoadLocalizationFile = nullptr;
