@@ -72,7 +72,7 @@ resource
 Button
 {
 	name			"easy"
-	rect			198 78 256 64
+	rect			257 75 128 64
 	fgcolor			0.00 0.00 0.00 1.00
 	bgcolor			1.00 1.00 1.00 0.00
 	borderstyle		"NONE"
@@ -86,7 +86,7 @@ resource
 Button
 {
 	name			"medium"
-	rect			198 153 256 64
+	rect			257 145 128 64
 	fgcolor			0.00 0.00 0.00 1.00
 	bgcolor			1.00 1.00 1.00 0.00
 	borderstyle		"NONE"
@@ -101,7 +101,7 @@ resource
 Button
 {
 	name			"hard"
-	rect			198 225 256 64
+	rect			257 223 128 64
 	fgcolor			0.00 0.00 0.00 1.00
 	bgcolor			1.00 1.00 1.00 0.00
 	borderstyle		"NONE"
@@ -116,7 +116,7 @@ resource
 Button
 {
 	name			"nightmare"
-	rect			198 298 256 64
+	rect			198 300 256 64
 	fgcolor			0.00 0.00 0.00 1.00
 	bgcolor			1.00 1.00 1.00 0.00
 	borderstyle		"NONE"
@@ -130,9 +130,9 @@ Button
 resource
 Button
 {
-	title			"Wechseln"
+	title			"Cambiar"
 	name			"Default"
-	rect			200 400 115 35
+	rect			200 400 100 35
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -150,13 +150,13 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	shader			"dpad_ps3"	
+	shader			"dpad_xbox"	
 	allowactivate	false
 }
 resource
 Button
 {
-	title			"Auswählen"
+	title			"Seleccionar"
 	name			"Default"
 	rect			50 400 130 35
 	fgcolor			0.199 0.043 0.043 1.00
@@ -176,14 +176,14 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	shader			"cross_button_ps3"	
+	shader			"a_button_xbox"	
 	allowactivate	false
 }
 // RETURN BUTTON
 resource
 Button
 {
-	title			"Zurück"
+	title			"Atrás"
 	name			"Default"
 	rect			350 400 100 35
 	fgcolor			0.199 0.043 0.043 1.00
@@ -204,7 +204,7 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	shader			"circle_button_ps3"	
+	shader			"b_button_xbox"	
 	allowactivate	false
 }
 end.

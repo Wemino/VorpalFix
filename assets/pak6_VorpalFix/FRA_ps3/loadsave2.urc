@@ -53,6 +53,17 @@ Label
 	borderstyle		"NONE"
 	groupid			"bigshot_group"
 }
+resource
+Label
+{
+	name			"bigcover_black"
+	rect			358 101 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 1.00
+	borderstyle		"NONE"
+	fadein			1.0
+	inversealpha
+}
 
 // LOAD SHOTS
 resource
@@ -244,7 +255,7 @@ Button
 
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 1" 350
-
+	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
 }
 
 // 2st
@@ -278,7 +289,7 @@ Button
 
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 2" 350
-
+	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
 }
 
 // 3rd
@@ -312,7 +323,7 @@ Button
 
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 3" 350
-
+	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
 }
 
 // 4th
@@ -346,7 +357,7 @@ Button
 
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 4" 350
-
+	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
 }
 
 // 5th
@@ -380,7 +391,7 @@ Button
 
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 5" 350
-
+	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
 }
 
 // 6th
@@ -414,7 +425,7 @@ Button
 
 	waitcommand		"widgetcommand LoadSaveList disablegroup delete_group" 0
 	waitcommand		"widgetcommand LoadSaveList selecttab 6" 350
-
+	waitcommand		"widgetcommand bigcover_black resetmotion in" 350
 }
 
 // LOAD BUTTONS
@@ -517,7 +528,7 @@ Label
 	fontjustify		left center
 	fontangle		2.1
 	fontspacing		1
-	fontscale		0.8
+	fontscale		0.85
 }
 
 resource

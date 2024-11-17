@@ -528,7 +528,7 @@ Label
 	fontjustify		left center
 	fontangle		2.1
 	fontspacing		1
-	fontscale		0.8
+	fontscale		0.85
 } 
 
 resource

@@ -3,11 +3,11 @@ fadeoverlay 0.5
 bgcolor 0 0 0 1
 borderstyle NONE
 bgfill 0 0 0 1
-fullscreen 1 
+fullscreen 1
 
 showcommand "widgetcommand page2 activategroup group_page1\n"
 showcommand "widgetcommand Rogue_Glow enable\n"
-showcommand "widgetcommand EA_Glow enable\n"
+showcommand "widgetcommand EA_Glow hide\n"
 showcommand	"widgetcommand title1 resetscroll\n"
 
 //waitcommand "widgetcommand page1 activategroup group_page2" 7000
@@ -52,7 +52,7 @@ Label
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
 	staticshader	3 ui/credits/creditsE
-} 
+}
 
 // PAGE
 resource
@@ -99,7 +99,7 @@ Label
 	borderstyle		"NONE"
 	staticshader	11 ui/credits/pageD
 	direction		from_point 0.5 250 0
-} 
+}
 
 // --------------------------------
 // PAGE1
@@ -109,7 +109,7 @@ AutoScroll
 {
 	title			"AutoScroll1"
 	name			"title1"
-	rect			30 95 246 280
+	rect			30 95 246 275
 	fgcolor			0.00 0.00 0.00 1.00
 	bgcolor			1.00 1.00 1.00 0.00
 	borderstyle		"NONE"
@@ -119,15 +119,15 @@ AutoScroll
 	fontspacing		0 -8
 	fontscale		0.90
 	direction		from_point 0.5 250 0
-	groupid			"group_page1" 
-	
-	scrollspeed		1.2 
-	
-	forcescissor 
-	
+	groupid			"group_page1"
+
+	scrollspeed		1.2
+
+	forcescissor
+
 	addimage		"ui/credits/alice" 96 5 64 128
 //	addimage		"ui/credits/rabbit" 60 130 128 128
-//	addimage		"ui/credits/bill" 138 154 128 128 
+//	addimage		"ui/credits/bill" 138 154 128 128
 
 	addline			" "
 	addline			" "
@@ -140,20 +140,19 @@ AutoScroll
 	addline			" "
 	addline			" "
 	addline			" "
-	addline			" " 
-	
-	addline			"=== For Electronic Arts ==="
-	addline			" " 
-	
-	addline			"Design, Development, and Production"
+	addline			" "
+
+	addline			"Electronic Arts"
+
+	addline			"Design, Entwicklung und Produktion"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"American McGee"
 	addline			"R.J. Berg"
 	addline			"Billy Delli-Gatti"
 	addline			"Jordan David Maynard"
-	addline			" " 
-	
-	addline			"Marketing and Public Relations"
+	addline			" "
+
+	addline			"Marketing und PR"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Jonathan Harris"
 	addline			"Mike Jeffress"
@@ -161,13 +160,13 @@ AutoScroll
 	addline			"Jason S. Andersen"
 	addline			"Noreen Dante"
 	addline			"Gaylene Nagel"
-	addline			" " 
-	
-	addline			"Testing"
+	addline			" "
+
+	addline			"Tests"
 	addimage		"ui/bar" 47 -0.2 150 4
-	addline			"David McCormick, Lead"
-	addline			"Justin Holst, Asst. Lead"
-	addline			"Chad Schnittjer, Asst. Lead"
+	addline			"David McCormick, Testleitung"
+	addline			"Justin Holst, Assistenz Testleitung"
+	addline			"Chad Schnittjer, Assistenz Testleitung"
 	addline			"James Stanley"
 	addline			"Rad Christian"
 	addline			"Mike Kaiser"
@@ -181,25 +180,9 @@ AutoScroll
 	addline			"Seth Mespelli"
 	addline			"David Miller"
 	addline			"Rob Walker"
-	addline			" " 
-	
-	addline			"Localization Project Manager"
-	addimage		"ui/bar" 47 -0.2 150 4
-	addline			"Carole Celle"
-	addline			" " 
-	
-	addline			"Translation Coordinator"
-	addimage		"ui/bar" 47 -0.2 150 4
-	addline			"Clare Parkes"
-	addline			"Rebecca Gordon"
-	addline			" " 
-	
-	addline			"Language Testing Project Manager"
-	addimage		"ui/bar" 47 -0.2 150 4
-	addline			"Sylvain Caburrosso"
-	addline			" " 
-	
-	addline			"Localization Testing"
+	addline			" "
+
+	addline			"Lokalisierungstests"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Colin Clarke"
 	addline			"Daryl Humdy"
@@ -209,68 +192,86 @@ AutoScroll
 	addline			"Roger Metcalf"
 	addline			"Daren Hooper"
 	addline			"AC Martin"
-	addline			" " 
-	
+	addline			"Timothy Johns"
+	addline			" "
+
 	addline			"Open & Close Cinematics"
 	addimage		"ui/bar" 47 -0.2 150 4
-	addline			"by Little Beast"
-	addline			"San Francisco, CA"
-	addline			"R. Zane Rutledge, Director"
-	addline			"Matthew Fassberg, Producer"
-	addline			" " 
-	
-	addline			"Digital Matte Painting & Illustrations"
+	addline			"von Little Beast"
+	addline			"San Francisco, Kalifornien"
+	addline			"R. Zane Rutledge, Direktor"
+	addline			"Matthew Fassberg, Produzent"
+	addline			" "
+
+	addline			"Digital Matte-Zeichnungen"
+	addline			"und Illustrationen"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"lxl"
-	addline			" " 
-	
-	addline			"Computer Animation"
+	addline			" "
+
+	addline			"Computeranimation"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Matthew Hendershot"
 	addline			"Jamie Houk"
 	addline			"R. Zane Rutledge"
-	addline			" " 
-	
-	addline			"Music"
+	addline			" "
+
+	addline			"Musik produziert, komponiert"
+	addline			"und arrangiert"
 	addimage		"ui/bar" 47 -0.2 150 4
-	addline			"Produced, Composed and Arranged"
-	addline			"by Chris Vrenna"
+	addline			"von Chris Vrenna"
 	addline			" "
-	addline			"Additional music programming &"
-	addline			"performance by Mark Blasquez"
+	addline			"Zusätzliche Musikprogrammierung"
+	addline			"und interpretation"
+	addline			"von Mark Blasquez"
 	addline			" "
-	addline			"Additional girl choir performance"
-	addline			"by Jessicka"
-	addline			" " 
-	
-	addline			"Sound Design, Recording,"
-	addline			"Processing, and FX"
+	addline			"Zusätzlicher Mädchenchor"
+	addline			"von Jessicka"
+	addline			" "
+
+	addline			"Sounddesign, Sprachaufnahmen,"
+	addline			"Bearbeitung und Soundeffekte"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Ken Felton"
 	addline			"Marc Farley"
 	addline			"Mat Mitchell"
 	addline			"Aaron Thibault"
 	addline			"Stretch Williams"
-	addline			" " 
-	
-	addline			"Voice Talent"
+	addline			" "
+
+	addline			"Sprecher"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Susie Brann"
 	addline			"Roger Jackson"
 	addline			"Jarion Monroe"
 	addline			"Andrew Chaikin"
 	addline			"Anni Long"
-	addline			" " 
-	
-	addline			"International Development"
+	addline			"Eva Michaelis"
+	addline			"Marianne Bernhardt"
+	addline			"Michael Bideller"
+	addline			"Sven Dahlem"
+	addline			"Klaus Dittmann"
+	addline			"Dagmar Dreke"
+	addline			"Jörg Gillner"
+	addline			"Isabella Grothe"
+	addline			"Klaus-Peter Kaehler"
+	addline			"Marco Kröger"
+	addline			"Holger Löwenberg"
+	addline			"Gerhard Marcel"
+	addline			"Frank Schröder"
+	addline			"Achim Schülke"
+	addline			"Marc Seidenberg"
+	addline			" "
+
+	addline			"Inernationale Entwicklung"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Atsuko Matsumoto"
 	addline			"Dan Roisman"
 	addline			"John Pemberton"
 	addline			"Gabriel Gils Carbo"
 	addline			"Lafayette Taylor"
-	addline			" " 
-	
+	addline			" "
+
 	addline			"Creative Services"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Adrienne Rogers"
@@ -283,9 +284,9 @@ AutoScroll
 	addline			"Corey Higgins"
 	addline			"Greg Roensch"
 	addline			"Ede Clarke"
-	addline			"Michael Kerbow - IMAGIC"
-	addline			" " 
-	
+	addline			"Michael Kerbow (IMAGIC)"
+	addline			" "
+
 	addline			"CAT Lab"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"John Hanley"
@@ -294,17 +295,17 @@ AutoScroll
 	addline			"Brian Sawyer"
 	addline			"Emiliano Miranda"
 	addline			"Dave Caron"
-	addline			" " 
-	
+	addline			" "
+
 	addline			"Mastering Lab"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Michael Yasko"
 	addline			"Yakim Hayuk"
 	addline			"Mike Dier"
 	addline			"Chris Espiritu"
-	addline			" " 
-	
-	addline			"Customer Quality Control"
+	addline			" "
+
+	addline			"Qualitätssicherung"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Andrew Young"
 	addline			"Benjamin Crick"
@@ -315,9 +316,77 @@ AutoScroll
 	addline			"Dave Kellum"
 	addline			"Benjamin Smith"
 	addline			"Anthony Barbagallo"
-	addline			" " 
-	
-	addline			"Special Thanks"
+	addline			" "
+
+	addline			"Lokalisierungsprojektmanagerin"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Carole Celle"
+	addline			" "
+
+	addline			"Deutsche Lokalisierungsleitung"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Michaela Bartelt"
+	addline			" "
+
+	addline			"Lokalisierungsprojektmangerin"
+	addline			"Deutschland"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Claudia Stevens"
+	addline			" "
+
+	addline			"Übersetzung"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Claudia Stevens"
+	addline			"Angela Hufschmidt"
+	addline			" "
+
+	addline			"Produktmanager"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Pete Larsen"
+	addline			" "
+
+	addline			"PR"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Bernd Reinartz, Raoul Birkhold"
+	addline			" "
+
+	addline			"Projektmanager Sprachtests"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Sylvain Caburrosso"
+	addline			" "
+
+	addline			"LT-Supervisor"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Dirk Vojtilo"
+	addline			" "
+
+	addline			"Sprachtests"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Manuel Bertrams"
+	addline			" "
+
+	addline			"Leitung Qualitätssicherung"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Frank Buchheim, Lars Berenbrinker"
+	addline			" "
+
+	addline			"Qualitätssicherung"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Frank Gördes"
+	addline			"Lars Berenbrinker"
+	addline			" "
+
+	addline			"Audio-Manager"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"David Lapp"
+	addline			" "
+
+	addline			"Sprachaufnahmen"
+	addimage		"ui/bar" 47 -0.2 150 4
+	addline			"Toneworx, Hamburg"
+	addline			" "
+
+	addline			"Besonderer Dank an"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Rich Hilleman, Terry Smith,"
 	addline			"Colin Boswell, Linda Matteson,"
@@ -330,8 +399,8 @@ AutoScroll
 	addline			"Quarium Inc., Leigh Matty,"
 	addline			"Erik Whiteford, Santiago Nunez"
 	addline			"Gerrit Velthoen, Tim Wilson"
-	addline			" " 
-	
+	addline			" "
+
 //	addimage		"ui/credits/rabbit" 60 0 128 128
 	addimage		"ui/credits/bill" 60 0 128 128
 	addline			" "
@@ -339,12 +408,12 @@ AutoScroll
 	addline			" "
 	addline			" "
 	addline			" "
-	addline			" " 
-	
+	addline			" "
+
 	addline			"=== For Rogue Entertainment ==="
-	addline			" " 
-	
-	addline			"2D Art"
+	addline			" "
+
+	addline			"2D-Grafik"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Rich Fleider"
 	addline			"Christopher 'Derelict' Greenhaw"
@@ -353,18 +422,18 @@ AutoScroll
 	addline			"Stephen Hornback"
 	addline			"Aaron Smith"
 	addline			"Joel F. Thomas Jr."
-	addline			" " 
-	
-	addline			"3D Art/Animation"
+	addline			" "
+
+	addline			"3D-Grafik/Animation"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Jay Brushwood"
 	addline			"Jose Hernandez"
 	addline			"Steven Maines"
 	addline			"John Turner"
 	addline			"Sung Yi"
-	addline			" " 
-	
-	addline			"Level Design"
+	addline			" "
+
+	addline			"Leveldesign"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Christian Cummings"
 	addline			"Brandon James"
@@ -373,54 +442,54 @@ AutoScroll
 	addline			"Cameron Lamprecht"
 	addline			"Brian Patenaude"
 	addline			"Bobby Pavlock"
-	addline			" " 
-	
-	addline			"Design Support"
+	addline			" "
+
+	addline			"Grafikunterstützung"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Zdim"
-	addline			" " 
-	
-	addline			"Programming"
+	addline			" "
+
+	addline			"Programmierung"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Sean Fleming"
 	addline			"Peter Mack"
 	addline			"Darin McNeil"
 	addline			"Joe Waters"
-	addline			" " 
-	
-	addline			"Producer"
+	addline			" "
+
+	addline			"Produzent"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Jim Molinets"
-	addline			" " 
-	
-	addline			"Business"
+	addline			" "
+
+	addline			"Geschäftliches"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Barrett Alexander"
 	addline			"Matt Kelso"
 	addline			" "
-	
-	addline			"Very Special Thanks"
+
+	addline			"Ganz besonderen Dank an"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Ritual Entertainment:"
-	addline			"Beau Anderson, 3D Art"
-	addline			"Mark Dochtermann, Programming"
-	addline			"Jim Dosé, Programming"
-	addline			"Levelord, Level Design"
-	addline			"Patrick Hook, Level Design"
+	addline			"Beau Anderson, 3D-Grafik"
+	addline			"Mark Dochtermann, Programmierung"
+	addline			"Jim Dosé, Programmierung"
+	addline			"Levelord, Leveldesign"
+	addline			"Patrick Hook, Leveldesign"
 	addline			" "
-	
-	addline			"Valued Contributors"
+
+	addline			"Berater"
 	addimage		"ui/bar" 47 -0.2 150 4
-	addline			"Won Choi, Art"
-	addline			"Lee Dotson, 2D Art"
-	addline			"Ciara Gay,  Alice Animation Actor"
-	addline			"Will Loconto, Sound Design"
-	addline			"Patrick Magruder, Programming"
-	addline			"Mike O'Rourke, 3D Art"
-	addline			"Robert Selitto, Level Design"
-	addline			" " 
-	
-	addline			"Testing"
+	addline			"Won Choi, Grafik"
+	addline			"Lee Dotson, 2D-Grafik"
+	addline			"Ciara Gay, Animationsmodell Alice"
+	addline			"Will Loconto, Sounddesign"
+	addline			"Patrick Magruder, Programmierung"
+	addline			"Mike O'Rourke, 3D-Grafik"
+	addline			"Robert Selitto, Leveldesign"
+	addline			" "
+
+	addline			"Tests"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Brock Boutte"
 	addline			"Shane Boydston"
@@ -447,12 +516,8 @@ AutoScroll
 	addline			"Cliff Ritchey"
 	addline			"Karen 'Scout' Sparks"
 	addline			"Marlena Troncoso"
-	addline			" " 
-	
-	addline			"Dog"
-	addimage		"ui/bar" 47 -0.2 150 4
-	addline			"Spike"
-} 
+	addline			" "
+}
 
 resource
 Button
@@ -464,10 +529,10 @@ Button
 	borderstyle		"NONE"
 	direction		from_point 0.5 250 0
 	groupid			"group_page1"
-	stuffcommand	"widgetcommand title1 resetscroll"
+	stuffcommand	"widgetcommand title1 resetscroll; widgetcommand EA_Glow hide; widgetcommand Rogue_Glow enable\n"
 	shader			ui/credits/ea_glow
 	hovershader		ui/credits/ea_logo.tga
-} 
+}
 
 resource
 Button
@@ -479,44 +544,12 @@ Button
 	borderstyle		"NONE"
 	direction		from_point 0.5 250 0
 	groupid			"group_page1"
-	stuffcommand	"widgetcommand title1 resetscroll 161"
+	stuffcommand	"widgetcommand title1 resetscroll 211; widgetcommand EA_Glow enable; widgetcommand Rogue_Glow hide\n"
 	shader			ui/credits/rogue_glow
 	hovershader		ui/credits/rogue_logo.tga
-} 
-
-// RETURN BUTTON
-resource
-Button
-{
-	title			"Back"
-	name			"Default"
-	rect			100 370 100 35
-	fgcolor			0.199 0.043 0.043 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			ui/buttons/plaque
-	hovershader		ui/buttons/plaque_hover
-	font			"asrafel"
-	fontjustify		center center
-	fontpos			35 8
-	direction		from_point 0.5 250 0
-	groupid			"group_page1"
-	stuffcommand	"widgetcommand Rogue_Glow hide; widgetcommand EA_Glow hide; popmenu"
-} 
-resource
-Button
-{
-	name			"Default"
-	rect			105 375 24 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			"circle_button_ps3"	
-	allowactivate	false
-	direction		from_point 0.5 250 0
-	groupid			"group_page1"
 }
-//----------------------------------- 
+
+//-----------------------------------
 
 // MOUSE
 resource
@@ -558,5 +591,26 @@ Label
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
 	staticshader	7 ui/credits/mouseF
-} 
+}
+
+// RETURN BUTTON
+resource
+Button
+{
+	title			"Zurück"
+	name			"Default"
+	rect			0 455 75 25
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/tab
+	hovershader		ui/buttons/tab_hover
+	stuffcommand	"widgetcommand Rogue_Glow hide; widgetcommand EA_Glow hide; popmenu"
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			25 5
+	fontscale		0.8
+	direction		from_bottom 0.5
+}
+
 end.

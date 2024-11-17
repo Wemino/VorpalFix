@@ -12,7 +12,7 @@ showcommand "widgetcommand alice3d setanim idle_stand_rocktoes\n"
 allowactivate	true
 keycommand		1 "widgetcommand TitleBar activategroup group_video\n"
 keycommand		2 "widgetcommand TitleBar activategroup group_audio\n"
-keycommand		3 "widgetcommand TitleBar activategroup group_control_pc\n"
+keycommand		3 "widgetcommand TitleBar activategroup group_control\n"
 keycommand		4 "widgetcommand TitleBar activategroup group_game\n"
 
 // Mirror background
@@ -205,33 +205,9 @@ Label
 	borderstyle		"NONE"
 	shader			ui/control/head_2
 	groupid			"group_main"
-	
 	allowactivate	false
-} 
-resource
-Label
-{
-	name			"Default"
-	rect			75 330 24 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			"ui/control/hslider_prev"
-	groupid			"group_main"
-	allowactivate	false
-} 
-resource
-Label
-{
-	name			"Default"
-	rect			257 330 24 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			"ui/control/hslider_next"
-	groupid			"group_main"
-	allowactivate	false
-} 
+}
+
 // hotspots
 resource
 Button
@@ -241,7 +217,6 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	ordernumber		2
 	mouseEnterCmd	"widgetcommand TitleBar shader ui/control/head_2_video\n"
 	stuffcommand	"widgetcommand TitleBar activategroup group_video\n"
 	groupid			"group_main"
@@ -254,7 +229,6 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	ordernumber		3
 	mouseEnterCmd	"widgetcommand TitleBar shader ui/control/head_2_audio\n"
 	stuffcommand	"widgetcommand TitleBar activategroup group_audio\n"
 	groupid			"group_main"
@@ -267,9 +241,8 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	ordernumber		4
 	mouseEnterCmd	"widgetcommand TitleBar shader ui/control/head_2_control\n"
-	stuffcommand	"widgetcommand TitleBar activategroup group_control_pc\n"
+	stuffcommand	"widgetcommand TitleBar activategroup group_control\n"
 	groupid			"group_main"
 }
 resource
@@ -280,7 +253,6 @@ Button
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	ordernumber		1
 	mouseEnterCmd	"widgetcommand TitleBar shader ui/control/head_2_game\n"
 	stuffcommand	"widgetcommand TitleBar activategroup group_game\n"
 	groupid			"group_main"
@@ -358,12 +330,10 @@ Button
 	shader			ui/buttons/apply
 	hovershader		ui/buttons/apply_hover
 	stuffcommand	"widgetcommand alice3d setanim idle_stand_rocktoes; widgetcommand TitleBar activategroup group_main\n"
-	groupid			"group_control_pc"
-	
+	groupid			"group_control"
 	font			"asrafel"
 	fontjustify		center center
 	fontpos			35 8
-	ordernumber		6
 }
 
 // RESET BUTTON
@@ -372,41 +342,17 @@ Button
 {
 	title			"Reset"
 	name			"Default"
-	rect			170 400 100 35
+	rect			200 400 100 35
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
 	shader			ui/buttons/apply
 	hovershader		ui/buttons/apply_hover
-	stuffcommand	"exec default_pc.cfg; vid_restart; popmenu 0\n"
-	groupid			"group_control_pc"
-	
+	stuffcommand	"exec default.cfg; vid_restart; popmenu 0\n"
+	groupid			"group_control"
 	font			"asrafel"
 	fontjustify		center center
 	fontpos			35 8
-	ordernumber		7
-}
-
-// JOYSTICK
-resource
-Button
-{
-	title			"Controller"
-	name			"Default"
-	rect			290 400 100 35
-	fgcolor			0.199 0.043 0.043 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			ui/buttons/plaque
-	hovershader		ui/buttons/plaque_hover
-	stuffcommand	"widgetcommand TitleBar activategroup group_control\n"
-	groupid			"group_control_pc"
-	
-	font			"asrafel"
-	fontjustify		center center
-	fontpos			13 8
-	fontscale		0.8	
-	ordernumber		34
 }
 
 // BIND LIST
@@ -419,211 +365,12 @@ FakkBindList
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"3D_BORDER"
-	filename		bind_pc.scr
+	filename		ui/bind.scr
 	font			"asrafel"
-	groupid			"group_control_pc"
-	ordernumber		5
+	groupid			"group_control"
+	ordernumber		1
 }
 
-resource
-Label
-{
-	name			"Default"
-	rect			0 0 640 480
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			"controls_pc"
-	groupid			"group_control"
-}
-resource
-Label
-{
-	title			"Alt Attack / Climb Up"
-	name			"Default"
-	rect			0 140 167 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	groupid			"group_control"
-	font			"asrafel"
-	fontjustify		right top
-	fontscale		0.8
-}
-resource
-Label
-{
-	title			"Next Weapon"
-	name			"Default"
-	rect			0 175 167 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	groupid			"group_control"
-	font			"asrafel"
-	fontjustify		right top
-	fontscale		0.8
-}
-resource
-Label
-{
-	title			"Move"
-	name			"Default"
-	rect			0 270 167 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	groupid			"group_control"
-	font			"asrafel"
-	fontjustify		right top
-	fontscale		0.8
-}
-resource
-Label
-{
-	title			"Menu Navigation"
-	name			"Default"
-	rect			120 376 167 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	groupid			"group_control"
-	font			"asrafel"
-	fontjustify		right center
-	fontscale		0.8
-}
-resource
-Label
-{
-	title			"Turn / Aim"
-	name			"Default"
-	rect			350 376 167 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	groupid			"group_control"
-	font			"asrafel"
-	fontjustify		left center
-	fontscale		0.8
-}
-resource
-Label
-{
-	title			"Attack / Climb Down"
-	name			"Default"
-	rect			467 290 167 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	groupid			"group_control"
-	font			"asrafel"
-	fontjustify		left top
-	fontscale		0.8
-}
-resource
-Label
-{
-	title			"Jump / Swim Up"
-	name			"Default"
-	rect			467 260 167 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	groupid			"group_control"
-	font			"asrafel"
-	fontjustify		left top
-	fontscale		0.8
-}
-resource
-Label
-{
-	title			"Use / Swim Down"
-	name			"Default"
-	rect			467 230 167 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	groupid			"group_control"
-	font			"asrafel"
-	fontjustify		left top
-	fontscale		0.8
-}
-resource
-Label
-{
-	title			"Alt Attack / Climb Up"
-	name			"Default"
-	rect			467 202 167 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	groupid			"group_control"
-	font			"asrafel"
-	fontjustify		left top
-	fontscale		0.8
-}
-resource
-Label
-{
-	title			"Prev Weapon"
-	name			"Default"
-	rect			467 175 167 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	groupid			"group_control"
-	font			"asrafel"
-	fontjustify		left top
-	fontscale		0.8
-}
-resource
-Label
-{
-	title			"Attack / Climb Down"
-	name			"Default"
-	rect			467 140 167 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	groupid			"group_control"
-	font			"asrafel"
-	fontjustify		left top
-	fontscale		0.8
-}
-resource
-Label
-{
-	title			"Pause / Exit Menu"
-	name			"Default"
-	rect			270 110 167 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	groupid			"group_control"
-	font			"asrafel"
-	fontjustify		center center
-	fontscale		0.8
-}
-resource
-Label
-{
-	title			"Controls"
-	name			"Default"
-	rect			50 50 167 24
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	groupid			"group_control"
-	font			"asrafel"
-	fontjustify		left center
-	fontscale		2.0
-	dropshadow		1
-}
-resource
-Button
-{
-	title			"Back"
-	name			"Default"
-	rect			50 400 100 35
-	fgcolor			0.199 0.043 0.043 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	shader			ui/buttons/plaque
-	hovershader		ui/buttons/plaque_hover
-	stuffcommand	"widgetcommand alice3d setanim idle_stand_rocktoes; widgetcommand TitleBar activategroup group_control_pc\n"
-	groupid			"group_control"
-	font			"asrafel"
-	fontjustify		center center
-	fontpos			35 8
-	ordernumber		35
-} 
 // --------------------------------------
 // --------------------------------------
 // VIDEO GROUP
@@ -644,11 +391,9 @@ Button
 	hovershader		ui/buttons/apply_hover
 	stuffcommand	"ui_setcvars group_video; widgetcommand TitleBar activategroup group_main\n"
 	groupid			"group_video"
-	
 	font			"asrafel"
 	fontjustify		center center
 	fontpos			35 8
-	ordernumber		15
 }
 
 // CANCEL BUTTON
@@ -665,11 +410,9 @@ Button
 	hovershader		ui/buttons/apply_hover
 	stuffcommand	"ui_restorecvars group_video; widgetcommand TitleBar activategroup group_main\n"
 	groupid			"group_video"
-	
 	font			"asrafel"
 	fontjustify		center center
 	fontpos			35 8
-	ordernumber		16
 }
 
 // RESOLUTION
@@ -677,7 +420,7 @@ resource
 Label
 {
 	title			"Resolution"
-	name			"ResolutionTxt"
+	name			"Default"
 	rect			68 78 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
@@ -685,7 +428,6 @@ Label
 	groupid			"group_video"
 	font			"asrafel"
 	fontjustify		left center
-	
 }
 resource
 List
@@ -698,12 +440,16 @@ List
 	groupid			"group_video"
 	font			"asrafel"
 	fontjustify		center top
-	
-
-	highlighttextwidget "ResolutionTxt"
-	ordernumber		8
 
 	linkcvar		"r_mode"
+	additem			3 640x480
+	additem			4 800x600
+	additem			5 960x720
+	additem			6 1024x768
+	additem			7 1152x864
+	additem			8 1280x1024
+	additem			9 1600x1200
+	additem			-1 Custom
 }
 
 // COLOR DEPTH
@@ -711,7 +457,7 @@ resource
 Label
 {
 	title			"Color Depth"
-	name			"ColorTxt"
+	name			"Default"
 	rect			68 118 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
@@ -719,7 +465,6 @@ Label
 	groupid			"group_video"
 	font			"asrafel"
 	fontjustify		left center
-	
 }
 resource
 List
@@ -733,13 +478,9 @@ List
 	font			"asrafel"
 	fontjustify		center top
 
-	highlighttextwidget "ColorTxt"
-	ordernumber		9
-
 	linkcvar		"r_colorbits"
 	additem			16 16Bit
 	additem			32 32Bit
-	
 }
 
 // FULLSCREEN
@@ -747,7 +488,7 @@ resource
 Label
 {
 	title			"Fullscreen"
-	name			"FullscreenTxt"
+	name			"Default"
 	rect			68 158 210 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
@@ -755,7 +496,6 @@ Label
 	groupid			"group_video"
 	font			"asrafel"
 	fontjustify		left center
-	
 }
 resource
 CheckBox
@@ -770,12 +510,8 @@ CheckBox
 	fontjustify		right center
 	linkcvar		"r_fullscreen"
 
-	highlighttextwidget "FullscreenTxt"
-	ordernumber		10
-
 	checked_shader		"ui/control/checkbox_checked"
 	unchecked_shader	"ui/control/checkbox_unchecked"
-	
 }
 
 // BRIGHTNESS
@@ -791,7 +527,6 @@ Label
 	groupid			"group_video"
 	font			"asrafel"
 	fontjustify		left center
-	
 }
 resource
 Slider
@@ -807,10 +542,6 @@ Slider
 	setrange		.5 1.5
 	stepsize		.05
 	font			"asrafel"
-	
-
-	highlighttextwidget "Brightness"
-	ordernumber		11
 }
 
 // TEXTURE DETAIL
@@ -826,7 +557,6 @@ Label
 	groupid			"group_video"
 	font			"asrafel"
 	fontjustify		left center
-	
 }
 resource
 Slider
@@ -842,10 +572,6 @@ Slider
 	setrange		3 0
 	stepsize		-1
 	font			"asrafel"
-	
-
-	highlighttextwidget "Texture_Detail"
-	ordernumber		12
 }
 
 // TEXTURE DEPTH
@@ -861,7 +587,6 @@ Label
 	groupid			"group_video"
 	font			"asrafel"
 	fontjustify		left center
-	
 }
 resource
 List
@@ -878,10 +603,6 @@ List
 	linkcvar		"r_texturebits"
 	additem			16 16Bit
 	additem			32 32Bit
-	
-
-	highlighttextwidget "Texture_Bits"
-	ordernumber		13
 }
 
 // DETAIL TEXTURES
@@ -889,7 +610,7 @@ resource
 Label
 {
 	title			"Detail Textures"
-	name			"DetailTxt"
+	name			"Default"
 	rect			68 338 210 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
@@ -897,7 +618,6 @@ Label
 	groupid			"group_video"
 	font			"asrafel"
 	fontjustify		left center
-	
 }
 resource
 CheckBox
@@ -914,10 +634,6 @@ CheckBox
 
 	checked_shader		"ui/control/checkbox_checked"
 	unchecked_shader	"ui/control/checkbox_unchecked"
-	
-
-	highlighttextwidget "DetailTxt"
-	ordernumber		14
 }
 
 // --------------------------------------
@@ -940,11 +656,9 @@ Button
 	hovershader		ui/buttons/apply_hover
 	stuffcommand	"ui_setcvars group_audio; widgetcommand TitleBar activategroup group_main\n"
 	groupid			"group_audio"
-	
 	font			"asrafel"
 	fontjustify		center center
 	fontpos			35 8
-	ordernumber		23
 }
 
 // CANCEL BUTTON
@@ -961,11 +675,9 @@ Button
 	hovershader		ui/buttons/apply_hover
 	stuffcommand	"ui_restorecvars group_audio; widgetcommand TitleBar activategroup group_main\n"
 	groupid			"group_audio"
-	
 	font			"asrafel"
 	fontjustify		center center
 	fontpos			35 8
-	ordernumber		24
 }
 
 // SOUND DRIVER
@@ -973,7 +685,7 @@ resource
 Label
 {
 	title			"Sound Driver"
-	name			"DriverTxt"
+	name			"Default"
 	rect			68 78 200 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
@@ -1001,9 +713,6 @@ List
 	additem			a3d2
 	additem			eax
 	additem			eax2
-
-	highlighttextwidget "DriverTxt"
-	ordernumber		17
 }
 
 // MUSIC VOLUME
@@ -1034,9 +743,6 @@ Slider
 	setrange		0 1
 	stepsize		.05
 	font			"asrafel"
-
-	highlighttextwidget "Music_Volume"
-	ordernumber		19
 }
 
 // SFX VOLUME
@@ -1067,9 +773,6 @@ Slider
 	setrange		0 1
 	stepsize		.05
 	font			"asrafel"
-
-	highlighttextwidget "SFX_Volume"
-	ordernumber		20
 }
 
 // SPEAKER TYPE
@@ -1077,7 +780,7 @@ resource
 Label
 {
 	title			"Speaker Type"
-	name			"SpeakerTxt"
+	name			"Default"
 	rect			68 118 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
@@ -1103,9 +806,6 @@ List
 	additem			1 "Headphones"
 	additem			3 "Surround"
 	additem			4 "Quad"
-
-	highlighttextwidget "SpeakerTxt"
-	ordernumber		18
 }
 
 // QUALITY
@@ -1113,7 +813,7 @@ resource
 Label
 {
 	title			"Quality"
-	name			"QualityTxt"
+	name			"Default"
 	rect			68 258 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
@@ -1137,10 +837,6 @@ List
 	linkcvar		"s_khz"
 	additem			22 "22 khz"
 	additem			44 "44 khz"
-
-	highlighttextwidget "QualityTxt"
-	ordernumber		21
-
 }
 
 // FORCE 8BIT
@@ -1148,7 +844,7 @@ resource
 Label
 {
 	title			"Force 8bits"
-	name			"8BitsTxt"
+	name			"Default"
 	rect			68 298 144 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
@@ -1172,9 +868,6 @@ CheckBox
 
 	checked_shader		"ui/control/checkbox_checked"
 	unchecked_shader	"ui/control/checkbox_unchecked"
-
-	highlighttextwidget "8BitsTxt"
-	ordernumber		22
 }
 
 // --------------------------------------
@@ -1198,11 +891,9 @@ Button
 	hovershader		ui/buttons/apply_hover
 	stuffcommand	"ui_setcvars group_game; widgetcommand TitleBar activategroup group_main\n"
 	groupid			"group_game"
-	
 	font			"asrafel"
 	fontjustify		center center
 	fontpos			35 8
-	ordernumber		32
 }
 
 // CANCEL BUTTON
@@ -1219,11 +910,9 @@ Button
 	hovershader		ui/buttons/apply_hover
 	stuffcommand	"ui_restorecvars group_game; toggleconsole; widgetcommand TitleBar activategroup group_main\n"
 	groupid			"group_game"
-	
 	font			"asrafel"
 	fontjustify		center center
 	fontpos			35 8
-	ordernumber		33
 }
 
 // SENSITIVITY
@@ -1255,9 +944,6 @@ Slider
 	slidertype		float
 	stepsize		1
 	font			"asrafel"
-
-	highlighttextwidget "Mouse_Sensitivity"
-	ordernumber		25
 }
 
 // INVERT MOUSE
@@ -1265,7 +951,7 @@ resource
 Label
 {
 	title			"Invert Mouse"
-	name			"InvertMouseTxt"
+	name			"Default"
 	rect			68 130 144 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
@@ -1292,10 +978,6 @@ CheckBox
 
 	checked_command		"set m_pitch -0.022"
 	unchecked_command	"set m_pitch 0.022"
-
-	highlighttextwidget "InvertMouseTxt"
-	ordernumber		26
-
 }
 
 // CAMERA DISTANCE
@@ -1323,10 +1005,6 @@ Slider
 	setrange		76 192
 	stepsize		4
 	font			"asrafel"
-
-	highlighttextwidget "Camera_Distance"
-	ordernumber		27
-
 }
 
 // ALWAYS RUN
@@ -1334,7 +1012,7 @@ resource
 Label
 {
 	title			"Always Run"
-	name			"AlwaysRunTxt"
+	name			"Default"
 	rect			68 210 144 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
@@ -1358,10 +1036,6 @@ CheckBox
 
 	checked_shader	 "ui/control/checkbox_checked"
 	unchecked_shader "ui/control/checkbox_unchecked"
-
-	highlighttextwidget "AlwaysRunTxt"
-	ordernumber		28
-
 }
 
 // JUMP RETICLE
@@ -1369,7 +1043,6 @@ resource
 Label
 {
 	title			"Jump Reticle"
-	name			"JumpReticleTxt"
 	rect			68 270 144 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
@@ -1390,9 +1063,6 @@ CheckBox
 
 	checked_shader	 "ui/control/checkbox_checked"
 	unchecked_shader "ui/control/checkbox_unchecked"
-
-	highlighttextwidget "JumpReticleTxt"
-	ordernumber		29
 }
 
 // TARGET RETICLE
@@ -1400,7 +1070,6 @@ resource
 Label
 {
 	title			"Target Reticle"
-	name			"TargetReticleTxt"
 	rect			68 290 144 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
@@ -1421,9 +1090,6 @@ CheckBox
 
 	checked_shader	 "ui/control/checkbox_checked"
 	unchecked_shader "ui/control/checkbox_unchecked"
-
-	highlighttextwidget "TargetReticleTxt"
-	ordernumber		30
 }
 
 // SUBTITLES
@@ -1431,7 +1097,6 @@ resource
 Label
 {
 	title			"Subtitles"
-	name			"SubtitlesTxt"
 	rect			68 330 144 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
@@ -1452,10 +1117,36 @@ CheckBox
 
 	checked_shader	 "ui/control/checkbox_checked"
 	unchecked_shader "ui/control/checkbox_unchecked"
+}
 
-	highlighttextwidget "SubtitlesTxt"
-	ordernumber		31
+// CONSOLE
+resource
+Label
+{
+	title			"Console"
+	rect			68 350 144 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+CheckBox
+{
+	rect			260 350 112 20
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"ui_console"
+
+	checked_shader		"ui/control/checkbox_checked"
+	unchecked_shader	"ui/control/checkbox_unchecked"
+
+	checked_command		"toggleconsole\n"
+	unchecked_command	"toggleconsole\n"
 }
 
 end.
-อออยฌ

@@ -5,7 +5,7 @@ borderstyle NONE
 bgfill 0 0 0 1
 fullscreen 1
 
-showcommand "widgetcommand page2 activategroup group_page1"
+showcommand "widgetcommand page2 activategroup group_page1\n"
 showcommand "widgetcommand Rogue_Glow enable\n"
 showcommand "widgetcommand EA_Glow enable\n"
 showcommand	"widgetcommand title1 resetscroll\n"
@@ -53,7 +53,6 @@ Label
 	borderstyle		"NONE"
 	staticshader	3 ui/credits/creditsE
 }
-
 
 // PAGE
 resource
@@ -121,9 +120,9 @@ AutoScroll
 	fontscale		0.90
 	direction		from_point 0.5 250 0
 	groupid			"group_page1"
-
+	
 	scrollspeed		1.2
-
+	
 	forcescissor
 
 	addimage		"ui/credits/alice" 96 5 64 128
@@ -159,12 +158,12 @@ AutoScroll
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Jonathan Harris"
 	addline			"Mike Jeffress"
-	addline			"Anne Marie Stein "
-	addline			"Jason S. Andersen "
+	addline			"Anne Marie Stein"
+	addline			"Jason S. Andersen"
 	addline			"Noreen Dante"
 	addline			"Gaylene Nagel"
 	addline			" "
-
+	
 	addline			"Tests"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"David McCormick, responsable"
@@ -177,7 +176,7 @@ AutoScroll
 	addline			"Brian Barsda"
 	addline			"Donna Hunt"
 	addline			"Scott Ko"
-	addline			"Matt Dominguez "
+	addline			"Matt Dominguez"
 	addline			"Matt Ellison"
 	addline			"William Lane"
 	addline			"Seth Mespelli"
@@ -235,21 +234,21 @@ AutoScroll
 	addline			"traitement et effets sonores"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Ken Felton"
-	addline			"Marc Farley "
+	addline			"Marc Farley"
 	addline			"Mat Mitchell"
 	addline			"Aaron Thibault"
 	addline			"Stretch Williams"
 	addline			" "
-
+	
 	addline			"Voix"
 	addimage		"ui/bar" 47 -0.2 150 4
-	addline			"Susie Brann "
+	addline			"Susie Brann"
 	addline			"Roger Jackson"
 	addline			"Jarion Monroe"
 	addline			"Andrew Chaikin"
 	addline			"Anni Long"
 	addline			" "
-
+	
 	addline			"Dév. international du produit"
 	addimage		"ui/bar" 47 -0.2 150 4
 	addline			"Atsuko Matsumoto"
@@ -258,10 +257,10 @@ AutoScroll
 	addline			"Gabriel Gils Carbo"
 	addline			"Lafayette Taylor"
 	addline			" "
-
+	
 	addline			"Département création"
 	addimage		"ui/bar" 47 -0.2 150 4
-	addline			"Adrienne Rogers "
+	addline			"Adrienne Rogers"
 	addline			"Kevin Marburg"
 	addline			"Jennie Maruyama"
 	addline			"Mark Hausler"
@@ -542,10 +541,11 @@ Button
 	borderstyle		"NONE"
 	direction		from_point 0.5 250 0
 	groupid			"group_page1"
-	stuffcommand	"widgetcommand title1 resetscroll 199"
+	stuffcommand	"widgetcommand title1 resetscroll 204"
 	shader			ui/credits/rogue_glow
 	hovershader		ui/credits/rogue_logo.tga
 }
+
 // RETURN BUTTON
 resource
 Button
