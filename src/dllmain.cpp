@@ -1410,12 +1410,12 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 		// Loop back to this function if we got more than one file to load
 		if (localizationFilesToLoad > 0)
 		{
-			// Fix esp
+			// Fix stack pointer after the CALL
 			char opCodeArray[] = { 0x83, 0xEC, 0x0C };
-			MemoryHelper::WriteMemoryRaw(0x0041CB4B, opCodeArray, sizeof(opCodeArray), true);
+			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
 
 			// Loop back to 4615F0 for every files
-			MemoryHelper::MakeCALL(0x0041CB4E, 0x0041CB32, true);
+			MemoryHelper::MakeCALL(0x41CB4E, 0x0041CB32, true);
 		}
 
 		// Load the original localization file
@@ -1432,7 +1432,7 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 		{
 			// No more files, restore original instructions
 			char opCodeArray[] = { 0x33, 0xFF, 0x39, 0x7C, 0x24, 0x0C, 0x7E, 0x3F };
-			MemoryHelper::WriteMemoryRaw(0x0041CB4B, opCodeArray, sizeof(opCodeArray), true);
+			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
 		}
 
 		// Return the file path
@@ -1522,10 +1522,10 @@ static void ApplyFixSoundRandomization()
 
 	MemoryHelper::WriteMemoryRaw(CODE_CAVE_SOUND, portedInstructions, sizeof(portedInstructions), true);
 
-	MemoryHelper::MakeCALL(0x00402131, CODE_CAVE_SOUND + 0x310, true);
-	MemoryHelper::MakeJMP(0x004348BF, CODE_CAVE_SOUND + 0x310, true);
-	MemoryHelper::MakeJMP(0x0043491F, CODE_CAVE_SOUND + 0x220, true);
-	MemoryHelper::MakeJMP(0x0043494F, CODE_CAVE_SOUND + 0x290, true);
+	MemoryHelper::MakeCALL(0x402131, CODE_CAVE_SOUND + 0x310, true);
+	MemoryHelper::MakeJMP(0x4348BF, CODE_CAVE_SOUND + 0x310, true);
+	MemoryHelper::MakeJMP(0x43491F, CODE_CAVE_SOUND + 0x220, true);
+	MemoryHelper::MakeJMP(0x43494F, CODE_CAVE_SOUND + 0x290, true);
 }
 
 static void ApplyFixHardDiskFull()
@@ -1760,8 +1760,8 @@ static void ApplyUseOriginalIntroVideos()
 
 	MemoryHelper::WriteMemoryRaw(CODE_CAVE_INTRO, portedIntroData, sizeof(portedIntroData), true);
 
-	MemoryHelper::MakeJMP(0x0044D91F, CODE_CAVE_INTRO, true);
-	MemoryHelper::WriteMemory(0x0044E409, CODE_CAVE_INTRO, true);
+	MemoryHelper::MakeJMP(0x44D91F, CODE_CAVE_INTRO, true);
+	MemoryHelper::WriteMemory(0x44E409, CODE_CAVE_INTRO, true);
 }
 
 static void ApplyDisable8BitAudioAsDefault()
