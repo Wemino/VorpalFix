@@ -1,0 +1,75 @@
+//header 1 "Action"
+//header 2 "Key"
+//header 3 "Alternate" "textures/bind/alternate"
+
+bind_width					230		// 214
+bind_height					300
+bind_fillwidth				16
+bind_commandwidth			145		// 128
+bind_commandheight			22		// 16
+bind_primarykeywidth		68		// 64
+bind_primarykeyheight		22		// 16
+bind_alternatekeywidth		64
+bind_alternatekeyheight		16
+
+align centerx centery
+
+titleforegroundcolor		0 0 0 1
+titlebackgroundcolor		0 0 0 0
+
+activebordercolor			0 0 0 1
+
+activeforegroundcolor		1 1 1 1
+activebackgroundcolor		0 0 0 0
+
+inactiveforegroundcolor		0 0 0 1
+inactivebackgroundcolor		1 1 1 0
+
+highlightforegroundcolor	1 1 1 1
+highlightbackgroundcolor	0 0 0 0
+
+selectforegroundcolor		1 1 1 1
+selectbackgroundcolor		0 0 0 0
+
+changesound sound/misc/menu/change.wav
+activesound sound/misc/menu/reject.wav
+entersound  sound/misc/menu/select.wav
+
+// bind name, bind command, animation, is looped, model rotation, custom button shader
+binditem "Attaque principale"	+attackright			knife_att_1_prim2		false
+binditem "Autre attaque"		+attackleft				knife_att_1_alt			false
+
+binditem "Avancer"				+forward				run_nowep				true
+binditem "Reculer"				+back					run_back_nowep			true
+binditem "Sauter"				+moveup					config_jump				false
+binditem "Descendre"			+movedown				config_climb_down		true
+
+binditem "Tourner à gauche"		+left					idle_stand_rocktoes		true	-45
+binditem "Tourner à droite"		+right					idle_stand_rocktoes		true	45
+binditem "Pas à gauche"			+moveleft				run_nowep				true	-20
+binditem "Pas à droite"			+moveright				run_nowep				true	20
+
+binditem "Courir"				+speed					walk_nowep				true
+binditem "Utiliser"				+use					use_lever				false
+binditem "Caméra"				+cameralook				idle_stand_rocktoes		false
+binditem "Chat du Cheshire"		"cheshire"				idle_stand_rocktoes		false
+binditem "Pause"				"pause"					idle_stand_rocktoes		false
+
+binditem "Le couteau"			"use knife"				knife_att_1_prim1		false
+binditem "Les cartes "			"use cards"				cards_att_1_alt			false
+binditem "Le maillet"			"use mallet"			mallet_att_1_prim1		false
+binditem "Le dé"				"use demondice"			dice_att				false
+binditem "La bombe ressort"		"use jackbomb"			dice_att				false
+binditem "La baguette de glace"	"use icewand"			wand_att_2_alt			false
+binditem "Les osselets"			"use jacks"				jacks_att_2				false
+binditem "Le bâton de l'Oeil"	"use eyestaff"			staff_att_prim_end		false
+binditem "Le tromblon "			"use blunderbuss"
+binditem "La montre"			"use watch"				deadtime_watch			false
+
+binditem "Sauvegarder"			"savegame quicksave"	idle_stand_rocktoes		false
+binditem "Charger"				"loadgame quicksave"	idle_stand_rocktoes		false
+
+binditem "Prochaine Arme"		"nextweapon"			idle_stand_rocktoes		false
+binditem "Arme Précédente"		"prevweapon"			idle_stand_rocktoes		false
+
+binditem "Console"				"toggleconsole"			idle_stand_rocktoes		false

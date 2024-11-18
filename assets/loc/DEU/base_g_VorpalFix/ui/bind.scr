@@ -1,0 +1,75 @@
+//header 1 "Action"
+//header 2 "Key"
+//header 3 "Alternate" "textures/bind/alternate"
+
+bind_width					230		// 214
+bind_height					300
+bind_fillwidth				16
+bind_commandwidth			145		// 128
+bind_commandheight			22		// 16
+bind_primarykeywidth		68		// 64
+bind_primarykeyheight		22		// 16
+bind_alternatekeywidth		64
+bind_alternatekeyheight		16
+
+align centerx centery
+
+titleforegroundcolor		0 0 0 1
+titlebackgroundcolor		0 0 0 0
+
+activebordercolor			0 0 0 1
+
+activeforegroundcolor		1 1 1 1
+activebackgroundcolor		0 0 0 0
+
+inactiveforegroundcolor		0 0 0 1
+inactivebackgroundcolor		1 1 1 0
+
+highlightforegroundcolor	1 1 1 1
+highlightbackgroundcolor	0 0 0 0
+
+selectforegroundcolor		1 1 1 1
+selectbackgroundcolor		0 0 0 0
+
+changesound sound/misc/menu/change.wav
+activesound sound/misc/menu/reject.wav
+entersound  sound/misc/menu/select.wav
+
+// bind name, bind command, animation, is looped, model rotation, custom button shader
+binditem "Primärer Angriff"		+attackright			knife_att_1_prim2		false
+binditem "Alternativer Angriff"	+attackleft				knife_att_1_alt			false
+
+binditem "Vorwärts bewegen"		+forward				run_nowep				true
+binditem "Rückwärts bewegen"	+back					run_back_nowep			true
+binditem "Springen"				+moveup					config_jump				false
+binditem "Abwärts"				+movedown				config_climb_down		true
+
+binditem "Nach links drehen"	+left					idle_stand_rocktoes		true	-45
+binditem "Nach rechts drehen"	+right					idle_stand_rocktoes		true	45
+binditem "Schritt nach links"	+moveleft				run_nowep				true	-20
+binditem "Schritt nach rechts"	+moveright				run_nowep				true	20
+
+binditem "Rennen"				+speed					walk_nowep				true
+binditem "Verwenden"			+use					use_lever				false
+binditem "Kameraperspektive"	+cameralook				idle_stand_rocktoes		false
+binditem "Grinsekatze"			"cheshire"				idle_stand_rocktoes		false
+binditem "Pause"				"pause"					idle_stand_rocktoes		false
+
+binditem "Messer wählen"		"use knife"				knife_att_1_prim1		false
+binditem "Karten wählen"		"use cards"				cards_att_1_alt			false
+binditem "Schläger wählen"		"use mallet"			mallet_att_1_prim1		false
+binditem "Würfel wählen"		"use demondice"			dice_att				false
+binditem "Hasenbombe wählen"	"use jackbomb"			dice_att				false
+binditem "Eiswand wählen"		"use icewand"			wand_att_2_alt			false
+binditem "Knochen wählen"		"use jacks"				jacks_att_2				false
+binditem "Augenstab wählen"		"use eyestaff"			staff_att_prim_end		false
+binditem "Muskete wählen"		"use blunderbuss"
+binditem "Uhr wählen"			"use watch"				deadtime_watch			false
+
+binditem "Speichern"			"savegame quicksave"	idle_stand_rocktoes		false
+binditem "Laden"				"loadgame quicksave"	idle_stand_rocktoes		false
+
+binditem "Nächste Waffe"		"nextweapon"			idle_stand_rocktoes		false
+binditem "Vorige Waffe"			"prevweapon"			idle_stand_rocktoes		false
+
+binditem "Konsole"				"toggleconsole"			idle_stand_rocktoes		false
