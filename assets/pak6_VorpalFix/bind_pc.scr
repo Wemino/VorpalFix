@@ -1,0 +1,76 @@
+//header 1 "Action"
+//header 2 "Key"
+//header 3 "Alternate" "textures/bind/alternate"
+
+bind_width					230		// 214
+bind_height					300
+bind_fillwidth				16
+bind_commandwidth			145		// 128
+bind_commandheight			22		// 16
+bind_primarykeywidth		68		// 64
+bind_primarykeyheight		22		// 16
+bind_alternatekeywidth		64
+bind_alternatekeyheight		16
+
+align centerx centery
+
+titleforegroundcolor		0 0 0 1
+titlebackgroundcolor		0 0 0 0
+
+activebordercolor			0 0 0 1
+
+activeforegroundcolor		1 1 1 1
+activebackgroundcolor		0 0 0 0
+
+inactiveforegroundcolor		0 0 0 1
+inactivebackgroundcolor		1 1 1 0
+
+highlightforegroundcolor	1 1 1 1
+highlightbackgroundcolor	0 0 0 0
+
+selectforegroundcolor		1 1 1 1
+selectbackgroundcolor		0 0 0 0
+
+changesound sound/misc/menu/change.wav
+activesound sound/misc/menu/reject.wav
+entersound  sound/misc/menu/select.wav
+
+// bind name, bind command, animation, is looped, model rotation, custom button shader
+binditem "Primary Attack"		+attackright			knife_att_1_prim2		false
+binditem "Alternate Attack"		+attackleft				knife_att_1_alt			false
+
+binditem "Move Forward"			+forward				run_nowep				true
+binditem "Move Backward"		+back					run_back_nowep			true
+binditem "Jump/Swim Up"			+moveup					config_jump				false
+binditem "Climb Down/Swim Dn"	+movedown				config_climb_down		true
+
+binditem "Turn Left"			+left					idle_stand_rocktoes		true	-45
+binditem "Turn Right"			+right					idle_stand_rocktoes		true	45
+binditem "Strafe Left"			+moveleft				run_nowep				true	-20
+binditem "Strafe Right"			+moveright				run_nowep				true	20
+
+binditem "Toggle Run/Walk"		+speed					walk_nowep				true
+binditem "Use"					+use					use_lever				false
+binditem "Camera Look"			+cameralook				idle_stand_rocktoes		false
+binditem "Cheshire Help"		"cheshire"				idle_stand_rocktoes		false
+binditem "Pause"				"pause"					idle_stand_rocktoes		false
+
+binditem "Equip Vorpal Blade"	"use knife"				knife_att_1_prim1		false
+binditem "Equip Cards"			"use cards"				cards_att_1_alt			false
+binditem "Equip Mallet"			"use mallet"			mallet_att_1_prim1		false
+binditem "Equip Demon Dice"		"use demondice"			dice_att				false
+binditem "Equip Jackbomb"		"use jackbomb"			dice_att				false
+binditem "Equip Icewand"		"use icewand"			wand_att_2_alt			false
+binditem "Equip Jacks"			"use jacks"				jacks_att_2				false
+binditem "Equip Eyestaff"		"use eyestaff"			staff_att_prim_end		false
+binditem "Equip Blunderbuss"	"use blunderbuss"
+binditem "Equip Deadtime Watch"	"use watch"				deadtime_watch			false
+
+binditem "Quick Save"			"savegame quicksave"	idle_stand_rocktoes		false
+binditem "Quick Load"			"loadgame quicksave"	idle_stand_rocktoes		false
+
+binditem "Next Weapon"			"nextweapon"			idle_stand_rocktoes		false
+binditem "Previous Weapon"		"prevweapon"			idle_stand_rocktoes		false
+
+binditem "Console"				"toggleconsole"			idle_stand_rocktoes		false
+ออยฌ
