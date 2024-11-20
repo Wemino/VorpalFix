@@ -425,25 +425,25 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 	float black_border_width = (current_width - (current_height * ASPECT_RATIO_4_3)) / 2.0f;
 
 	// Don't do this if black_border_width too big
-	if (x_position == LEFT_BORDER_X_ID && current_aspect_ratio <= 2.0f && current_aspect_ratio > 1.5f) // Left border, skip if the image is going to be stretched
+	if (x_position == LEFT_BORDER_X_ID && current_aspect_ratio > 1.5f) // Left border, skip if the image is going to be stretched
 	{
 		// Calculate the scale factor to match the target height
 		float scale_factor = current_height / 720.0f; // Original height of the image is 720
 
 		// Scale the width and height proportionally
-		resolution_width = 160.0f * scale_factor;
+		resolution_width = 320.0f * scale_factor;
 		resolution_height = current_height;
 
 		// Align the image to the left edge to cover the black border precisely
 		x_position = black_border_width - resolution_width;
 	}
-	else if (x_position == RIGHT_BORDER_X_ID && current_aspect_ratio <= 2.0f && current_aspect_ratio > 1.5f) // Right border, skip if the image is going to be stretched
+	else if (x_position == RIGHT_BORDER_X_ID && current_aspect_ratio > 1.5f) // Right border, skip if the image is going to be stretched
 	{
 		// Calculate the scale factor to match the target height
 		float scale_factor = current_height / 720.0f; // Original height of the image is 720
 
 		// Scale the width and height proportionally
-		resolution_width = 160.0f * scale_factor;
+		resolution_width = 320.0f * scale_factor;
 		resolution_height = current_height;
 
 		// Position the image to align precisely with the right black border
