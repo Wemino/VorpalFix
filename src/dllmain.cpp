@@ -1,8 +1,11 @@
 ﻿#define _USE_MATH_DEFINES
+#define MINI_CASE_SENSITIVE
 #define NOMINMAX
-#include <IniReader.h>
 #include <shlobj.h>
+#include <filesystem>
 #include "MinHook.h"
+#include <string>
+#include "ini.h"
 #include "dllmain.h"
 #include "helper.hpp"
 #include <Windows.h>
@@ -111,57 +114,57 @@ bool AutoFOV = false;
 static void ReadConfig()
 {
 	// Configuration reader initialization
-	CIniReader iniReader("VorpalFix.ini");
+	IniHelper::Init();
 
 	// Fixes
-	FixSoundRandomization = iniReader.ReadInteger("Fixes", "FixSoundRandomization", 1) == 1;
-	FixHardDiskFull = iniReader.ReadInteger("Fixes", "FixHardDiskFull", 1) == 1;
-	FixSaveScreenshotBufferOverflow = iniReader.ReadInteger("Fixes", "FixSaveScreenshotBufferOverflow", 1) == 1;
-	FixBlinkingAnimationSpeed = iniReader.ReadInteger("Fixes", "FixBlinkingAnimationSpeed", 1) == 1;
-	FixStretchedHUD = iniReader.ReadInteger("Fixes", "FixStretchedHUD", 1) == 1;
-	FixStretchedFMV = iniReader.ReadInteger("Fixes", "FixStretchedFMV", 1) == 1;
-	FixStretchedGUI = iniReader.ReadInteger("Fixes", "FixStretchedGUI", 1) == 1;
-	FixDPIScaling = iniReader.ReadInteger("Fixes", "FixDPIScaling", 1) == 1;
-	FixFullscreenSetting = iniReader.ReadInteger("Fixes", "FixFullscreenSetting", 1) == 1;
-	FixLocalizationFiles = iniReader.ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
-	FixMenuTransitionTiming = iniReader.ReadInteger("Fixes", "FixMenuTransitionTiming", 1) == 1;
-	FixProton = iniReader.ReadInteger("Fixes", "FixProton", 0) == 1;
+	FixSoundRandomization = IniHelper::ReadInteger("Fixes", "FixSoundRandomization", 1) == 1;
+	FixHardDiskFull = IniHelper::ReadInteger("Fixes", "FixHardDiskFull", 1) == 1;
+	FixSaveScreenshotBufferOverflow = IniHelper::ReadInteger("Fixes", "FixSaveScreenshotBufferOverflow", 1) == 1;
+	FixBlinkingAnimationSpeed = IniHelper::ReadInteger("Fixes", "FixBlinkingAnimationSpeed", 1) == 1;
+	FixStretchedHUD = IniHelper::ReadInteger("Fixes", "FixStretchedHUD", 1) == 1;
+	FixStretchedFMV = IniHelper::ReadInteger("Fixes", "FixStretchedFMV", 1) == 1;
+	FixStretchedGUI = IniHelper::ReadInteger("Fixes", "FixStretchedGUI", 1) == 1;
+	FixDPIScaling = IniHelper::ReadInteger("Fixes", "FixDPIScaling", 1) == 1;
+	FixFullscreenSetting = IniHelper::ReadInteger("Fixes", "FixFullscreenSetting", 1) == 1;
+	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
+	FixMenuTransitionTiming = IniHelper::ReadInteger("Fixes", "FixMenuTransitionTiming", 1) == 1;
+	FixProton = IniHelper::ReadInteger("Fixes", "FixProton", 0) == 1;
 
 	// General
-	LaunchWithoutAlice2 = iniReader.ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
-	PreventAlice2OnExit = iniReader.ReadInteger("General", "PreventAlice2OnExit", 0) == 1;
-	Alice2Path = iniReader.ReadString("General", "Alice2Path", ALICE2_DEFAULT_PATH);
-	LanguageId = iniReader.ReadInteger("General", "LanguageId", 0);
-	UseOriginalIntroVideos = iniReader.ReadInteger("General", "UseOriginalIntroVideos", 0) == 1;
-	Disable8BitAudioAsDefault = iniReader.ReadInteger("General", "Disable8BitAudioAsDefault", 1) == 1;
-	UseConsoleTitleScreen = iniReader.ReadInteger("General", "UseConsoleTitleScreen", 0) == 1;
-	DisableRemasteredModels = iniReader.ReadInteger("General", "DisableRemasteredModels", 0) == 1;
-	EnableDevConsole = iniReader.ReadInteger("General", "EnableDevConsole", 0) == 1;
-	ToggleConsoleBindKey = iniReader.ReadString("General", "ToggleConsoleBindKey", "F2");
-	CustomSavePath = iniReader.ReadString("General", "CustomSavePath", "");
+	LaunchWithoutAlice2 = IniHelper::ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
+	PreventAlice2OnExit = IniHelper::ReadInteger("General", "PreventAlice2OnExit", 0) == 1;
+	Alice2Path = IniHelper::ReadString("General", "Alice2Path", ALICE2_DEFAULT_PATH);
+	LanguageId = IniHelper::ReadInteger("General", "LanguageId", 0);
+	UseOriginalIntroVideos = IniHelper::ReadInteger("General", "UseOriginalIntroVideos", 0) == 1;
+	Disable8BitAudioAsDefault = IniHelper::ReadInteger("General", "Disable8BitAudioAsDefault", 1) == 1;
+	UseConsoleTitleScreen = IniHelper::ReadInteger("General", "UseConsoleTitleScreen", 0) == 1;
+	DisableRemasteredModels = IniHelper::ReadInteger("General", "DisableRemasteredModels", 0) == 1;
+	EnableDevConsole = IniHelper::ReadInteger("General", "EnableDevConsole", 0) == 1;
+	ToggleConsoleBindKey = IniHelper::ReadString("General", "ToggleConsoleBindKey", "F2");
+	CustomSavePath = IniHelper::ReadString("General", "CustomSavePath", "");
 
 	// Display
-	ConsolePortHUD = iniReader.ReadInteger("Display", "ConsolePortHUD", 0) == 1;
-	EnableControllerIcons = iniReader.ReadInteger("Display", "EnableControllerIcons", 1) == 1;
-	UsePS3ControllerIcons = iniReader.ReadInteger("Display", "UsePS3ControllerIcons", 0) == 1;
-	HideConsoleAtLaunch = iniReader.ReadInteger("Display", "HideConsoleAtLaunch", 1) == 1;
-	DisableLetterbox = iniReader.ReadInteger("Display", "DisableLetterbox", 0) == 1;
-	GameHelper::DisableCursorScaling = iniReader.ReadInteger("Display", "DisableCursorScaling", 0) == 1;
-	ForceBorderlessFullscreen = iniReader.ReadInteger("Display", "ForceBorderlessFullscreen", 0) == 1;
-	EnableVsync = iniReader.ReadInteger("Display", "EnableVsync", 0) == 1;
-	AutoResolution = iniReader.ReadInteger("Display", "AutoResolution", 1) == 1;
-	CustomResolution = iniReader.ReadInteger("Display", "CustomResolution", 0) == 1;
-	CustomResolutionWidth = iniReader.ReadInteger("Display", "CustomResolutionWidth", 640);
-	CustomResolutionHeight = iniReader.ReadInteger("Display", "CustomResolutionHeight", 480);
-	EnableAltF4Close = iniReader.ReadInteger("Display", "EnableAltF4Close", 0);
+	ConsolePortHUD = IniHelper::ReadInteger("Display", "ConsolePortHUD", 0) == 1;
+	EnableControllerIcons = IniHelper::ReadInteger("Display", "EnableControllerIcons", 1) == 1;
+	UsePS3ControllerIcons = IniHelper::ReadInteger("Display", "UsePS3ControllerIcons", 0) == 1;
+	HideConsoleAtLaunch = IniHelper::ReadInteger("Display", "HideConsoleAtLaunch", 1) == 1;
+	DisableLetterbox = IniHelper::ReadInteger("Display", "DisableLetterbox", 0) == 1;
+	GameHelper::DisableCursorScaling = IniHelper::ReadInteger("Display", "DisableCursorScaling", 0) == 1;
+	ForceBorderlessFullscreen = IniHelper::ReadInteger("Display", "ForceBorderlessFullscreen", 0) == 1;
+	EnableVsync = IniHelper::ReadInteger("Display", "EnableVsync", 0) == 1;
+	AutoResolution = IniHelper::ReadInteger("Display", "AutoResolution", 1) == 1;
+	CustomResolution = IniHelper::ReadInteger("Display", "CustomResolution", 0) == 1;
+	CustomResolutionWidth = IniHelper::ReadInteger("Display", "CustomResolutionWidth", 640);
+	CustomResolutionHeight = IniHelper::ReadInteger("Display", "CustomResolutionHeight", 480);
+	EnableAltF4Close = IniHelper::ReadInteger("Display", "EnableAltF4Close", 0);
 
 	// Graphics
-	MaxAnisotropy = iniReader.ReadFloat("Graphics", "MaxAnisotropy", 16);
-	TrilinearTextureFiltering = iniReader.ReadInteger("Graphics", "TrilinearTextureFiltering", 1) == 1;
-	EnhancedLOD = iniReader.ReadInteger("Graphics", "EnhancedLOD", 1) == 1;
-	CustomFPSLimit = iniReader.ReadInteger("Graphics", "CustomFPSLimit", 60);
-	FOV = iniReader.ReadFloat("Graphics", "FOV", 90.0);
-	AutoFOV = iniReader.ReadInteger("Graphics", "AutoFOV", 1) == 1;
+	MaxAnisotropy = IniHelper::ReadFloat("Graphics", "MaxAnisotropy", 16);
+	TrilinearTextureFiltering = IniHelper::ReadInteger("Graphics", "TrilinearTextureFiltering", 1) == 1;
+	EnhancedLOD = IniHelper::ReadInteger("Graphics", "EnhancedLOD", 1) == 1;
+	CustomFPSLimit = IniHelper::ReadInteger("Graphics", "CustomFPSLimit", 60);
+	FOV = IniHelper::ReadFloat("Graphics", "FOV", 90.0);
+	AutoFOV = IniHelper::ReadInteger("Graphics", "AutoFOV", 1) == 1;
 
 	// Set to monitor's refresh rate
 	if (CustomFPSLimit == -1)
@@ -424,8 +427,8 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 
 	float black_border_width = (current_width - (current_height * ASPECT_RATIO_4_3)) / 2.0f;
 
-	// Don't do this if black_border_width too big
-	if (x_position == LEFT_BORDER_X_ID && current_aspect_ratio > 1.5f) // Left border, skip if the image is going to be stretched
+	// Pillarbox borders
+	if (x_position == LEFT_BORDER_X_ID && current_aspect_ratio > 1.5f) // Left border
 	{
 		// Calculate the scale factor to match the target height
 		float scale_factor = current_height / 720.0f; // Original height of the image is 720
@@ -437,7 +440,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		// Align the image to the left edge to cover the black border precisely
 		x_position = black_border_width - resolution_width;
 	}
-	else if (x_position == RIGHT_BORDER_X_ID && current_aspect_ratio > 1.5f) // Right border, skip if the image is going to be stretched
+	else if (x_position == RIGHT_BORDER_X_ID && current_aspect_ratio > 1.5f) // Right border
 	{
 		// Calculate the scale factor to match the target height
 		float scale_factor = current_height / 720.0f; // Original height of the image is 720
@@ -454,18 +457,18 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		char* ShaderName = *(char**)(SHADERS_CACHE_ADDR + 0x4 * ShaderHandle);
 		BYTE isConsoleOpen = (*(BYTE**)CONSOLE_THREAD_PTR_ADDR && *(*(BYTE**)CONSOLE_THREAD_PTR_ADDR + 0xCC)) ? *(*(BYTE**)CONSOLE_THREAD_PTR_ADDR + 0xCC) : 0;
 
-		// Workaround to be able to use the console
-		if (isConsoleOpen == 1 && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
-		{
-			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-		}
-
 		// Resize the mouse when needed
 		if (!isCursorResized && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
 		{
 			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
 			GameHelper::ResizePopupMessage(currentWidth, currentHeight); // Does not scale well
 			isCursorResized = true;
+		}
+
+		// Workaround to be able to use the console
+		if (isConsoleOpen == 1 && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
+		{
+			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
 
 		// Once we get to the main menu

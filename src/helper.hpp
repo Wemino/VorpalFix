@@ -1,5 +1,3 @@
-#include <filesystem>
-
 namespace MemoryHelper
 {
 	template <typename T> static bool WriteMemory(uintptr_t address, T value, bool disableProtection = true)
@@ -92,6 +90,64 @@ namespace MemoryHelper
 			VirtualProtect(reinterpret_cast <LPVOID> (address), sizeof(T), oldProtect, &oldProtect);
 		}
 		return value;
+	}
+};
+
+namespace IniHelper
+{
+	mINI::INIFile iniFile("VorpalFix.ini");
+	mINI::INIStructure iniReader;
+
+	void Init()
+	{
+		iniFile.read(iniReader);
+	}
+
+	void Save()
+	{
+		iniFile.write(iniReader);
+	}
+
+	char* ReadString(const char* sectionName, const char* valueName, const char* defaultValue)
+	{
+		char* result = new char[255];
+		try 
+		{
+			if (iniReader[sectionName].has(valueName))
+			{
+				std::string value = iniReader[sectionName][valueName];
+
+				if (!value.empty() && (value.front() == '\"' || value.front() == '\''))
+					value.erase(0, 1);
+				if (!value.empty() && (value.back() == '\"' || value.back() == '\''))
+					value.erase(value.size() - 1);
+
+				strncpy(result, value.c_str(), 254);
+				result[254] = '\0';
+				return result;
+			}
+		}
+		catch (...) {}
+
+		strncpy(result, defaultValue, 254);
+		result[254] = '\0';
+		return result;
+	}
+
+	float ReadFloat(const char* sectionName, const char* valueName, float defaultValue)
+	{
+		const auto& s = iniReader[sectionName][valueName];
+		if (s.empty())
+			return defaultValue;
+		return std::stof(s);
+	}
+
+	int ReadInteger(const char* sectionName, const char* valueName, int defaultValue)
+	{
+		const auto& s = iniReader[sectionName][valueName];
+		if (s.empty())
+			return defaultValue;
+		return std::stod(s);
 	}
 };
 
