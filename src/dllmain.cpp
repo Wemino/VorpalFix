@@ -86,7 +86,6 @@ bool UseOriginalIntroVideos = false;
 bool Disable8BitAudioAsDefault = false;
 bool DisableRemasteredModels = false;
 bool EnableDevConsole = false;
-char* ToggleConsoleBindKey = nullptr;
 char* CustomSavePath = nullptr;
 
 // Display
@@ -139,8 +138,7 @@ static void ReadConfig()
 	Disable8BitAudioAsDefault = IniHelper::ReadInteger("General", "Disable8BitAudioAsDefault", 1) == 1;
 	UseConsoleTitleScreen = IniHelper::ReadInteger("General", "UseConsoleTitleScreen", 0) == 1;
 	DisableRemasteredModels = IniHelper::ReadInteger("General", "DisableRemasteredModels", 0) == 1;
-	EnableDevConsole = IniHelper::ReadInteger("General", "EnableDevConsole", 0) == 1;
-	ToggleConsoleBindKey = IniHelper::ReadString("General", "ToggleConsoleBindKey", "F2");
+	EnableDevConsole = IniHelper::ReadInteger("General", "EnableDevConsole", 1) == 1;
 	CustomSavePath = IniHelper::ReadString("General", "CustomSavePath", "");
 
 	// Display
@@ -156,7 +154,7 @@ static void ReadConfig()
 	CustomResolution = IniHelper::ReadInteger("Display", "CustomResolution", 0) == 1;
 	CustomResolutionWidth = IniHelper::ReadInteger("Display", "CustomResolutionWidth", 640);
 	CustomResolutionHeight = IniHelper::ReadInteger("Display", "CustomResolutionHeight", 480);
-	EnableAltF4Close = IniHelper::ReadInteger("Display", "EnableAltF4Close", 0);
+	EnableAltF4Close = IniHelper::ReadInteger("Display", "EnableAltF4Close", 1) == 1;
 
 	// Graphics
 	MaxAnisotropy = IniHelper::ReadFloat("Graphics", "MaxAnisotropy", 16);
@@ -209,7 +207,7 @@ static void ReadConfig()
 	setAlice2Path = strcmp(Alice2Path, ALICE2_DEFAULT_PATH) != 0;
 
 	// Hook CvarSet only if necessary
-	CvarHooking = FixFullscreenSetting || AutoResolution || EnableDevConsole || EnableVsync || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60) || setAlice2Path || ForceBorderlessFullscreen;
+	CvarHooking = FixFullscreenSetting || AutoResolution || EnableVsync || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60) || setAlice2Path || ForceBorderlessFullscreen;
 }
 
 #pragma region
@@ -554,6 +552,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 				x_position = (x_position * scale_factor) + horizontal_offset;
 			}
 
+			// Save camera position similar to the console version
 			if ((ConsolePortHUD && strcmp(ShaderName, "ui/quicksavecam/quicksavecam") == 0))
 			{
 				x_position = current_width / 6.0f;
@@ -916,9 +915,8 @@ static void __cdecl UpdateFOV(DWORD* a1, int a2, int* a3)
  * 
  * Used For:
  *    FixFullscreenSetting & AutoResolution & 
- *    EnableDevConsole & EnableVsync & 
- *    TrilinearTextureFiltering & EnhancedLOD & 
- *    CustomFPSLimit & Alice2Path &
+ *    EnableVsync & TrilinearTextureFiltering &
+ *    EnhancedLOD & CustomFPSLimit & Alice2Path
  *    ForceBorderlessFullscreen
  ****************************************************/
 
@@ -945,12 +943,6 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 			value = "10000";
 			flag = 0x10;
 		}
-	}
-
-	if (EnableDevConsole && strcmp(var_name, "ui_console") == 0)
-	{
-		value = "1";
-		flag = 0x10;
 	}
 
 	if (EnableVsync && strcmp(var_name, "r_swapInterval") == 0)
@@ -1445,6 +1437,37 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 	return LoadLocalizationFile();
 }
 
+/****************************************************
+ * Function: Bind_Hook
+ *
+ * Description:
+ *    Hook of the function used by the "bind" command
+ *
+ ****************************************************/
+
+typedef int(__cdecl* sub_407870)(int, char*);
+sub_407870 Bind = nullptr;
+
+static int __cdecl Bind_Hook(int keyId, char* cmd_name)
+{
+	if (strcmp(cmd_name, "toggleconsole") == 0)
+	{
+		// Handle default keys that are not recognized by the game, use "F2" as default
+		if (keyId == 96 || keyId == 126)
+		{
+			keyId = GameHelper::GetKeyId("F2");
+		}
+		
+		char cmpInstruction[] = { 0x81, 0xFF };
+
+		// cmp toggleConsoleKeyId instead of hardcoded cmp 96 and cmp 126 (` and ~)
+		MemoryHelper::WriteMemoryRaw(0x40823A, cmpInstruction, sizeof(cmpInstruction), true);
+		MemoryHelper::WriteMemory<int>(0x40823C, keyId, true);
+		MemoryHelper::MakeNOP(0x408240, 6, true);
+	}
+	return Bind(keyId, cmd_name);
+}
+
 #pragma endregion Hooks with MinHook
 
 #pragma region
@@ -1786,14 +1809,7 @@ static void ApplyEnableDevConsole()
 {
 	if (!EnableDevConsole) return;
 
-	int toggleConsoleKeyId = GameHelper::GetKeyId(ToggleConsoleBindKey);
-
-	char cmpInstruction[] = { 0x81, 0xFF };
-
-	// cmp toggleConsoleKeyId instead of cmp 0x60 and cmp 0x7E
-	MemoryHelper::WriteMemoryRaw(0x40823A, cmpInstruction, sizeof(cmpInstruction), true);
-	MemoryHelper::WriteMemory<int>(0x40823C, toggleConsoleKeyId, true);
-	MemoryHelper::MakeNOP(0x408240, 6, true);
+	HookHelper::ApplyHook((void*)0x407870, &Bind_Hook, reinterpret_cast<LPVOID*>(&Bind));
 }
 
 static void ApplyCustomSavePath()
