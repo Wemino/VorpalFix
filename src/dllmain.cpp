@@ -95,7 +95,6 @@ bool UsePS3ControllerIcons = false;
 bool HideConsoleAtLaunch = false;
 bool DisableLetterbox = false;
 bool ForceBorderlessFullscreen = false;
-bool EnableVsync = false;
 bool AutoResolution = false;
 bool CustomResolution = false;
 int CustomResolutionWidth = 0;
@@ -149,7 +148,6 @@ static void ReadConfig()
 	DisableLetterbox = IniHelper::ReadInteger("Display", "DisableLetterbox", 0) == 1;
 	GameHelper::DisableCursorScaling = IniHelper::ReadInteger("Display", "DisableCursorScaling", 0) == 1;
 	ForceBorderlessFullscreen = IniHelper::ReadInteger("Display", "ForceBorderlessFullscreen", 0) == 1;
-	EnableVsync = IniHelper::ReadInteger("Display", "EnableVsync", 0) == 1;
 	AutoResolution = IniHelper::ReadInteger("Display", "AutoResolution", 1) == 1;
 	CustomResolution = IniHelper::ReadInteger("Display", "CustomResolution", 0) == 1;
 	CustomResolutionWidth = IniHelper::ReadInteger("Display", "CustomResolutionWidth", 640);
@@ -207,7 +205,7 @@ static void ReadConfig()
 	setAlice2Path = strcmp(Alice2Path, ALICE2_DEFAULT_PATH) != 0;
 
 	// Hook CvarSet only if necessary
-	CvarHooking = FixFullscreenSetting || AutoResolution || EnableVsync || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60) || setAlice2Path || ForceBorderlessFullscreen;
+	CvarHooking = FixFullscreenSetting || AutoResolution || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60) || setAlice2Path || ForceBorderlessFullscreen;
 }
 
 #pragma region
@@ -915,8 +913,8 @@ static void __cdecl UpdateFOV(DWORD* a1, int a2, int* a3)
  * 
  * Used For:
  *    FixFullscreenSetting & AutoResolution & 
- *    EnableVsync & TrilinearTextureFiltering &
- *    EnhancedLOD & CustomFPSLimit & Alice2Path
+ *    TrilinearTextureFiltering & EnhancedLOD & 
+ *    CustomFPSLimit & Alice2Path &
  *    ForceBorderlessFullscreen
  ****************************************************/
 
@@ -943,12 +941,6 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 			value = "10000";
 			flag = 0x10;
 		}
-	}
-
-	if (EnableVsync && strcmp(var_name, "r_swapInterval") == 0)
-	{
-		value = "1";
-		flag = 0x10;
 	}
 
 	if (ForceBorderlessFullscreen && strcmp(var_name, "r_fullscreen") == 0)
