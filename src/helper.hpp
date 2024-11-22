@@ -111,11 +111,11 @@ namespace IniHelper
 	char* ReadString(const char* sectionName, const char* valueName, const char* defaultValue)
 	{
 		char* result = new char[255];
-		try 
+		try
 		{
-			if (iniReader[sectionName].has(valueName))
+			if (iniReader.has(sectionName) && iniReader.get(sectionName).has(valueName))
 			{
-				std::string value = iniReader[sectionName][valueName];
+				std::string value = iniReader.get(sectionName).get(valueName);
 
 				if (!value.empty() && (value.front() == '\"' || value.front() == '\''))
 					value.erase(0, 1);
@@ -136,18 +136,32 @@ namespace IniHelper
 
 	float ReadFloat(const char* sectionName, const char* valueName, float defaultValue)
 	{
-		const auto& s = iniReader[sectionName][valueName];
-		if (s.empty())
-			return defaultValue;
-		return std::stof(s);
+		try
+		{
+			if (iniReader.has(sectionName) && iniReader.get(sectionName).has(valueName))
+			{
+				const std::string& s = iniReader.get(sectionName).get(valueName);
+				if (!s.empty())
+					return std::stof(s);
+			}
+		}
+		catch (...) {}
+		return defaultValue;
 	}
 
 	int ReadInteger(const char* sectionName, const char* valueName, int defaultValue)
 	{
-		const auto& s = iniReader[sectionName][valueName];
-		if (s.empty())
-			return defaultValue;
-		return std::stod(s);
+		try
+		{
+			if (iniReader.has(sectionName) && iniReader.get(sectionName).has(valueName))
+			{
+				const std::string& s = iniReader.get(sectionName).get(valueName);
+				if (!s.empty())
+					return std::stoi(s);
+			}
+		}
+		catch (...) {}
+		return defaultValue;
 	}
 };
 
