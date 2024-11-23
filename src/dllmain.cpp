@@ -46,6 +46,7 @@ int VF_COM_MAXFPS_PTR;
 bool isStretchedHUDHooked = false;
 bool isGameAPILoadingHooked = false;
 bool isAnisotropyHooked = false;
+bool isScreenRateFps = false;
 
 // =============================
 // Variables 
@@ -182,6 +183,7 @@ static void ReadConfig()
 	if (CustomFPSLimit == -1)
 	{
 		CustomFPSLimit = SystemHelper::GetCurrentDisplayFrequency();
+		isScreenRateFps = true;
 	}
 
 	// UseConsoleTitleScreen rely on FixStretchedGUI
@@ -1499,7 +1501,15 @@ static int __cdecl SetupOpenGLParameters_Hook()
 	VF_UI_PS3_PTR = Cvar_Set("vf_ui_ps3", StringHelper::BoolToCString(UsePS3ControllerIcons), 0);
 	VF_UI_LETTERBOX_PTR = Cvar_Set("vf_ui_letterbox", StringHelper::BoolToCString(!DisableLetterbox), 0);
 	VF_R_EXT_MAX_ANISOTROPY_PTR = Cvar_Set("vf_r_ext_max_anisotropy", StringHelper::FloatToCString(MaxAnisotropy), 0);
-	VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", StringHelper::IntegerToCString(CustomFPSLimit), 0);
+
+	if (isScreenRateFps)
+	{
+		VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", "-1", 0);
+	}
+	else
+	{
+		VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", StringHelper::IntegerToCString(CustomFPSLimit), 0);
+	}
 	return SetupOpenGLParameters();
 }
 
