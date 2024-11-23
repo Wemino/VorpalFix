@@ -44,7 +44,7 @@ int VF_R_EXT_MAX_ANISOTROPY_PTR;
 int VF_COM_MAXFPS_PTR;
 
 bool isStretchedHUDHooked = false;
-bool isGameAPILoadingHooked = false;
+bool isGameAPIPacketHooked = false;
 bool isAnisotropyHooked = false;
 bool isScreenRateFps = false;
 
@@ -896,7 +896,7 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 }
 
 /****************************************************
- * Function: UpdateFOV
+ * Function: ProcessAPIPacket
  *
  * Description:
  *    Updates the Field of View (FOV) from the snapshot
@@ -904,19 +904,25 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
  *    changed, it is updated accordingly
  *
  * Used For:
- *    AutoFOV & FOV
+ *    AutoFOV & FOV & DisableLetterbox
  ****************************************************/
 
 typedef void(__cdecl* sub_420390)(DWORD*, int, int*);
 sub_420390 MSG_DoStuff = nullptr;
 
-static void __cdecl UpdateFOV(DWORD* a1, int a2, int* a3)
+static void __cdecl ProcessAPIPacket(DWORD* a1, int a2, int* a3)
 {
 	float* fovPointer = (float*)((DWORD)a2 - 0x50);
 
 	if (*fovPointer != FOV)
 	{
 		*fovPointer = FOV;
+	}
+
+	if (DisableLetterbox)
+	{
+		int* letterboxPointer = (int*)((DWORD)a2 - 0x35C);
+		*letterboxPointer = 0;
 	}
 
 	MSG_DoStuff(a1, a2, a3);
@@ -1023,41 +1029,6 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	}
 
 	return Cvar_Set(var_name, value, flag);
-}
-
-/****************************************************
- * Function: LoadGameDLL_Hook
- *
- * Description:
- *    Used to patch "fgamex86.dll" immediately after 
- *    it is loaded into memory
- *
- * Used For:
- *    DisableLetterbox
- ****************************************************/
-
-typedef int(__cdecl* sub_42CFF0)();
-sub_42CFF0 LoadGameDLL = nullptr;
-
-static int __cdecl LoadGameDLL_Hook()
-{
-	// Load the game's DLL
-	int result = LoadGameDLL();
-
-	// Get handle to "fgamex86.dll" if loaded
-	HMODULE gameApiDll = GetModuleHandle(L"fgamex86.dll");
-
-	// If DLL is loaded, get its base address and do the patching
-	if (gameApiDll) {
-		DWORD gameApiBaseAddress = (DWORD)gameApiDll;
-
-		if (DisableLetterbox)
-		{
-			MemoryHelper::WriteMemory<int>(gameApiBaseAddress + 0x16CAA3, 0, true);
-		}
-	}
-
-	return result;
 }
 
 /****************************************************
@@ -1427,10 +1398,10 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_
 		DisableLetterbox = !isLetterboxEnabled;
 
 		// Hook LoadGameDLL_Hook if needed
-		if (!isGameAPILoadingHooked && DisableLetterbox)
+		if (!isGameAPIPacketHooked && DisableLetterbox)
 		{
-			HookHelper::ApplyHook((void*)0x42CFF0, &LoadGameDLL_Hook, reinterpret_cast<LPVOID*>(&LoadGameDLL));
-			isGameAPILoadingHooked = true;
+			HookHelper::ApplyHook((void*)0x420390, &ProcessAPIPacket, reinterpret_cast<LPVOID*>(&MSG_DoStuff));
+			isGameAPIPacketHooked = true;
 		}
 
 		// MaxAnisotropy
@@ -1990,15 +1961,6 @@ static void ApplyHideConsoleAtLaunch()
 	MemoryHelper::WriteMemory<char>(0x46C28F, 0x00, true);
 }
 
-static void ApplyDisableLetterbox()
-{
-	if (!DisableLetterbox) return;
-
-	HookHelper::ApplyHook((void*)0x42CFF0, &LoadGameDLL_Hook, reinterpret_cast<LPVOID*>(&LoadGameDLL));
-
-	isGameAPILoadingHooked = true;
-}
-
 static void ApplyForceBorderlessFullscreen()
 {
 	if (!ForceBorderlessFullscreen) return;
@@ -2035,11 +1997,13 @@ static void ApplyAnisotropicTextureFiltering()
 	isAnisotropyHooked = true;
 }
 
-static void ApplyCustomFOV()
+static void ApplyProcessAPIPacket()
 {
-	if (!AutoFOV && FOV == 90.0) return;
+	if (!AutoFOV && FOV == 90.0 && !DisableLetterbox) return;
 
-	HookHelper::ApplyHook((void*)0x420390, &UpdateFOV, reinterpret_cast<LPVOID*>(&MSG_DoStuff));
+	HookHelper::ApplyHook((void*)0x420390, &ProcessAPIPacket, reinterpret_cast<LPVOID*>(&MSG_DoStuff));
+
+	isGameAPIPacketHooked = true;
 }
 
 static void ApplyCvarTweaks()
@@ -2093,13 +2057,12 @@ static void Init()
 	// Display
 	ApplyEnableControllerIcons();
 	ApplyHideConsoleAtLaunch();
-	ApplyDisableLetterbox();
 	ApplyForceBorderlessFullscreen();
 	ApplyCustomResolution();
 	ApplyEnableAltF4Close();
 	// Graphics
 	ApplyAnisotropicTextureFiltering();
-	ApplyCustomFOV();
+	ApplyProcessAPIPacket();
 	// Misc
 	ApplyCvarTweaks();
 	ApplyResolutionChangeHook();
@@ -2114,6 +2077,7 @@ static BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID l
 		{
 			SystemHelper::LoadProxyLibrary();
 			Init();
+			break;
 		}
 		case DLL_THREAD_ATTACH:
 		case DLL_THREAD_DETACH:
