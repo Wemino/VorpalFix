@@ -370,3 +370,25 @@ namespace HookHelper
 		}
 	}
 };
+
+namespace StringHelper
+{
+	const char* IntegerToCString(int value) 
+	{
+		static thread_local char buffer[32];
+		std::snprintf(buffer, sizeof(buffer), "%d", value);
+		return buffer;
+	}
+
+	const char* FloatToCString(float value) 
+	{
+		static thread_local char buffer[32];
+		std::snprintf(buffer, sizeof(buffer), "%.0f", value);
+		return buffer;
+	}
+
+	const char* BoolToCString(bool value)
+	{
+		return value ? "1" : "0";
+	}
+};
