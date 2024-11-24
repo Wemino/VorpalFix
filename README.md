@@ -58,6 +58,7 @@ A fix that addresses a variety of technical issues and adds quality-of-life impr
 
 ## Credits
 - [MinHook](https://github.com/TsudaKageyu/minhook) for hooking.
+- [mINI](https://github.com/metayeti/mINI) for INI file handling.
 - [Leanny](https://github.com/Leanny) help with some algorithms.
 - [CRASHARKI](https://github.com/CRASHARKI) help with fixing and improving the menu.
 
