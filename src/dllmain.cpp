@@ -1049,8 +1049,7 @@ static HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 {
 	if (dwStyle == 0x10C80000)
 	{
-		int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-		int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+		auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
 
 		dwStyle = WS_VISIBLE + WS_POPUP;
 
