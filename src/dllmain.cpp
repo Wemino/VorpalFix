@@ -1538,6 +1538,7 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 	// If we still have files to load
 	if (localizationFilesToLoad > 0)
 	{
+		int currentIndex = pk3LocFiles.size() - localizationFilesToLoad;
 		localizationFilesToLoad--;
 
 		if (localizationFilesToLoad == 0)
@@ -1548,7 +1549,7 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 		}
 
 		// Return the file path
-		return pk3LocFiles[localizationFilesToLoad].c_str();
+		return pk3LocFiles[currentIndex].c_str();
 	}
 
 	return LoadLocalizationFile();
