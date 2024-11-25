@@ -1,0 +1,1969 @@
+menu "controls" 640 480 NONE 0.5
+fadeoverlay 0.5
+bgcolor 0 0 0 1
+borderstyle NONE
+bgfill 0 0 0 1
+fullscreen 1
+// vidmode 3
+
+showcommand "widgetcommand TitleBar activategroup group_main\n"
+showcommand "widgetcommand alice3d setanim idle_stand_rocktoes\n"
+
+allowactivate	true
+keycommand		1 "widgetcommand TitleBar activategroup group_video\n"
+keycommand		2 "widgetcommand TitleBar activategroup group_audio\n"
+keycommand		3 "widgetcommand TitleBar activategroup group_control_pc\n"
+keycommand		4 "widgetcommand TitleBar activategroup group_game\n"
+keycommand		5 "widgetcommand TitleBar activategroup group_vorpalfix\n"
+
+// Mirror background
+resource
+Label
+{
+	name			"Default"
+	rect			337 94 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/control/reflect_lightning
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			337 349 256 64
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/control/reflect_2.tga
+	allowactivate	false
+}
+
+resource
+Alice3D
+{
+	name			"alice3d"
+	rect			0 0 640 480
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	allowactivate	false
+}
+
+// Background
+resource
+Label
+{
+	name			"Default"
+	rect			0 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	0 ui/control/controlA
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 0 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	1 ui/control/controlB
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			512 0 128 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	2 ui/control/controlC
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			0 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	3 ui/control/controlD
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			256 256 256 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	4 ui/control/controlE
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			512 256 128 224
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	5 ui/control/controlF
+	allowactivate	false
+}
+
+// bulb
+resource
+Label
+{
+	name			"Default"
+	rect			0 0 64 64
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/control/bulb_glow
+	allowactivate	false
+}
+
+// glowing heart
+resource
+Label
+{
+	name			"Default"
+	rect			445 22 64 64
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/control/glowing_heart
+	allowactivate	false
+}
+
+// glowing eyes overlay
+resource
+Label
+{
+	name			"Default"
+	rect			454 403 64 32
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	font			"asrafel"
+	fontjustify		left center
+	shader			ui/control/skull_glow
+	allowactivate	false
+}
+
+// --------------------------------------
+// --------------------------------------
+// MAIN GROUP
+// --------------------------------------
+// --------------------------------------
+
+// RETURN BUTTON
+resource
+Button
+{
+	title			"Zurück"
+	name			"Default"
+	rect			0 455 75 25
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/tab
+	hovershader		ui/buttons/tab_hover
+	stuffcommand	"popmenu\n"
+	groupid			"group_main"
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			25 5
+	fontscale		0.8
+	direction		from_bottom 0.5
+	allowactivate	false
+}
+
+// head
+resource
+Label
+{
+	name			"Default"
+	rect			48 63 256 256
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	staticshader	6 ui/control/head_1_vorpalfix
+	groupid			"group_main"
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"TitleBar"
+	rect			48 319 256 64
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/control/head_2
+	groupid			"group_main"
+	
+	allowactivate	false
+} 
+resource
+Label
+{
+	name			"Default"
+	rect			75 330 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"ui/control/hslider_prev"
+	groupid			"group_main"
+	allowactivate	false
+} 
+resource
+Label
+{
+	name			"Default"
+	rect			257 330 24 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"ui/control/hslider_next"
+	groupid			"group_main"
+	allowactivate	false
+} 
+// hotspots
+resource
+Button
+{
+	name			"Default"
+	rect			134 143 37 39
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	ordernumber		2
+	mouseEnterCmd	"widgetcommand TitleBar shader ui/control/head_2_video\n"
+	stuffcommand	"widgetcommand TitleBar activategroup group_video\n"
+	groupid			"group_main"
+}
+resource
+Button
+{
+	name			"Default"
+	rect			172 125 56 68
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	ordernumber		3
+	mouseEnterCmd	"widgetcommand TitleBar shader ui/control/head_2_audio\n"
+	stuffcommand	"widgetcommand TitleBar activategroup group_audio\n"
+	groupid			"group_main"
+}
+resource
+Button
+{
+	name			"Default"
+	rect			213 181 50 58
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	ordernumber		4
+	mouseEnterCmd	"widgetcommand TitleBar shader ui/control/head_2_control\n"
+	stuffcommand	"widgetcommand TitleBar activategroup group_control_pc\n"
+	groupid			"group_main"
+}
+resource
+Button
+{
+	name			"Default"
+	rect			138 94 32 39
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	ordernumber		1
+	mouseEnterCmd	"widgetcommand TitleBar shader ui/control/head_2_game\n"
+	stuffcommand	"widgetcommand TitleBar activategroup group_game\n"
+	groupid			"group_main"
+}
+resource
+Button
+{
+	name			"Default"
+	rect			193 75 37 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	ordernumber		37
+	mouseEnterCmd	"widgetcommand TitleBar shader ui/control/head_2_vorpalfix\n"
+	stuffcommand	"widgetcommand TitleBar activategroup group_vorpalfix\n"
+	groupid			"group_main"
+}
+
+resource
+Label
+{
+	name			"Default"
+	rect			121 83 64 64
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_main"
+	shader			ui/control/game_options
+	noinput
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			120 134 64 64
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_main"
+	shader			ui/control/video_options
+	noinput
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			166 129 64 64
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_main"
+	shader			ui/control/audio_options
+	noinput
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			210 172 64 64
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_main"
+	shader			ui/control/control_options
+	noinput
+	allowactivate	false
+}
+resource
+Label
+{
+	name			"Default"
+	rect			180 71 64 32
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_main"
+	shader			ui/control/vorpalfix_options
+	noinput
+	allowactivate	false
+}
+
+// --------------------------------------
+// --------------------------------------
+// CONTROL GROUP
+// --------------------------------------
+// --------------------------------------
+
+// APPLY BUTTON
+resource
+Button
+{
+	title			"Zurück"
+	name			"Default"
+	rect			50 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/apply
+	hovershader		ui/buttons/apply_hover
+	stuffcommand	"widgetcommand alice3d setanim idle_stand_rocktoes; widgetcommand TitleBar activategroup group_main\n"
+	groupid			"group_control_pc"
+	
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			37 8
+	ordernumber		6
+}
+
+// RESET BUTTON
+resource
+Button
+{
+	title			"Zurücksetzen"
+	name			"Default"
+	rect			170 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	stuffcommand	"exec default_pc.cfg; vid_restart; popmenu 0\n"
+	groupid			"group_control_pc"
+	
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			13 8
+	fontscale		0.8
+	ordernumber		7
+}
+
+// JOYSTICK
+resource
+Button
+{
+	title			"Controller"
+	name			"Default"
+	rect			290 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	stuffcommand	"widgetcommand TitleBar activategroup group_control\n"
+	groupid			"group_control_pc"
+	
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			13 8
+	fontscale		0.8
+	ordernumber		35
+}
+
+// BIND LIST
+resource
+FakkBindList
+{
+	title			"BindList"
+	name			"BindList"
+	rect			62 70 230 300
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"3D_BORDER"
+	filename		ui/bind.scr
+	font			"asrafel"
+	groupid			"group_control_pc"
+	ordernumber		5
+}
+
+// APPLY BUTTON
+resource
+Label
+{
+	name			"Default"
+	rect			0 0 640 480
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			"controls_pc"
+	groupid			"group_control"
+}
+resource
+Label
+{
+	title			"Alternativangriff /"
+	name			"Default"
+	rect			0 140 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		right top
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Nach oben klettern"
+	name			"Default"
+	rect			0 155 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		right top
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Nächste Waffe"
+	name			"Default"
+	rect			0 175 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		right top
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Bewegen"
+	name			"Default"
+	rect			0 270 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		right top
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Menünavigation"
+	name			"Default"
+	rect			120 376 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		right center
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Drehen/Zielen"
+	name			"Default"
+	rect			350 376 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		left center
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Angreifen /"
+	name			"Default"
+	rect			467 290 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		left top
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Nach unten klettern"
+	name			"Default"
+	rect			467 305 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		left top
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Springen /"
+	name			"Default"
+	rect			467 259 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		left top
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Nach oben schwimmen"
+	name			"Default"
+	rect			467 274 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		left top
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Verwenden /"
+	name			"Default"
+	rect			467 228 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		left top
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Nach unten schwimmen"
+	name			"Default"
+	rect			467 243 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		left top
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Alternativangriff /"
+	name			"Default"
+	rect			467 198 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		left top
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Nach oben klettern"
+	name			"Default"
+	rect			467 213 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		left top
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Vorh. Waffe"
+	name			"Default"
+	rect			467 175 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		left top
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Angreifen /"
+	name			"Default"
+	rect			467 140 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		left top
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Nach unten klettern"
+	name			"Default"
+	rect			467 155 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		left top
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Pause/Menü verlassen"
+	name			"Default"
+	rect			270 110 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		center center
+	fontscale		0.8
+}
+resource
+Label
+{
+	title			"Steuerung"
+	name			"Default"
+	rect			50 50 167 24
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		left center
+	fontscale		2.0
+	dropshadow		1
+}
+resource
+Button
+{
+	title			"Zurück"
+	name			"Default"
+	rect			50 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/plaque
+	hovershader		ui/buttons/plaque_hover
+	stuffcommand	"widgetcommand alice3d setanim idle_stand_rocktoes; widgetcommand TitleBar activategroup group_control_pc\n"
+	groupid			"group_control"
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			35 8
+	ordernumber		36
+} 
+// --------------------------------------
+// --------------------------------------
+// VIDEO GROUP
+// --------------------------------------
+// --------------------------------------
+
+// APPLY BUTTON
+resource
+Button
+{
+	title			"Anwenden"
+	name			"Default"
+	rect			50 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/apply
+	hovershader		ui/buttons/apply_hover
+	stuffcommand	"ui_setcvars group_video; widgetcommand TitleBar activategroup group_main\n"
+	groupid			"group_video"
+	
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			30 8
+	fontscale		0.8
+	ordernumber		15
+}
+
+// CANCEL BUTTON
+resource
+Button
+{
+	title			"Abbrechen"
+	name			"Default"
+	rect			200 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/apply
+	hovershader		ui/buttons/apply_hover
+	stuffcommand	"ui_restorecvars group_video; widgetcommand TitleBar activategroup group_main\n"
+	groupid			"group_video"
+	
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			30 8
+	fontscale		0.8
+	ordernumber		16
+}
+
+// RESOLUTION
+resource
+Label
+{
+	title			"Auflösung"
+	name			"ResolutionTxt"
+	rect			68 78 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_video"
+	font			"asrafel"
+	fontjustify		left center
+	
+}
+resource
+List
+{
+	name			"Default"
+	rect			88 94 200 20
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_video"
+	font			"asrafel"
+	fontjustify		center top
+	
+
+	highlighttextwidget "ResolutionTxt"
+	ordernumber		8
+
+	linkcvar		"r_mode"
+}
+
+// COLOR DEPTH
+resource
+Label
+{
+	title			"Farbtiefe"
+	name			"ColorTxt"
+	rect			68 118 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_video"
+	font			"asrafel"
+	fontjustify		left center
+	
+}
+resource
+List
+{
+	name			"Default"
+	rect			88 134 200 20
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_video"
+	font			"asrafel"
+	fontjustify		center top
+
+	highlighttextwidget "ColorTxt"
+	ordernumber		9
+
+	linkcvar		"r_colorbits"
+	additem			16 16Bit
+	additem			32 32Bit
+	
+}
+
+// FULLSCREEN
+resource
+Label
+{
+	title			"Vollbildschirm"
+	name			"FullscreenTxt"
+	rect			68 158 210 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_video"
+	font			"asrafel"
+	fontjustify		left center
+	
+}
+resource
+CheckBox
+{
+	name			"Default"
+	rect			260 158 16 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_video"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"r_fullscreen"
+
+	highlighttextwidget "FullscreenTxt"
+	ordernumber		10
+
+	checked_shader		"ui/control/checkbox_checked"
+	unchecked_shader	"ui/control/checkbox_unchecked"
+	
+}
+
+// BRIGHTNESS
+resource
+Label
+{
+	title			"Helligkeit"
+	name			"Brightness"
+	rect			68 188 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_video"
+	font			"asrafel"
+	fontjustify		left center
+	
+}
+resource
+Slider
+{
+	name			"Default"
+	rect			88 204 200 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_video"
+	linkcvar		"r_gamma"
+	slidertype		float
+	setrange		.5 1.5
+	stepsize		.05
+	font			"asrafel"
+	
+
+	highlighttextwidget "Brightness"
+	ordernumber		11
+}
+
+// TEXTURE DETAIL
+resource
+Label
+{
+	title			"Texturen-Detail"
+	name			"Texture_Detail"
+	rect			68 238 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_video"
+	font			"asrafel"
+	fontjustify		left center
+	
+}
+resource
+Slider
+{
+	name			"Default"
+	rect			88 254 200 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_video"
+	linkcvar		"r_picmip"
+	slidertype		integer
+	setrange		3 0
+	stepsize		-1
+	font			"asrafel"
+	
+
+	highlighttextwidget "Texture_Detail"
+	ordernumber		12
+}
+
+// TEXTURE DEPTH
+resource
+Label
+{
+	title			"Texturen"
+	name			"Texture_Bits"
+	rect			68 278 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_video"
+	font			"asrafel"
+	fontjustify		left center
+	
+}
+resource
+List
+{
+	name			"Default"
+	rect			88 294 200 20
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_video"
+	font			"asrafel"
+	fontjustify		center top
+
+	linkcvar		"r_texturebits"
+	additem			16 16Bit
+	additem			32 32Bit
+	
+
+	highlighttextwidget "Texture_Bits"
+	ordernumber		13
+}
+
+// DETAIL TEXTURES
+resource
+Label
+{
+	title			"Detaillierte Texturen"
+	name			"DetailTxt"
+	rect			68 338 210 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_video"
+	font			"asrafel"
+	fontjustify		left center
+	
+}
+resource
+CheckBox
+{
+	name			"Default"
+	rect			260 334 16 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_video"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"r_detailtextures"
+
+	checked_shader		"ui/control/checkbox_checked"
+	unchecked_shader	"ui/control/checkbox_unchecked"
+	
+
+	highlighttextwidget "DetailTxt"
+	ordernumber		14
+}
+
+// --------------------------------------
+// --------------------------------------
+// AUDIO GROUP
+// --------------------------------------
+// --------------------------------------
+
+// APPLY BUTTON
+resource
+Button
+{
+	title			"Anwenden"
+	name			"Default"
+	rect			50 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/apply
+	hovershader		ui/buttons/apply_hover
+	stuffcommand	"ui_setcvars group_audio; widgetcommand TitleBar activategroup group_main\n"
+	groupid			"group_audio"
+	
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			30 8
+	fontscale		0.8
+	ordernumber		23
+}
+
+// CANCEL BUTTON
+resource
+Button
+{
+	title			"Abbrechen"
+	name			"Default"
+	rect			200 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/apply
+	hovershader		ui/buttons/apply_hover
+	stuffcommand	"ui_restorecvars group_audio; widgetcommand TitleBar activategroup group_main\n"
+	groupid			"group_audio"
+	
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			30 8
+	fontscale		0.8
+	ordernumber		24
+}
+
+// SOUND DRIVER
+resource
+Label
+{
+	title			"Soundtreiber"
+	name			"DriverTxt"
+	rect			68 78 200 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+List
+{
+	name			"Default"
+	rect			88 94 200 20
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio"
+	font			"asrafel"
+	fontjustify		center top
+
+	linkcvar		"s_milesdriver"
+	additem			miles
+	additem			dolby
+	additem			a3d
+	additem			a3d2
+	additem			eax
+	additem			eax2
+
+	highlighttextwidget "DriverTxt"
+	ordernumber		17
+}
+
+// MUSIC VOLUME
+resource
+Label
+{
+	title			"Lautstärke Musik"
+	name			"Music_Volume"
+	rect			68 168 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+Slider
+{
+	name			"Default"
+	rect			88 184 200 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio"
+	linkcvar		"s_musicvolume"
+	slidertype		float
+	setrange		0 1
+	stepsize		.05
+	font			"asrafel"
+
+	highlighttextwidget "Music_Volume"
+	ordernumber		19
+}
+
+// SFX VOLUME
+resource
+Label
+{
+	title			"Lautstärke Soundeffekte"
+	name			"SFX_Volume"
+	rect			68 208 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+Slider
+{
+	name			"Default"
+	rect			88 224 200 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio"
+	linkcvar		"s_volume"
+	slidertype		float
+	setrange		0 1
+	stepsize		.05
+	font			"asrafel"
+
+	highlighttextwidget "SFX_Volume"
+	ordernumber		20
+}
+
+// SPEAKER TYPE
+resource
+Label
+{
+	title			"Lautsprechertyp"
+	name			"SpeakerTxt"
+	rect			68 118 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+List
+{
+	name			"Default"
+	rect			88 134 200 20
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio"
+	font			"asrafel"
+	fontjustify		center top
+
+	linkcvar		"s_speaker_type"
+	additem			0 "Normal"
+	additem			1 "Kopfhörer"
+	additem			3 "Surround"
+	additem			4 "Vier Lautsprecher"
+
+	highlighttextwidget "SpeakerTxt"
+	ordernumber		18
+}
+
+// QUALITY
+resource
+Label
+{
+	title			"Qualität"
+	name			"QualityTxt"
+	rect			68 258 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+List
+{
+	name			"Default"
+	rect			88 274 200 20
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio"
+	font			"asrafel"
+	fontjustify		center top
+
+	linkcvar		"s_khz"
+	additem			22 "22 khz"
+	additem			44 "44 khz"
+
+	highlighttextwidget "QualityTxt"
+	ordernumber		21
+
+}
+
+// FORCE 8BIT
+resource
+Label
+{
+	title			"8 Bit verwenden"
+	name			"8BitsTxt"
+	rect			68 298 144 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+CheckBox
+{
+	name			"Default"
+	rect			260 298 16 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_audio"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"s_loadas8bit"
+
+	checked_shader		"ui/control/checkbox_checked"
+	unchecked_shader	"ui/control/checkbox_unchecked"
+
+	highlighttextwidget "8BitsTxt"
+	ordernumber		22
+}
+
+// --------------------------------------
+// --------------------------------------
+// GAME OPTIONS GROUP
+// --------------------------------------
+// --------------------------------------
+
+
+// APPLY BUTTON
+resource
+Button
+{
+	title			"Anwenden"
+	name			"Default"
+	rect			50 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/apply
+	hovershader		ui/buttons/apply_hover
+	stuffcommand	"ui_setcvars group_game; widgetcommand TitleBar activategroup group_main\n"
+	groupid			"group_game"
+	
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			30 8
+	fontscale		0.8
+	ordernumber		33
+}
+
+// CANCEL BUTTON
+resource
+Button
+{
+	title			"Abbrechen"
+	name			"Default"
+	rect			200 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/apply
+	hovershader		ui/buttons/apply_hover
+	stuffcommand	"ui_restorecvars group_game; toggleconsole; widgetcommand TitleBar activategroup group_main\n"
+	groupid			"group_game"
+	
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			30 8
+	fontscale		0.8
+	ordernumber		34
+}
+
+// SENSITIVITY
+resource
+Label
+{
+	title			"Empfindlichkeit"
+	name			"Mouse_Sensitivity"
+	rect			68 80 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		left center
+	fontspacing		0.5
+}
+resource
+Slider
+{
+	name			"Default"
+	rect			88 100 200 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_game"
+	linkcvar		"sensitivity"
+	setrange		1 20
+	slidertype		float
+	stepsize		1
+	font			"asrafel"
+
+	highlighttextwidget "Mouse_Sensitivity"
+	ordernumber		25
+}
+
+// INVERT MOUSE
+resource
+Label
+{
+	title			"Mausblick umkehren"
+	name			"InvertMouseTxt"
+	rect			68 130 144 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+CheckBox
+{
+	name			"Default"
+	rect			260 130 112 20
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"m_invert_pitch"
+
+	checked_shader		"ui/control/checkbox_checked"
+	unchecked_shader	"ui/control/checkbox_unchecked"
+
+	checked_command		"set m_pitch -0.022"
+	unchecked_command	"set m_pitch 0.022"
+
+	highlighttextwidget "InvertMouseTxt"
+	ordernumber		26
+
+}
+
+// CAMERA DISTANCE
+resource
+Label
+{
+	title			"Kameradistanz"
+	name			"Camera_Distance"
+	rect			68 158 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+Slider
+{
+	rect			88 178 200 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_game"
+	linkcvar		"cg_cameradist"
+	slidertype		float
+	setrange		76 192
+	stepsize		4
+	font			"asrafel"
+
+	highlighttextwidget "Camera_Distance"
+	ordernumber		27
+
+}
+
+// ALWAYS RUN
+resource
+Label
+{
+	title			"Immer Rennen"
+	name			"AlwaysRunTxt"
+	rect			68 210 144 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+CheckBox
+{
+	name			"Default"
+	rect			260 210 112 20
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"cl_run"
+
+	checked_shader	 "ui/control/checkbox_checked"
+	unchecked_shader "ui/control/checkbox_unchecked"
+
+	highlighttextwidget "AlwaysRunTxt"
+	ordernumber		28
+
+}
+
+// JUMP RETICLE
+resource
+Label
+{
+	title			"Sprunganzeige"
+	name			"JumpReticleTxt"
+	rect			68 270 144 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+CheckBox
+{
+	rect			260 270 112 20
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"ui_jumpreticle"
+
+	checked_shader	 "ui/control/checkbox_checked"
+	unchecked_shader "ui/control/checkbox_unchecked"
+
+	highlighttextwidget "JumpReticleTxt"
+	ordernumber		29
+}
+
+// TARGET RETICLE
+resource
+Label
+{
+	title			"Fadenkreuz"
+	name			"TargetReticleTxt"
+	rect			68 290 144 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+CheckBox
+{
+	rect			260 290 112 20
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"ui_crosshair"
+
+	checked_shader	 "ui/control/checkbox_checked"
+	unchecked_shader "ui/control/checkbox_unchecked"
+
+	highlighttextwidget "TargetReticleTxt"
+	ordernumber		30
+}
+
+// SUBTITLES
+resource
+Label
+{
+	title			"Untertitel"
+	name			"SubtitlesTxt"
+	rect			68 330 144 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+CheckBox
+{
+	rect			260 330 112 20
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"ui_subtitles"
+
+	checked_shader	 "ui/control/checkbox_checked"
+	unchecked_shader "ui/control/checkbox_unchecked"
+
+	highlighttextwidget "SubtitlesTxt"
+	ordernumber		31
+}
+
+// CONSOLE
+resource
+Label
+{
+	title			"Konsole"
+	name			"ConsoleTxt"
+	rect			68 350 144 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+CheckBox
+{
+	rect			260 350 112 20
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	groupid			"group_game"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"ui_console"
+
+	checked_shader		"ui/control/checkbox_checked"
+	unchecked_shader	"ui/control/checkbox_unchecked"
+
+	checked_command		"toggleconsole\n"
+	unchecked_command	"toggleconsole\n"
+
+	highlighttextwidget "ConsoleTxt"
+	ordernumber		32
+}
+
+// --------------------------------------
+// --------------------------------------
+// VORPALFIX GROUP
+// --------------------------------------
+// --------------------------------------
+
+// APPLY BUTTON
+resource
+Button
+{
+	title			"Anwenden"
+	name			"Default"
+	rect			50 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/apply
+	hovershader		ui/buttons/apply_hover
+	stuffcommand	"ui_setcvars group_vorpalfix; widgetcommand TitleBar activategroup group_main\n"
+	groupid			"group_vorpalfix"
+	
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			30 8
+	fontscale		0.8
+	ordernumber		46
+}
+
+// CANCEL BUTTON
+resource
+Button
+{
+	title			"Abbrechen"
+	name			"Default"
+	rect			200 400 100 35
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			ui/buttons/apply
+	hovershader		ui/buttons/apply_hover
+	stuffcommand	"ui_restorecvars group_vorpalfix; widgetcommand TitleBar activategroup group_main\n"
+	groupid			"group_vorpalfix"
+	
+	font			"asrafel"
+	fontjustify		center center
+	fontpos			30 8
+	fontscale		0.8
+	ordernumber		47
+}
+
+// LANGUAGE
+resource
+Label
+{
+	title			"Sprache*"
+	name			"LanguageTxt"
+	rect			68 78 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		left center
+	
+}
+resource
+List
+{
+	name			"Default"
+	rect			88 94 200 20
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		center top
+
+	highlighttextwidget "LanguageTxt"
+	ordernumber		38
+
+	linkcvar		"vf_language"
+	additem			0 "Englisch"
+	additem			1 "Deutsch"
+	additem			2 "Französisch"
+	additem			3 "Spanisch"
+}
+
+// REMASTERED MODELS
+resource
+Label
+{
+	title			"Remasterte Modelle*"
+	name			"RemasteredModelsTxt"
+	rect			68 123 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+CheckBox
+{
+	name			"Default"
+	rect			260 123 16 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"vf_remastered_models"
+
+	highlighttextwidget "RemasteredModelsTxt"
+	ordernumber		39
+
+	checked_shader		"ui/control/checkbox_checked"
+	unchecked_shader	"ui/control/checkbox_unchecked"
+}
+
+// CONSOLE PORT HUD
+resource
+Label
+{
+	title			"HUD im Konsolenstil"
+	name			"ConsoleHUDTxt"
+	rect			68 150 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+CheckBox
+{
+	name			"Default"
+	rect			260 150 16 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"vf_ui_console_hud"
+
+	highlighttextwidget "ConsoleHUDTxt"
+	ordernumber		40
+
+	checked_shader		"ui/control/checkbox_checked"
+	unchecked_shader	"ui/control/checkbox_unchecked"
+}
+
+// CONTROLLER ICONS
+resource
+Label
+{
+	title			"Controller-Stil*"
+	name			"ControllerIconsTxt"
+	rect			68 178 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+List
+{
+	name			"Default"
+	rect			88 194 200 20
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		center top
+
+	highlighttextwidget "ControllerIconsTxt"
+	ordernumber		41
+
+	linkcvar		"vf_ui_ps3"
+	additem			0 "Xbox 360"
+	additem			1 "PlayStation 3"
+}
+
+// LETTERBOX
+resource
+Label
+{
+	title			"Letterboxing"
+	name			"LetterboxTxt"
+	rect			68 223 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+CheckBox
+{
+	name			"Default"
+	rect			260 223 16 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"vf_ui_letterbox"
+
+	highlighttextwidget "LetterboxTxt"
+	ordernumber		42
+
+	checked_shader		"ui/control/checkbox_checked"
+	unchecked_shader	"ui/control/checkbox_unchecked"
+}
+
+// VSYNC
+resource
+Label
+{
+	title			"Vertikale Synchronisation"
+	name			"VsyncTxt"
+	rect			68 250 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		left center
+	fontscale		0.9
+}
+resource
+CheckBox
+{
+	name			"Default"
+	rect			260 250 16 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"r_swapInterval"
+
+	highlighttextwidget "VsyncTxt"
+	ordernumber		43
+
+	checked_shader		"ui/control/checkbox_checked"
+	unchecked_shader	"ui/control/checkbox_unchecked"
+}
+
+// MAX ANISOTROPY
+resource
+Label
+{
+	title			"Anisotrope Filterung"
+	name			"AnisotropyTxt"
+	rect			68 278 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+List
+{
+	name			"Default"
+	rect			88 294 200 20
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		center top
+
+	highlighttextwidget "AnisotropyTxt"
+	ordernumber		44
+
+	linkcvar		"vf_r_ext_max_anisotropy"
+	additem			0 "Deaktiviert"
+	additem			2 x2
+	additem			4 x4
+	additem			8 x8
+	additem			16 x16
+}
+
+// FPS LIMIT
+resource
+Label
+{
+	title			"Frameratenbegrenzung"
+	name			"FPSLimitTxt"
+	rect			68 327 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+List
+{
+	name			"Default"
+	rect			88 343 200 20
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vorpalfix"
+	font			"asrafel"
+	fontjustify		center top
+
+	highlighttextwidget "FPSLimitTxt"
+	ordernumber		45
+
+	linkcvar		"vf_com_maxfps"
+	additem			60 "60 FPS"
+	additem			85 "85 FPS"
+	additem			120 "120 FPS"
+	additem			144 "144 FPS"
+	additem			160 "160 FPS"
+	additem			165 "165 FPS"
+	additem			180 "180 FPS"
+	additem			200 "200 FPS"
+	additem			240 "240 FPS"
+	additem			-1 "Bildfrequenz"
+}
+
+// RESTART NOTIFICATION
+resource
+Label
+{
+	title			"*Erfordert einen Neustart des Spiels."
+	name			"RestartGame"
+	rect			55 12 244 40
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	shader			notification_dialog.tga
+	groupid			"group_vorpalfix"
+	allowactivate	false
+	
+	font			"asrafel"
+	fontjustify		center center
+	fontscale		0.8
+}
+
+end.
+ÍÍÂ¬
