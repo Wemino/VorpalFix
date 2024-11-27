@@ -1,6 +1,6 @@
 @echo off
 
-set folders_to_compress=pak6_VorpalFix loc\DEU\base_g_VorpalFix loc\ESN\base_s_VorpalFix loc\FRA\base_f_VorpalFix loc\INT\base_e_VorpalFix
+set folders_to_compress=pak6_VorpalFix pak7_VorpalFix_menu loc\DEU\base_g_VorpalFix loc\ESN\base_s_VorpalFix loc\FRA\base_f_VorpalFix loc\INT\base_e_VorpalFix
 set seven_zip="%ProgramFiles%\7-Zip\7z.exe"
 
 setlocal enabledelayedexpansion
