@@ -43,9 +43,6 @@ int VF_UI_LETTERBOX_PTR;
 int VF_R_EXT_MAX_ANISOTROPY_PTR;
 int VF_COM_MAXFPS_PTR;
 
-bool isStretchedHUDHooked = false;
-bool isGameAPIPacketHooked = false;
-bool isAnisotropyHooked = false;
 bool isScreenRateFps = false;
 
 // =============================
@@ -1374,19 +1371,6 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_
 		ConsolePortHUD = MemoryHelper::ReadMemory<int>(VF_UI_CONSOLE_HUD_PTR + 0x20, false);
 		IniHelper::iniReader["Display"]["ConsolePortHUD"] = StringHelper::IntegerToCString(ConsolePortHUD);
 
-		// Hook SetHUDPosition_Hook if needed
-		if (!isStretchedHUDHooked && ConsolePortHUD)
-		{
-			HookHelper::ApplyHook((void*)0x446050, &SetHUDPosition_Hook, reinterpret_cast<LPVOID*>(&SetHUDPosition));
-
-			// hud_item_foldout
-			MemoryHelper::WriteMemory<float>(0x5218A8, 258.5f, true);
-			// hud_weapon_foldout
-			MemoryHelper::WriteMemory<float>(0x5218F8, -258.5f, true);
-
-			isStretchedHUDHooked = true;
-		}
-
 		// UsePS3ControllerIcons - Need a restart
 		int usePS3ControllerIcons = MemoryHelper::ReadMemory<int>(VF_UI_PS3_PTR + 0x20, false);
 		IniHelper::iniReader["Display"]["UsePS3ControllerIcons"] = StringHelper::IntegerToCString(usePS3ControllerIcons);
@@ -1396,31 +1380,10 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_
 		IniHelper::iniReader["Display"]["DisableLetterbox"] = StringHelper::IntegerToCString(!isLetterboxEnabled);
 		DisableLetterbox = !isLetterboxEnabled;
 
-		// Hook LoadGameDLL_Hook if needed
-		if (!isGameAPIPacketHooked && DisableLetterbox)
-		{
-			HookHelper::ApplyHook((void*)0x420390, &ProcessAPIPacket, reinterpret_cast<LPVOID*>(&MSG_DoStuff));
-			isGameAPIPacketHooked = true;
-		}
-
 		// MaxAnisotropy
 		int maxAnisotropy = MemoryHelper::ReadMemory<int>(VF_R_EXT_MAX_ANISOTROPY_PTR + 0x20, false);
 		IniHelper::iniReader["Graphics"]["MaxAnisotropy"] = StringHelper::IntegerToCString(maxAnisotropy);
 		MaxAnisotropy = static_cast<float>(maxAnisotropy);
-
-		// Hook glTexParameterf_Hook if needed
-		if (!isAnisotropyHooked && MaxAnisotropy != 0)
-		{
-			HMODULE openglLibrary = LoadLibraryA("opengl32");
-
-			if (openglLibrary)
-			{
-				FARPROC glTexParameterf_ptr = GetProcAddress(openglLibrary, "glTexParameterf");
-				HookHelper::ApplyHook((void*)glTexParameterf_ptr, &glTexParameterf_Hook, reinterpret_cast<LPVOID*>(&original_glTexParameterf));
-			}
-
-			isAnisotropyHooked = true;
-		}
 
 		// CustomFPSLimit
 		CustomFPSLimit = MemoryHelper::ReadMemory<int>(VF_COM_MAXFPS_PTR + 0x20, false);
@@ -1718,16 +1681,12 @@ static void ApplyFixBlinkingAnimationSpeed()
 
 static void ApplyFixStretchedHUD()
 {
-	if (!FixStretchedHUD && !FixStretchedGUI) return;
-
 	HookHelper::ApplyHook((void*)0x446050, &SetHUDPosition_Hook, reinterpret_cast<LPVOID*>(&SetHUDPosition));
 
 	// hud_item_foldout
 	MemoryHelper::WriteMemory<float>(0x5218A8, 258.5f, true);
 	// hud_weapon_foldout
 	MemoryHelper::WriteMemory<float>(0x5218F8, -258.5f, true);
-
-	isStretchedHUDHooked = true;
 }
 
 static void ApplyFixStretchedFMV()
@@ -1984,8 +1943,6 @@ static void ApplyEnableAltF4Close()
 
 static void ApplyAnisotropicTextureFiltering()
 {
-	if (MaxAnisotropy == 0) return;
-
 	HMODULE openglLibrary = LoadLibraryA("opengl32");
 
 	if (openglLibrary)
@@ -1993,17 +1950,11 @@ static void ApplyAnisotropicTextureFiltering()
 		FARPROC glTexParameterf_ptr = GetProcAddress(openglLibrary, "glTexParameterf");
 		HookHelper::ApplyHook((void*)glTexParameterf_ptr, &glTexParameterf_Hook, reinterpret_cast<LPVOID*>(&original_glTexParameterf));
 	}
-
-	isAnisotropyHooked = true;
 }
 
 static void ApplyProcessAPIPacket()
 {
-	if (!AutoFOV && FOV == 90.0 && !DisableLetterbox) return;
-
 	HookHelper::ApplyHook((void*)0x420390, &ProcessAPIPacket, reinterpret_cast<LPVOID*>(&MSG_DoStuff));
-
-	isGameAPIPacketHooked = true;
 }
 
 static void ApplyCvarTweaks()
