@@ -56,6 +56,11 @@ A fix that addresses a variety of technical issues and adds quality-of-life impr
 ## Fix Configuration
 - Modify the VorpalFix.ini file to adjust the settings for the fix.
 
+- Some configurations can be edited through the in-game VorpalFix menu: 
+![VorpalFix Menu](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/menu.png)
+
+If you prefer not to have the in-game VorpalFix menu, you can remove it by deleting the file `pak7_VorpalFix_menu.pk3`
+
 ## Credits
 - [MinHook](https://github.com/TsudaKageyu/minhook) for hooking.
 - [mINI](https://github.com/metayeti/mINI) for INI file handling.
