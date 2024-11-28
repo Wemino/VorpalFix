@@ -300,14 +300,13 @@ sub_446050 SetHUDPosition = nullptr;
 
 static int __cdecl SetHUDPosition_Hook(float x_position, float y_position, float resolution_width, float resolution_height, int a5, float* a6, float* a7, float* a8, int a9, const char* a10, __int16 a11, float* a12, float* a13, float a14, float a15, int a16)
 {
-	float current_aspect_ratio = resolution_width / resolution_height;
-
-	double hud_object_x_position = (x_position * 640.0) / resolution_width;
-	float resolution_width_original = resolution_width;
-
-	if (FixStretchedHUD && current_aspect_ratio > ASPECT_RATIO_4_3)
+	if (FixStretchedHUD)
 	{
+		float current_aspect_ratio = resolution_width / resolution_height;
 		float scaleX = ASPECT_RATIO_4_3 / current_aspect_ratio;
+
+		double hud_object_x_position = (x_position * 640.0) / resolution_width;
+		float resolution_width_original = resolution_width;
 
 		if (x_position > 0)
 		{
@@ -439,7 +438,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 	float black_border_width = (current_width - (current_height * ASPECT_RATIO_4_3)) / 2.0f;
 
 	// Pillarbox borders
-	if (x_position == LEFT_BORDER_X_ID && current_aspect_ratio > 1.5f) // Left border
+	if (x_position == LEFT_BORDER_X_ID) // Left border
 	{
 		// Calculate the scale factor to match the target height
 		float scale_factor = current_height / 720.0f; // Original height of the image is 720
@@ -451,7 +450,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		// Align the image to the left edge to cover the black border precisely
 		x_position = black_border_width - resolution_width;
 	}
-	else if (x_position == RIGHT_BORDER_X_ID && current_aspect_ratio > 1.5f) // Right border
+	else if (x_position == RIGHT_BORDER_X_ID) // Right border
 	{
 		// Calculate the scale factor to match the target height
 		float scale_factor = current_height / 720.0f; // Original height of the image is 720
