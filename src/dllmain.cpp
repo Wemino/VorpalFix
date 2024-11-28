@@ -99,7 +99,6 @@ bool UseConsoleTitleScreen = false;
 bool UseOriginalIntroVideos = false;
 bool Disable8BitAudioAsDefault = false;
 bool DisableRemasteredModels = false;
-bool EnableDevConsole = false;
 char* CustomSavePath = nullptr;
 
 // Display
@@ -151,7 +150,6 @@ static void ReadConfig()
 	Disable8BitAudioAsDefault = IniHelper::ReadInteger("General", "Disable8BitAudioAsDefault", 1) == 1;
 	UseConsoleTitleScreen = IniHelper::ReadInteger("General", "UseConsoleTitleScreen", 0) == 1;
 	DisableRemasteredModels = IniHelper::ReadInteger("General", "DisableRemasteredModels", 0) == 1;
-	EnableDevConsole = IniHelper::ReadInteger("General", "EnableDevConsole", 1) == 1;
 	CustomSavePath = IniHelper::ReadString("General", "CustomSavePath", "");
 
 	// Display
@@ -1886,8 +1884,6 @@ static void ApplyDisableRemasteredModels()
 
 static void ApplyEnableDevConsole()
 {
-	if (!EnableDevConsole) return;
-
 	HookHelper::ApplyHook((void*)0x407870, &Bind_Hook, reinterpret_cast<LPVOID*>(&Bind));
 }
 
