@@ -59,6 +59,7 @@ bool isUsingControllerMenu = false;
 bool isMainMenuShown = false;
 bool isTitleBgSet = false;
 bool isRestartedForLinux = false;
+bool isControllerBinded = false;
 bool isUsingCustomSaveDir = false;
 bool skipAutoResolution = false;
 bool setAlice2Path = false;
@@ -1182,6 +1183,39 @@ static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
 }
 
 /****************************************************
+ * Function: Bind_Hook
+ *
+ * Description:
+ *    Hook of the function used by the "bind" command
+ *
+ * Used For:
+ *    EnableDevConsole
+ ****************************************************/
+
+typedef int(__cdecl* sub_407870)(int, char*);
+sub_407870 Bind = nullptr;
+
+static int __cdecl Bind_Hook(int keyId, char* cmd_name)
+{
+	if (strcmp(cmd_name, "toggleconsole") == 0)
+	{
+		// Handle default keys that are not recognized by the game, use "F2" as default
+		if (keyId == 96 || keyId == 126)
+		{
+			keyId = GameHelper::GetKeyId("F2");
+		}
+
+		char cmpInstruction[] = { 0x81, 0xFF };
+
+		// cmp toggleConsoleKeyId instead of hardcoded cmp 96 and cmp 126 (` and ~)
+		MemoryHelper::WriteMemoryRaw(0x40823A, cmpInstruction, sizeof(cmpInstruction), true);
+		MemoryHelper::WriteMemory<int>(0x40823C, keyId, true);
+		MemoryHelper::MakeNOP(0x408240, 6, true);
+	}
+	return Bind(keyId, cmd_name);
+}
+
+/****************************************************
  * Function: PushMenu_Hook
  *
  * Description:
@@ -1293,6 +1327,23 @@ static void __cdecl PlayIntroMusic_Hook()
 		GameHelper::CallCmd("vid_restart\n", 0);
 		isRestartedForLinux = true;
 	}
+
+	// Make sure that the controller keys are correctly binded
+	if (!isControllerBinded)
+	{
+		Bind(GameHelper::GetKeyId("JOY1"), "cheshire");
+		Bind(GameHelper::GetKeyId("JOY4"), "togglemenu");
+		Bind(GameHelper::GetKeyId("JOY9"), "+attackleft");
+		Bind(GameHelper::GetKeyId("JOY10"), "+attackright");
+		Bind(GameHelper::GetKeyId("JOY11"), "prevweapon");
+		Bind(GameHelper::GetKeyId("JOY12"), "nextweapon");
+		Bind(GameHelper::GetKeyId("JOY13"), "+attackleft");
+		Bind(GameHelper::GetKeyId("JOY14"), "+UseAndDown");
+		Bind(GameHelper::GetKeyId("JOY15"), "+moveup");
+		Bind(GameHelper::GetKeyId("JOY16"), "+attackright");
+		isControllerBinded = true;
+	}
+
 	PlayIntroMusic();
 }
 
@@ -1512,39 +1563,6 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 	}
 
 	return LoadLocalizationFile();
-}
-
-/****************************************************
- * Function: Bind_Hook
- *
- * Description:
- *    Hook of the function used by the "bind" command
- * 
- * Used For:
- *    EnableDevConsole
- ****************************************************/
-
-typedef int(__cdecl* sub_407870)(int, char*);
-sub_407870 Bind = nullptr;
-
-static int __cdecl Bind_Hook(int keyId, char* cmd_name)
-{
-	if (strcmp(cmd_name, "toggleconsole") == 0)
-	{
-		// Handle default keys that are not recognized by the game, use "F2" as default
-		if (keyId == 96 || keyId == 126)
-		{
-			keyId = GameHelper::GetKeyId("F2");
-		}
-		
-		char cmpInstruction[] = { 0x81, 0xFF };
-
-		// cmp toggleConsoleKeyId instead of hardcoded cmp 96 and cmp 126 (` and ~)
-		MemoryHelper::WriteMemoryRaw(0x40823A, cmpInstruction, sizeof(cmpInstruction), true);
-		MemoryHelper::WriteMemory<int>(0x40823C, keyId, true);
-		MemoryHelper::MakeNOP(0x408240, 6, true);
-	}
-	return Bind(keyId, cmd_name);
 }
 
 #pragma endregion Hooks with MinHook
@@ -1776,8 +1794,6 @@ static void ApplyFixLocalizationFiles()
 
 static void ApplyFixProton()
 {
-	if (!FixProton) return;
-
 	HookHelper::ApplyHook((void*)0x429600, &PlayIntroMusic_Hook, reinterpret_cast<LPVOID*>(&PlayIntroMusic));
 }
 
