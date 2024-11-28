@@ -1431,7 +1431,13 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_
 		// MaxAnisotropy
 		int maxAnisotropy = MemoryHelper::ReadMemory<int>(VF_R_EXT_MAX_ANISOTROPY_PTR + 0x20, false);
 		IniHelper::iniReader["Graphics"]["MaxAnisotropy"] = StringHelper::IntegerToCString(maxAnisotropy);
-		MaxAnisotropy = static_cast<float>(maxAnisotropy);
+
+		// Execute vid_restart to refresh the textures
+		if (maxAnisotropy != static_cast<int>(MaxAnisotropy))
+		{
+			MaxAnisotropy = static_cast<float>(maxAnisotropy);
+			GameHelper::CallCmd("vid_restart\n", 0);
+		}
 
 		// CustomFPSLimit
 		CustomFPSLimit = MemoryHelper::ReadMemory<int>(VF_COM_MAXFPS_PTR + 0x20, false);
