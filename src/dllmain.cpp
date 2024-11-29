@@ -67,6 +67,10 @@ bool isAnisotropyRetrieved = false;
 bool hasLookedForLocalizationFiles = false;
 size_t localizationFilesToLoad = 0;
 std::vector<std::string> pk3LocFiles;
+char* lastWeaponIdUp = nullptr;
+char* lastWeaponIdDown = nullptr;
+char* lastWeaponIdLeft = nullptr;
+char* lastWeaponIdRight = nullptr;
 
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
@@ -92,6 +96,7 @@ bool FixLocalizationFiles = false;
 bool FixProton = false;
 
 // General
+bool CustomControllerBindings = false;
 bool LaunchWithoutAlice2 = false;
 bool PreventAlice2OnExit = false;
 char* Alice2Path = nullptr;
@@ -144,6 +149,7 @@ static void ReadConfig()
 
 	// General
 	LaunchWithoutAlice2 = IniHelper::ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
+	CustomControllerBindings = IniHelper::ReadInteger("General", "CustomControllerBindings", 1) == 1;
 	PreventAlice2OnExit = IniHelper::ReadInteger("General", "PreventAlice2OnExit", 0) == 1;
 	Alice2Path = IniHelper::ReadString("General", "Alice2Path", ALICE2_DEFAULT_PATH);
 	LanguageId = IniHelper::ReadInteger("General", "LanguageId", 0);
@@ -1337,7 +1343,7 @@ static void __cdecl PlayIntroMusic_Hook()
 	}
 
 	// Make sure that the controller keys are correctly binded
-	if (!isControllerBinded)
+	if (CustomControllerBindings && !isControllerBinded)
 	{
 		Bind(GameHelper::GetKeyId("JOY1"), "cheshire");
 		Bind(GameHelper::GetKeyId("JOY4"), "togglemenu");
@@ -1353,6 +1359,104 @@ static void __cdecl PlayIntroMusic_Hook()
 	}
 
 	PlayIntroMusic();
+}
+
+typedef MMRESULT(__cdecl* sub_4635A0)();
+sub_4635A0 UpdateControllerState = nullptr;
+
+static MMRESULT __cdecl UpdateControllerState_Hook()
+{
+	int xinput_state = MemoryHelper::ReadMemory<int>(0x7CF880, false);
+
+	// Save current weapon to d-pad
+	if (xinput_state & 0x40) // If left stick is pressed
+	{
+		int dpadId = -1;
+		switch (xinput_state & 0x0F)
+		{
+			case 0x01: // D-Pad Up
+				dpadId = 1;
+				break;
+			case 0x02: // D-Pad Down
+				dpadId = 2;
+				break;
+			case 0x04: // D-Pad Left
+				dpadId = 3;
+				break;
+			case 0x08: // D-Pad Right
+				dpadId = 4;
+				break;
+			default:
+				dpadId = -1; // No matching D-Pad button pressed
+				break;
+		}
+
+		int currentWeaponId = MemoryHelper::ReadMemory<int>(0x12F3D60, false);
+		if (dpadId != -1 && currentWeaponId != -1) // If dpad is pressed and if holding a weapon
+		{
+			const char* lastWeaponSet = nullptr;
+
+			switch (dpadId)
+			{
+				case 1:
+					lastWeaponSet = lastWeaponIdUp;
+					break;
+				case 2:
+					lastWeaponSet = lastWeaponIdDown;
+					break;
+				case 3:
+					lastWeaponSet = lastWeaponIdLeft;
+					break;
+				case 4:
+					lastWeaponSet = lastWeaponIdRight;
+					break;
+			}
+
+			char* currentWeaponName = GameHelper::GetWeaponName(currentWeaponId);
+			if (lastWeaponSet == nullptr || strcmp(currentWeaponName, lastWeaponSet) != 0) // If holding a different weapon
+			{
+				// Build the command
+				char* weaponCommand = (char*)malloc(strlen("use ") + strlen(currentWeaponName) + 1);
+				if (weaponCommand != NULL)
+				{
+					sprintf(weaponCommand, "use %s", currentWeaponName);
+					switch (dpadId)
+					{
+						case 1:
+							lastWeaponIdUp = currentWeaponName;
+							Bind(GameHelper::GetKeyId("JOY5"), weaponCommand);
+							break;
+						case 2:
+							lastWeaponIdDown = currentWeaponName;
+							Bind(GameHelper::GetKeyId("JOY7"), weaponCommand);
+							break;
+						case 3:
+							lastWeaponIdLeft = currentWeaponName;
+							Bind(GameHelper::GetKeyId("JOY8"), weaponCommand);
+							break;
+						case 4:
+							lastWeaponIdRight = currentWeaponName;
+							Bind(GameHelper::GetKeyId("JOY6"), weaponCommand);
+							break;
+					}
+				}
+			}
+		}
+	}
+
+	// Back + A
+	if ((xinput_state & 0x1020) == 0x1020)
+	{
+		GameHelper::CallCmd("loadgame quicksave\n", 0);
+	}
+
+	// Back + B
+	if ((xinput_state & 0x2020) == 0x2020)
+	{
+		GameHelper::CallCmd("savegame quicksave\n", 0);
+	}
+
+	return UpdateControllerState();
 }
 
 /****************************************************
@@ -1818,6 +1922,13 @@ static void ApplyLaunchWithoutAlice2()
 	MemoryHelper::MakeNOP(0x46560A, 8, true);
 }
 
+static void ApplyCustomControllerBindings()
+{
+	if (!CustomControllerBindings) return;
+
+	HookHelper::ApplyHook((void*)0x4635A0, &UpdateControllerState_Hook, reinterpret_cast<LPVOID*>(&UpdateControllerState));
+}
+
 static void ApplyPreventAlice2OnExit()
 {
 	if (!PreventAlice2OnExit) return;
@@ -2022,6 +2133,7 @@ static void Init()
 	ApplyFixProton();
 	// General
 	ApplyLaunchWithoutAlice2();
+	ApplyCustomControllerBindings();
 	ApplyPreventAlice2OnExit();
 	ApplyLanguageId();
 	ApplyUseConsoleTitleScreen();

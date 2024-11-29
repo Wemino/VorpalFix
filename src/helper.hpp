@@ -181,6 +181,9 @@ namespace GameHelper
 	typedef int(__cdecl* sub_44A300)(unsigned int, const char*);
 	sub_44A300 GetTga = (sub_44A300)0x44A300;
 
+	typedef char*(__cdecl* sub_441D60)(int);
+	sub_441D60 GetWeaponName = (sub_441D60)0x441D60;
+
 	// XInputGetState
 	typedef int(__cdecl* sub_463130)();
 	sub_463130 IsControllerConnected = (sub_463130)0x463130;
