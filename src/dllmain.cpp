@@ -907,17 +907,25 @@ sub_420390 MSG_DoStuff = nullptr;
 
 static void __cdecl ProcessAPIPacket(DWORD* a1, int a2, int* a3)
 {
-	float* fovPointer = (float*)((DWORD)a2 - 0x50);
+	float* fovPtr = (float*)((DWORD)a2 - 0x50);
 
-	if (*fovPointer != FOV)
+	if (*fovPtr != FOV)
 	{
-		*fovPointer = FOV;
+		*fovPtr = FOV;
 	}
 
 	if (DisableLetterbox)
 	{
-		int* letterboxPointer = (int*)((DWORD)a2 - 0x35C);
-		*letterboxPointer = 0;
+		int* letterboxPtr = (int*)((DWORD)a2 - 0x35C);
+		int* isCinematicPtr = (int*)((DWORD)a2 - 0x364);
+
+		*letterboxPtr = 0;
+
+		// Zoom a bit during cutscenes
+		if (AutoFOV && *isCinematicPtr == 1)
+		{
+			*fovPtr = FOV / 1.18f;
+		}
 	}
 
 	MSG_DoStuff(a1, a2, a3);
