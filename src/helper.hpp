@@ -169,6 +169,9 @@ namespace GameHelper
 {
 	bool DisableCursorScaling = false;
 
+	typedef int(__cdecl* sub_418D90)(const char*, const char*, int);
+	sub_418D90 UpdateCvar = (sub_418D90)0x418D90;
+
 	typedef int(__cdecl* sub_4158F0)(char*, char);
 	sub_4158F0 CallCmd = (sub_4158F0)0x4158F0;
 
@@ -268,8 +271,6 @@ namespace GameHelper
 
 namespace SystemHelper
 {
-	namespace fs = std::filesystem;
-
 	static DWORD GetCurrentDisplayFrequency()
 	{
 		DEVMODE devMode = {};
@@ -297,7 +298,7 @@ namespace SystemHelper
 	{
 		std::vector<std::string> pk3Files;
 
-		if (!fs::exists(path) || !fs::is_directory(path))
+		if (!std::filesystem::exists(path) || !std::filesystem::is_directory(path))
 		{
 			return pk3Files;
 		}

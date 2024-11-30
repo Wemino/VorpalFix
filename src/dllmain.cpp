@@ -1001,6 +1001,12 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		flag = 0x10;
 	}
 
+	if (CustomFPSLimit != 60 && strcmp(var_name, "com_maxfps") == 0)
+	{
+		value = StringHelper::IntegerToCString(CustomFPSLimit);
+		flag = 0x10;
+	}
+
 	// Read settings from "base" folder, skip it
 	if (FixFullscreenSetting && !isDefaultFullscreenSettingSkipped && strcmp(var_name, "r_fullscreen") == 0)
 	{
@@ -1010,26 +1016,27 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 
 	if (AutoResolution && !skipAutoResolution && strcmp(var_name, "r_mode") == 0)
 	{
-		// From config.cfg
-		if (flag != 33)
-		{
-			// Workaround to make the game remember 640x480, otherwise it won't be saved to config.cfg
-			if (strcmp(value, "0") == 0)
-			{
-				// 640x480
-				value = "-1";
-			}
-			skipAutoResolution = true;
-		}
-		else if (strcmp(value, "0") == 0)
+		// Prevent re-entering this condition
+		skipAutoResolution = true;
+
+		// Get config file path
+		const char* configFile = (MemoryHelper::ReadMemory<int>(CURRENT_LANG, false) == 2)
+			? "config_pc_fra.cfg"
+			: "config.cfg";
+
+		std::string directoryPath = GetSavePath_Hook();
+		std::filesystem::path configFilePath = std::filesystem::path(directoryPath) / configFile;
+
+		// No configuration file exists, attempting to set the 'r_mode' to match the screen resolution
+		if (!std::filesystem::exists(configFilePath))
 		{
 			// Since this function is executed after, do it before
 			GameHelper::FetchDisplayResolutions();
 
-			// Find the correct r_mode for the current resolution
 			auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
 			int resolutionNum = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_NUM, false);
 
+			// Find the 'r_mode' value matching the screen resolution
 			for (int i = 0; i < resolutionNum; i++)
 			{
 				int screenWidthMode = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR + (i * 8), false);
@@ -1037,17 +1044,12 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 
 				if (screenWidth == screenWidthMode && screenHeight == screenHeightMode)
 				{
-					value = StringHelper::IntegerToCString(i);
+					Cvar_Set(var_name, value, flag); // Set the default value
+					GameHelper::UpdateCvar(var_name, StringHelper::IntegerToCString(i), flag); // Update 'r_mode' to the index of the matching screen resolution
 					break;
 				}
 			}
 		}
-	}
-
-	if (CustomFPSLimit != 60 && strcmp(var_name, "com_maxfps") == 0)
-	{
-		value = StringHelper::IntegerToCString(CustomFPSLimit);
-		flag = 0x10;
 	}
 
 	return Cvar_Set(var_name, value, flag);
@@ -1197,8 +1199,10 @@ sub_423740 AliceHeadMovementCoordinates = nullptr;
 
 static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
 {
+	int isInMenu = MemoryHelper::ReadMemory<int>(0x14EB498, false);
+
 	// Make sure Alice is not looking at the top left of the screen
-	if (*a1 == 0xC1B40000 && *(a1 + 1) == 0xC2100000 && *(a1 - 1) == 7 && isUsingControllerMenu)
+	if (*a1 == 0xC1B40000 && *(a1 + 1) == 0xC2100000 && *(a1 + 2) == 0 && *(a1 - 1) == 7 && isInMenu == 1 && isUsingControllerMenu)
 	{
 		*a1 = 0xC119EB80;
 		*(a1 + 1) = 0xC2100000;
@@ -1367,7 +1371,7 @@ static int __cdecl IsGameStarted_Hook()
  *    the main menu
  *
  * Used For:
- *    FixProton
+ *    FixProton & CustomControllerBindings
  ****************************************************/
 
 typedef void(__cdecl* sub_429600)();
@@ -1967,6 +1971,8 @@ static void ApplyFixLocalizationFiles()
 
 static void ApplyFixProton()
 {
+	if (!FixProton && !CustomControllerBindings) return;
+
 	HookHelper::ApplyHook((void*)0x429600, &PlayIntroMusic_Hook, reinterpret_cast<LPVOID*>(&PlayIntroMusic));
 }
 
