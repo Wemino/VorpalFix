@@ -19,7 +19,6 @@
 const int CURRENT_WIDTH_ADDR = 0x1C4798C;
 const int CURRENT_HEIGHT_ADDR = 0x1C47990;
 const int CURRENT_LANG = 0x7CF868;
-const int IS_CURSOR_VISIBLE = 0x11C02E0;
 const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
 const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
@@ -1198,11 +1197,8 @@ sub_423740 AliceHeadMovementCoordinates = nullptr;
 
 static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
 {
-	// Used to check if we are in the menu
-	int isCursorShown = MemoryHelper::ReadMemory<int>(IS_CURSOR_VISIBLE, false);
-
 	// Make sure Alice is not looking at the top left of the screen
-	if (isCursorShown == 1 && isUsingControllerMenu)
+	if (*a1 == 0xC1B40000 && *(a1 + 1) == 0xC2100000 && *(a1 - 1) == 7 && isUsingControllerMenu)
 	{
 		*a1 = 0xC119EB80;
 		*(a1 + 1) = 0xC2100000;
