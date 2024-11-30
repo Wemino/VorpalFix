@@ -67,10 +67,24 @@ bool isAnisotropyRetrieved = false;
 bool hasLookedForLocalizationFiles = false;
 size_t localizationFilesToLoad = 0;
 std::vector<std::string> pk3LocFiles;
+bool isHoldingLeftStick = false;
 char* lastWeaponIdUp = nullptr;
 char* lastWeaponIdDown = nullptr;
 char* lastWeaponIdLeft = nullptr;
 char* lastWeaponIdRight = nullptr;
+const char* weaponCommands[] = 
+{
+	"use watch",
+	"use knife",
+	"use cards",
+	"use mallet",
+	"use jackbomb",
+	"use icewand",
+	"use jacks",
+	"use demondice",
+	"use eyestaff",
+	"use blunderbuss"
+};
 
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
@@ -1264,6 +1278,36 @@ static int __cdecl PushMenu_Hook(const char* menu_name)
 	}
 }
 
+typedef int(__cdecl* sub_4158F0)(char*, char);
+sub_4158F0 CallCmd = nullptr;
+
+static int __cdecl CallCmd_Hook(char* a1, char a2)
+{
+	// If holding the left stick to assign a weapon
+	if (isHoldingLeftStick)
+	{
+		if (a1 == nullptr)
+		{
+			return CallCmd(a1, a2);
+		}
+
+		// Convert the input command to lowercase for case-insensitive comparison
+		std::string inputCommand(a1);
+		std::transform(inputCommand.begin(), inputCommand.end(), inputCommand.begin(), ::tolower);
+
+		// Check if the input command is in the list of commands
+		for (const auto& command : weaponCommands)
+		{
+			if (inputCommand == command)
+			{
+				return 0; // Return 0 if the command matches, skip the command that has been replaced
+			}
+		}
+	}
+
+	return CallCmd(a1, a2);
+}
+
 /****************************************************
  * Function: TriggerMainMenu_Hook
  *
@@ -1371,6 +1415,8 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 	// Save current weapon to d-pad
 	if (xinput_state & 0x40) // If left stick is pressed
 	{
+		isHoldingLeftStick = true;
+
 		int dpadId = -1;
 		switch (xinput_state & 0x0F)
 		{
@@ -1442,6 +1488,10 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 				}
 			}
 		}
+	}
+	else
+	{
+		isHoldingLeftStick = false;
 	}
 
 	// Back + A
@@ -1927,6 +1977,7 @@ static void ApplyCustomControllerBindings()
 	if (!CustomControllerBindings) return;
 
 	HookHelper::ApplyHook((void*)0x4635A0, &UpdateControllerState_Hook, reinterpret_cast<LPVOID*>(&UpdateControllerState));
+	HookHelper::ApplyHook((void*)0x4158F0, &CallCmd_Hook, reinterpret_cast<LPVOID*>(&CallCmd));
 }
 
 static void ApplyPreventAlice2OnExit()
