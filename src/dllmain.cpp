@@ -1436,48 +1436,57 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 		int currentWeaponId = MemoryHelper::ReadMemory<int>(0x12F3D60, false);
 		if (dpadId != -1 && currentWeaponId != -1) // If dpad is pressed and if holding a weapon
 		{
-			const char* lastWeaponSet = nullptr;
+			char** lastWeaponSet = nullptr;
 
 			switch (dpadId)
 			{
 				case 1:
-					lastWeaponSet = lastWeaponIdUp;
+					lastWeaponSet = &lastWeaponIdUp;
 					break;
 				case 2:
-					lastWeaponSet = lastWeaponIdDown;
+					lastWeaponSet = &lastWeaponIdDown;
 					break;
 				case 3:
-					lastWeaponSet = lastWeaponIdLeft;
+					lastWeaponSet = &lastWeaponIdLeft;
 					break;
 				case 4:
-					lastWeaponSet = lastWeaponIdRight;
+					lastWeaponSet = &lastWeaponIdRight;
 					break;
 			}
 
 			char* currentWeaponName = GameHelper::GetWeaponName(currentWeaponId);
-			if (lastWeaponSet == nullptr || strcmp(currentWeaponName, lastWeaponSet) != 0) // If holding a different weapon
+
+			// If holding a different weapon
+			if (*lastWeaponSet == nullptr || strcmp(currentWeaponName, *lastWeaponSet) != 0)
 			{
 				// Build the command
 				char* weaponCommand = (char*)malloc(strlen("use ") + strlen(currentWeaponName) + 1);
 				if (weaponCommand != NULL)
 				{
 					sprintf(weaponCommand, "use %s", currentWeaponName);
+
+					// Free the old weapon name
+					if (*lastWeaponSet != nullptr)
+					{
+						free(*lastWeaponSet);
+					}
+
+					// Remember the last weapon name
+					*lastWeaponSet = strdup(currentWeaponName);
+
+					// Bind the new command
 					switch (dpadId)
 					{
 						case 1:
-							lastWeaponIdUp = currentWeaponName;
 							Bind(GameHelper::GetKeyId("JOY5"), weaponCommand);
 							break;
 						case 2:
-							lastWeaponIdDown = currentWeaponName;
 							Bind(GameHelper::GetKeyId("JOY7"), weaponCommand);
 							break;
 						case 3:
-							lastWeaponIdLeft = currentWeaponName;
 							Bind(GameHelper::GetKeyId("JOY8"), weaponCommand);
 							break;
 						case 4:
-							lastWeaponIdRight = currentWeaponName;
 							Bind(GameHelper::GetKeyId("JOY6"), weaponCommand);
 							break;
 					}
