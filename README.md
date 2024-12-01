@@ -17,6 +17,10 @@ A fix that addresses a variety of technical issues and adds quality-of-life impr
 
 ### General
 - Allow the game to launch without Alice: Madness Returns.
+- Additional controller commands:
+  - Pressing the Left Stick while pressing any D-pad button will save the current weapon to that D-pad key.
+  - Pressing the Right Stick + 'A' will execute a quick load.
+  - Pressing the Right Stick + 'B' will execute a quick save.
 - Prevent Alice: Madness Returns from launching on exit. (when installed with Alice: Madness Returns)
 - Allow to switch the game's supported language. (English, German, French, or Spanish)
 - Restore the "American McGee's Alice" title screen from the Xbox 360/PlayStation 3 version.
