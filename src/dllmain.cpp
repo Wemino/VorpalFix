@@ -63,6 +63,7 @@ bool isUsingCustomSaveDir = false;
 bool skipAutoResolution = false;
 bool setAlice2Path = false;
 bool isAnisotropyRetrieved = false;
+bool isInSettingMenu = false;
 bool hasLookedForLocalizationFiles = false;
 size_t localizationFilesToLoad = 0;
 std::vector<std::string> pk3LocFiles;
@@ -1087,6 +1088,30 @@ static HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 	return fpCreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
 }
 
+typedef int(__thiscall* sub_4C6050)(int, float*, int, float*, float*);
+sub_4C6050 AliceHeadMovement = nullptr;
+
+static int __fastcall AliceHeadMovement_Hook(int thisPtr, int* _ECX, float* a2, int a3, float* a4, float* a5)
+{
+	isInSettingMenu = true;
+	int result = AliceHeadMovement(thisPtr, a2, a3, a4, a5);
+	isInSettingMenu = false;
+	return result;
+}
+
+typedef float(__cdecl* sub_423740)(DWORD*, float*);
+sub_423740 AliceHeadMovementCoordinates = nullptr;
+
+static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
+{
+	// Make sure Alice is not looking at the top left of the screen when the mouse is disabled
+	if (isInSettingMenu && *a1 == 0xC1B40000 && *(a1 + 1) == 0xC2100000 && *(a1 + 2) == 0)
+	{
+		*a1 = 0xC119EB80;
+	}
+	return AliceHeadMovementCoordinates(a1, a2);
+}
+
 /****************************************************
  * Function: LoadUI_Hook
  *
@@ -1123,6 +1148,10 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 			// Disable mouse navigation
 			MemoryHelper::MakeNOP(0x40675E, 2, true);
 			MemoryHelper::MakeNOP(0x40676E, 2, true);
+
+			// For Alice's 3d model in the settings
+			HookHelper::ApplyHook((void*)0x423740, &AliceHeadMovementCoordinates_Hook, reinterpret_cast<LPVOID*>(&AliceHeadMovementCoordinates));
+			HookHelper::ApplyHook((void*)0x4C6050, &AliceHeadMovement_Hook, reinterpret_cast<LPVOID*>(&AliceHeadMovement));
 		}
 	}
 
@@ -1192,22 +1221,6 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 	}
 
 	return LoadUI(ptr, ui_path);
-}
-
-typedef float(__cdecl* sub_423740)(DWORD*, float*);
-sub_423740 AliceHeadMovementCoordinates = nullptr;
-
-static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
-{
-	int isInMenu = MemoryHelper::ReadMemory<int>(0x14EB498, false);
-
-	// Make sure Alice is not looking at the top left of the screen
-	if (*a1 == 0xC1B40000 && *(a1 + 1) == 0xC2100000 && *(a1 + 2) == 0 && *(a1 - 1) == 7 && isInMenu == 1 && isUsingControllerMenu)
-	{
-		*a1 = 0xC119EB80;
-		*(a1 + 1) = 0xC2100000;
-	}
-	return AliceHeadMovementCoordinates(a1, a2);
 }
 
 /****************************************************
@@ -2106,8 +2119,6 @@ static void ApplyEnableControllerIcons()
 	{
 		HookHelper::ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, reinterpret_cast<LPVOID*>(&LoadUI));
 	}
-
-	HookHelper::ApplyHook((void*)0x423740, &AliceHeadMovementCoordinates_Hook, reinterpret_cast<LPVOID*>(&AliceHeadMovementCoordinates));
 }
 
 static void ApplyHideConsoleAtLaunch()
