@@ -1517,14 +1517,14 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 		isHoldingLeftStick = false;
 	}
 
-	// Back + A
-	if ((xinput_state & 0x1020) == 0x1020)
+	// Right Stick Pressed + A
+	if ((xinput_state & 0x1080) == 0x1080)
 	{
 		GameHelper::CallCmd("loadgame quicksave\n", 0);
 	}
 
-	// Back + B
-	if ((xinput_state & 0x2020) == 0x2020)
+	// Right Stick Pressed + B
+	if ((xinput_state & 0x2080) == 0x2080)
 	{
 		GameHelper::CallCmd("savegame quicksave\n", 0);
 	}
