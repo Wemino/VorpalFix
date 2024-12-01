@@ -1898,9 +1898,9 @@ static void ApplyFixStretchedHUD()
 	HookHelper::ApplyHook((void*)0x446050, &SetHUDPosition_Hook, reinterpret_cast<LPVOID*>(&SetHUDPosition));
 
 	// hud_item_foldout
-	MemoryHelper::WriteMemory<float>(0x5218A8, 258.5f, true);
+	MemoryHelper::WriteMemory<float>(0x5218A8, 258.6f, true);
 	// hud_weapon_foldout
-	MemoryHelper::WriteMemory<float>(0x5218F8, -258.5f, true);
+	MemoryHelper::WriteMemory<float>(0x5218F8, -258.6f, true);
 }
 
 static void ApplyFixStretchedFMV()
