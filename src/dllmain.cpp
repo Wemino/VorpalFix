@@ -26,6 +26,7 @@ const int DISPLAY_MODE_PTR_ADDR = 0x1C463E8;
 const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
 const int DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
 const int COM_MAXFPS_PTR_ADDR = 0x12EF928;
+const int TOTAL_FRAME_TIME = 0x11C8AA0;
 const int CODE_CAVE_SOUND = 0x513490;
 const int CODE_CAVE_INTRO = 0x513B90;
 const int CODE_CAVE_BLINK = 0x513E08;
@@ -68,6 +69,7 @@ bool hasLookedForLocalizationFiles = false;
 size_t localizationFilesToLoad = 0;
 std::vector<std::string> pk3LocFiles;
 bool isHoldingLeftStick = false;
+int lastQuickSaveFrame = 0;
 char* lastWeaponIdUp = nullptr;
 char* lastWeaponIdDown = nullptr;
 char* lastWeaponIdLeft = nullptr;
@@ -1526,7 +1528,14 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 	// Right Stick Pressed + B
 	if ((xinput_state & 0x2080) == 0x2080)
 	{
-		GameHelper::CallCmd("savegame quicksave\n", 0);
+		int totalFrameTime = MemoryHelper::ReadMemory<int>(TOTAL_FRAME_TIME, false);
+
+		// Don't accidentally spam the command every frames
+		if ((totalFrameTime - lastQuickSaveFrame) >= 100)
+		{
+			GameHelper::CallCmd("savegame quicksave\n", 0);
+			lastQuickSaveFrame = totalFrameTime;
+		}
 	}
 
 	return UpdateControllerState();
