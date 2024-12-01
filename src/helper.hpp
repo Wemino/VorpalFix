@@ -280,6 +280,7 @@ namespace SystemHelper
 		{
 			return devMode.dmDisplayFrequency;
 		}
+		return 60;
 	}
 
 	static std::pair<DWORD, DWORD> GetScreenResolution()

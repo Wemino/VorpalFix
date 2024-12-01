@@ -327,7 +327,7 @@ static int __cdecl SetHUDPosition_Hook(float x_position, float y_position, float
 		float current_aspect_ratio = resolution_width / resolution_height;
 		float scaleX = ASPECT_RATIO_4_3 / current_aspect_ratio;
 
-		double hud_object_x_position = (x_position * 640.0) / resolution_width;
+		float hud_object_x_position = (x_position * 640.0f) / resolution_width;
 		float resolution_width_original = resolution_width;
 
 		if (x_position > 0)
@@ -359,7 +359,7 @@ static int __cdecl SetHUDPosition_Hook(float x_position, float y_position, float
 
 		if (x_position < 0)
 		{
-			x_position = static_cast<double>(resolution_width / 640.0 * hud_object_x_position);
+			x_position = resolution_width / 640.0f * hud_object_x_position;
 
 			// Fine tuning
 			if (resolution_width_original != 1440 || resolution_height != 900)
@@ -2239,7 +2239,7 @@ static void Init()
 	InitializeMenuCvar();
 }
 
-static BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
 	switch (ul_reason_for_call)
 	{
