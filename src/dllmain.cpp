@@ -66,6 +66,8 @@ bool setAlice2Path = false;
 bool isAnisotropyRetrieved = false;
 bool isInSettingMenu = false;
 bool hasLookedForLocalizationFiles = false;
+int saveScreenshotX = 0;
+bool isTakingSaveScreenshot = false;
 size_t localizationFilesToLoad = 0;
 std::vector<std::string> pk3LocFiles;
 bool isHoldingLeftStick = false;
@@ -421,19 +423,10 @@ sub_490130 SetFMVPosition = nullptr;
 
 static int __cdecl SetFMVPosition_Hook(int x_position, int y_position, int resolution_width, int resolution_height, int a5, int a6, int a7)
 {
-	int video_height = resolution_height;
-	int video_width = static_cast<int>(video_height * ASPECT_RATIO_4_3);
-
-	if (video_width > resolution_width)
-	{
-		video_width = resolution_width;
-		video_height = static_cast<int>(video_width / ASPECT_RATIO_4_3);
-	}
-
+	int video_width = static_cast<int>(resolution_height * ASPECT_RATIO_4_3);
 	x_position = (resolution_width - video_width) / 2;
-	y_position = (resolution_height - video_height) / 2;
 
-	return SetFMVPosition(x_position, y_position, video_width, video_height, a5, a6, a7);
+	return SetFMVPosition(x_position, y_position, video_width, resolution_height, a5, a6, a7);
 }
 
 /****************************************************
@@ -1582,6 +1575,49 @@ static int __stdcall glTexParameterf_Hook(int target, int pname, float param)
 	return original_glTexParameterf(target, pname, param);
 }
 
+typedef int(__stdcall* opengl32_glReadPixels)(int, int, int, int, int, int, int);
+opengl32_glReadPixels original_glReadPixels = nullptr;
+
+static int __stdcall glReadPixels_Hook(int x, int y, int width, int height, int format, int type, int data)
+{
+	if (isTakingSaveScreenshot)
+	{
+		x = saveScreenshotX;
+		isTakingSaveScreenshot = false;
+	}
+	return original_glReadPixels(x, y, width, height, format, type, data);
+}
+
+typedef int(__cdecl* sub_46D280)(int, int, int);
+sub_46D280 TakeSaveScreenshot = nullptr;
+
+static int __cdecl TakeSaveScreenshot_Hook(int a1, int a2, int a3)
+{
+	int screenshot_width = static_cast<int>(currentHeight * ASPECT_RATIO_4_3);
+	saveScreenshotX = (currentWidth - screenshot_width) / 2;
+
+	// Store the new dimension for the screenshot
+	MemoryHelper::WriteMemory<int>(0x513E50, screenshot_width, true);
+
+	// If screenshot_width is not a multiple of 4
+	if (screenshot_width % 4 != 0)
+	{
+		// Adjust the width to be the largest multiple of 4 less than currentWidth
+		screenshot_width = screenshot_width - (screenshot_width % 4);
+	}
+
+	// Redirect width read by sub_46D280
+	MemoryHelper::WriteMemory<int>(0x46D28B, 0x513E50, true);
+	MemoryHelper::WriteMemory<int>(0x46D307, 0x513E50, true);
+	MemoryHelper::WriteMemory<int>(0x46D321, 0x513E50, true);
+	MemoryHelper::WriteMemory<int>(0x46D3B7, 0x513E50, true);
+
+	// Tell glReadPixels_Hook to update the x position
+	isTakingSaveScreenshot = true;
+
+	return TakeSaveScreenshot(a1, a2, a3);
+}
+
 /****************************************************
  * Function: UISetCvars_Hook
  *
@@ -1920,6 +1956,16 @@ static void ApplyFixStretchedGUI()
 	HookHelper::ApplyHook((void*)0x4C5D30, &SetAliceMirrorViewportParams_Hook, reinterpret_cast<LPVOID*>(&SetAliceMirrorViewportParams)); // Scale Alice's 3D model in the settings menu
 	HookHelper::ApplyHook((void*)0x452CF0, &ShowDialogBoxText_Hook, reinterpret_cast<LPVOID*>(&ShowDialogBoxText));
 	MemoryHelper::MakeNOP(0x4D2AB1, 7, true); // dark rectangle when reassigning a control
+
+	// Save screenshot
+	HMODULE openglLibrary = LoadLibraryA("opengl32");
+	if (openglLibrary)
+	{
+		FARPROC glReadPixels_ptr = GetProcAddress(openglLibrary, "glReadPixels");
+		HookHelper::ApplyHook((void*)glReadPixels_ptr, &glReadPixels_Hook, reinterpret_cast<LPVOID*>(&original_glReadPixels));
+	}
+
+	HookHelper::ApplyHook((void*)0x46D280, &TakeSaveScreenshot_Hook, reinterpret_cast<LPVOID*>(&TakeSaveScreenshot));
 }
 
 static void ApplyFixDPIScaling()
@@ -2162,7 +2208,6 @@ static void ApplyEnableAltF4Close()
 static void ApplyAnisotropicTextureFiltering()
 {
 	HMODULE openglLibrary = LoadLibraryA("opengl32");
-
 	if (openglLibrary)
 	{
 		FARPROC glTexParameterf_ptr = GetProcAddress(openglLibrary, "glTexParameterf");
