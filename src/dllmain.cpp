@@ -1515,7 +1515,14 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 	// Right Stick Pressed + A
 	if ((xinput_state & 0x1080) == 0x1080)
 	{
-		GameHelper::CallCmd("loadgame quicksave\n", 0);
+		int totalFrameTime = MemoryHelper::ReadMemory<int>(TOTAL_FRAME_TIME, false);
+
+		// Don't accidentally spam the command every frames
+		if ((totalFrameTime - lastQuickSaveFrame) >= 50)
+		{
+			GameHelper::CallCmd("loadgame quicksave\n", 0);
+			lastQuickSaveFrame = totalFrameTime;
+		}
 	}
 
 	// Right Stick Pressed + B
@@ -1524,7 +1531,7 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 		int totalFrameTime = MemoryHelper::ReadMemory<int>(TOTAL_FRAME_TIME, false);
 
 		// Don't accidentally spam the command every frames
-		if ((totalFrameTime - lastQuickSaveFrame) >= 100)
+		if ((totalFrameTime - lastQuickSaveFrame) >= 50)
 		{
 			GameHelper::CallCmd("savegame quicksave\n", 0);
 			lastQuickSaveFrame = totalFrameTime;
