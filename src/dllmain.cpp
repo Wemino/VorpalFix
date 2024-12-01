@@ -90,6 +90,7 @@ const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
 const int RIGHT_BORDER_X_ID = 0x2000000;
 const char* ALICE2_DEFAULT_PATH = "..\\..\\Alice2\\Binaries\\Win32\\AliceMadnessReturns.exe";
+const int BLINK_SPEED_RATE = 20;
 
 // =============================
 // Ini Variables
@@ -1638,10 +1639,12 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_
 		MemoryHelper::WriteMemory<int>(com_maxfps_ptr + 0x20, CustomFPSLimit, false);
 
 		// Fix the blinking eyes speed
-		int blinkRate = 20;
-		MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x2, 100 * CustomFPSLimit / blinkRate, true);
-		MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x1A, 100 * CustomFPSLimit / blinkRate, true);
-		MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x22, 4 * CustomFPSLimit / 60, true);
+		if (FixBlinkingAnimationSpeed)
+		{
+			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x2, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
+			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x1A, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
+			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x22, 4 * CustomFPSLimit / 60, true);
+		}
 
 		IniHelper::Save();
 	}
@@ -1852,9 +1855,6 @@ static void ApplyFixBlinkingAnimationSpeed()
 {
 	if (!FixBlinkingAnimationSpeed) return;
 
-	// 20FPS Speed
-	int blinkRate = 20;
-
 	// First JMP Redirect
 	MemoryHelper::MakeJMP(0x4C6367, CODE_CAVE_BLINK, true);
 
@@ -1862,7 +1862,7 @@ static void ApplyFixBlinkingAnimationSpeed()
 	char addInstruction[] = { 0x8B, 0xF0 };
 
 	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK, cmpInstruction, sizeof(cmpInstruction), true);
-	MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x2, 100 * CustomFPSLimit / blinkRate, true);
+	MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x2, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
 	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK + 0x6, addInstruction, sizeof(addInstruction), true);
 
 	// Back to the function
@@ -1874,7 +1874,7 @@ static void ApplyFixBlinkingAnimationSpeed()
 	char imulInstruction[] = { 0x69, 0xC0 };
 
 	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK + 0x18, imulInstruction, sizeof(imulInstruction), true);
-	MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x1A, 100 * CustomFPSLimit / blinkRate, true);
+	MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x1A, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
 	MemoryHelper::MakeNOP(CODE_CAVE_BLINK + 0x1E, 2, true);
 
 	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK + 0x20, cmpInstruction, sizeof(cmpInstruction), true);
