@@ -1,17 +1,18 @@
 ﻿#define _USE_MATH_DEFINES
 #define MINI_CASE_SENSITIVE
 #define NOMINMAX
-#include <shlobj.h>
+
+#include <Windows.h>
 #include <filesystem>
-#include "MinHook.h"
 #include <string>
+#include <GL/gl.h> 
+#include <shlobj.h>
+#include <VersionHelpers.h>
+#include <ShellScalingAPI.h>
+#include "MinHook.h"
 #include "ini.h"
 #include "dllmain.h"
 #include "helper.hpp"
-#include <Windows.h>
-#include <VersionHelpers.h>
-#include <ShellScalingAPI.h>
-#include <GL/gl.h>
 
 // =============================
 // Memory Addresses 
@@ -31,6 +32,7 @@ const int CODE_CAVE_SOUND = 0x513490;
 const int CODE_CAVE_INTRO = 0x513B90;
 const int CODE_CAVE_BLINK = 0x513E08;
 const int CODE_CAVE_WIDTH = 0x513E40;
+const int MAIN_ENTRY_POINT = 0x4DF0A3;
 
 // =============================
 // VorpalFix Menu
@@ -65,11 +67,13 @@ bool skipAutoResolution = false;
 bool setAlice2Path = false;
 bool isAnisotropyRetrieved = false;
 bool isInSettingMenu = false;
-bool hasLookedForLocalizationFiles = false;
 int saveScreenshotX = 0;
+
+bool hasLookedForLocalizationFiles = false;
 bool isTakingSaveScreenshot = false;
 size_t localizationFilesToLoad = 0;
 std::vector<std::string> pk3LocFiles;
+
 bool isHoldingLeftStick = false;
 int lastQuickSaveFrame = 0;
 char* lastWeaponIdUp = nullptr;
@@ -2297,8 +2301,20 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 	{
 		case DLL_PROCESS_ATTACH:
 		{
-			SystemHelper::LoadProxyLibrary();
-			Init();
+			uintptr_t base = (uintptr_t)GetModuleHandleA(NULL);
+			IMAGE_DOS_HEADER* dos = (IMAGE_DOS_HEADER*)(base);
+			IMAGE_NT_HEADERS* nt = (IMAGE_NT_HEADERS*)(base + dos->e_lfanew);
+
+			if ((base + nt->OptionalHeader.AddressOfEntryPoint + (0x400000 - base)) == MAIN_ENTRY_POINT)
+			{
+				SystemHelper::LoadProxyLibrary();
+				Init();
+			}
+			else
+			{
+				MessageBoxA(NULL, "This .exe is not supported.", "VorpalFix", MB_ICONERROR);
+				return false;
+			}
 			break;
 		}
 		case DLL_THREAD_ATTACH:
