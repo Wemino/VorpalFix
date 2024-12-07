@@ -115,6 +115,7 @@ bool FixStretchedGUI = false;
 bool FixDPIScaling = false;
 bool FixFullscreenSetting = false;
 bool FixMenuTransitionTiming = false;
+bool FixParticleDistanceRatio = false;
 bool FixLocalizationFiles = false;
 bool FixProton = false;
 
@@ -166,6 +167,7 @@ static void ReadConfig()
 	FixStretchedGUI = IniHelper::ReadInteger("Fixes", "FixStretchedGUI", 1) == 1;
 	FixDPIScaling = IniHelper::ReadInteger("Fixes", "FixDPIScaling", 1) == 1;
 	FixFullscreenSetting = IniHelper::ReadInteger("Fixes", "FixFullscreenSetting", 1) == 1;
+	FixParticleDistanceRatio = IniHelper::ReadInteger("Fixes", "FixParticleDistanceRatio", 1) == 1;
 	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
 	FixMenuTransitionTiming = IniHelper::ReadInteger("Fixes", "FixMenuTransitionTiming", 1) == 1;
 	FixProton = IniHelper::ReadInteger("Fixes", "FixProton", 0) == 1;
@@ -774,7 +776,7 @@ sub_43E030 FS_ZipLoading = nullptr;
 static FILE __cdecl FS_ZipLoading_Hook(const char* FileName)
 {
 	// Skip pak5_mod.pk3
-	if (std::strstr(FileName, "pak5_mod.pk3") != NULL)
+	if (strstr(FileName, "pak5_mod.pk3") != NULL)
 	{
 		FileName = "\x00";
 	}
@@ -955,8 +957,7 @@ static void __cdecl ProcessAPIPacket(DWORD* a1, int a2, int* a3)
  * Function: Cvar_Set_Hook
  *
  * Description:
- *    Intercepts and updates cvars, enforcing read-only 
- *    status by setting flag to 0x10
+ *    Intercepts and updates cvars
  * 
  * Used For:
  *    FixFullscreenSetting & AutoResolution & 
@@ -970,52 +971,51 @@ sub_419910 Cvar_Set = nullptr;
 
 static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int flag)
 {
-	if (TrilinearTextureFiltering && strcmp(var_name, "r_textureMode") == 0)
+	if (TrilinearTextureFiltering && strstr(var_name, "r_textureMode") != NULL)
 	{
 		value = "GL_LINEAR_MIPMAP_LINEAR";
-		flag = 0x10;
 	}
 
 	if (EnhancedLOD)
 	{
-		if (strcmp(var_name, "r_lodbias") == 0)
+		if (strstr(var_name, "r_lodbias") != NULL)
 		{
 			value = "-2";
-			flag = 0x10;
 		}
-		else if (strcmp(var_name, "r_lodCurveError") == 0)
+		else if (strstr(var_name, "r_lodCurveError") != NULL)
 		{
 			value = "10000";
-			flag = 0x10;
 		}
 	}
 
-	if (ForceBorderlessFullscreen && strcmp(var_name, "r_fullscreen") == 0)
+	if (ForceBorderlessFullscreen && strstr(var_name, "r_fullscreen") != NULL)
 	{
 		value = "0";
-		flag = 0x10;
 	}
 
-	if (setAlice2Path && strcmp(var_name, "s_Alice2URL") == 0)
+	if (FixParticleDistanceRatio && strstr(var_name, "cg_particledistanceratio") != NULL)
+	{
+		value = "0";
+	}
+
+	if (setAlice2Path && strstr(var_name, "s_Alice2URL") != NULL)
 	{
 		value = Alice2Path;
-		flag = 0x10;
 	}
 
-	if (CustomFPSLimit != 60 && strcmp(var_name, "com_maxfps") == 0)
+	if (CustomFPSLimit != 60 && strstr(var_name, "com_maxfps") != NULL)
 	{
 		value = StringHelper::IntegerToCString(CustomFPSLimit);
-		flag = 0x10;
 	}
 
 	// Read settings from "base" folder, skip it
-	if (FixFullscreenSetting && !isDefaultFullscreenSettingSkipped && strcmp(var_name, "r_fullscreen") == 0)
+	if (FixFullscreenSetting && !isDefaultFullscreenSettingSkipped && strstr(var_name, "r_fullscreen") != NULL)
 	{
 		isDefaultFullscreenSettingSkipped = true;
 		return 0;
 	}
 
-	if (AutoResolution && !skipAutoResolution && strcmp(var_name, "r_mode") == 0)
+	if (AutoResolution && !skipAutoResolution && strstr(var_name, "r_mode") != NULL)
 	{
 		// Prevent re-entering this condition
 		skipAutoResolution = true;
