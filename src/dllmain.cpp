@@ -10,8 +10,8 @@
 #include <VersionHelpers.h>
 #include <ShellScalingAPI.h>
 #include "MinHook.h"
-#include "ini.h"
-#include "dllmain.h"
+#include "ini.hpp"
+#include "dllmain.hpp"
 #include "helper.hpp"
 
 // =============================
@@ -1786,7 +1786,7 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
 
 			// Loop back to 4615F0 for every files
-			MemoryHelper::MakeCALL(0x41CB4E, 0x0041CB32, true);
+			MemoryHelper::MakeCALL(0x41CB4E, 0x41CB32, true);
 		}
 
 		// Load the original localization file

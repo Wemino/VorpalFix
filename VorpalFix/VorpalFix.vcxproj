@@ -176,9 +176,9 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\dllmain.h" />
+    <ClInclude Include="..\src\dllmain.hpp" />
     <ClInclude Include="..\src\helper.hpp" />
-    <ClInclude Include="..\src\ini.h" />
+    <ClInclude Include="..\src\ini.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
