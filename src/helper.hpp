@@ -343,7 +343,7 @@ namespace HookHelper
 {
 	bool isMHInitialized = false;
 
-	static void ApplyHook(void* addr, LPVOID hookFunc, LPVOID* originalFunc)
+	static bool InitializeMinHook()
 	{
 		if (!isMHInitialized)
 		{
@@ -354,9 +354,15 @@ namespace HookHelper
 			else
 			{
 				MessageBoxA(NULL, "Failed to initialize MinHook!", "Error", MB_ICONERROR | MB_OK);
-				return;
+				return false;
 			}
 		}
+		return true;
+	}
+
+	static void ApplyHook(void* addr, LPVOID hookFunc, LPVOID* originalFunc)
+	{
+		if (!InitializeMinHook()) return;
 
 		if (MH_CreateHook(addr, hookFunc, originalFunc) != MH_OK)
 		{
@@ -374,6 +380,27 @@ namespace HookHelper
 			return;
 		}
 	}
+
+	static void ApplyHookAPI(LPCWSTR moduleName, LPCSTR apiName, LPVOID hookFunc, LPVOID* originalFunc)
+	{
+		if (!InitializeMinHook()) return;
+
+		if (MH_CreateHookApi(moduleName, apiName, hookFunc, originalFunc) != MH_OK)
+		{
+			char errorMsg[0x100];
+			sprintf_s(errorMsg, "Failed to create hook for API: %s", apiName);
+			MessageBoxA(NULL, errorMsg, "Error", MB_ICONERROR | MB_OK);
+			return;
+		}
+
+		if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK)
+		{
+			char errorMsg[0x100];
+			sprintf_s(errorMsg, "Failed to enable hook for API: %s", apiName);
+			MessageBoxA(NULL, errorMsg, "Error", MB_ICONERROR | MB_OK);
+			return;
+		}
+	}
 };
 
 namespace StringHelper
@@ -381,14 +408,14 @@ namespace StringHelper
 	const char* IntegerToCString(int value) 
 	{
 		static thread_local char buffer[32];
-		std::snprintf(buffer, sizeof(buffer), "%d", value);
+		snprintf(buffer, sizeof(buffer), "%d", value);
 		return buffer;
 	}
 
 	const char* FloatToCString(float value) 
 	{
 		static thread_local char buffer[32];
-		std::snprintf(buffer, sizeof(buffer), "%.0f", value);
+		snprintf(buffer, sizeof(buffer), "%.0f", value);
 		return buffer;
 	}
 

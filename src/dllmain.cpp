@@ -55,6 +55,7 @@ bool isResolutionApplied = false;
 bool CvarHooking = false;
 int currentWidth = 0;
 int currentHeight = 0;
+float currentAspectRatio = 0;
 bool isCursorResized = false;
 bool isDefaultFullscreenSettingSkipped = false;
 bool isUsingControllerMenu = false;
@@ -114,8 +115,9 @@ bool FixStretchedFMV = false;
 bool FixStretchedGUI = false;
 bool FixDPIScaling = false;
 bool FixFullscreenSetting = false;
-bool FixMenuTransitionTiming = false;
 bool FixParticleDistanceRatio = false;
+bool FixMenuTransitionTiming = false;
+bool FixResolutionModeOOB = false;
 bool FixLocalizationFiles = false;
 bool FixProton = false;
 
@@ -138,6 +140,7 @@ bool UsePS3ControllerIcons = false;
 bool HideConsoleAtLaunch = false;
 bool DisableLetterbox = false;
 bool ForceBorderlessFullscreen = false;
+bool FirstAutoResolution = false;
 bool AutoResolution = false;
 bool CustomResolution = false;
 int CustomResolutionWidth = 0;
@@ -168,8 +171,9 @@ static void ReadConfig()
 	FixDPIScaling = IniHelper::ReadInteger("Fixes", "FixDPIScaling", 1) == 1;
 	FixFullscreenSetting = IniHelper::ReadInteger("Fixes", "FixFullscreenSetting", 1) == 1;
 	FixParticleDistanceRatio = IniHelper::ReadInteger("Fixes", "FixParticleDistanceRatio", 1) == 1;
-	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
 	FixMenuTransitionTiming = IniHelper::ReadInteger("Fixes", "FixMenuTransitionTiming", 1) == 1;
+	FixResolutionModeOOB = IniHelper::ReadInteger("Fixes", "FixResolutionModeOOB", 1) == 1;
+	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
 	FixProton = IniHelper::ReadInteger("Fixes", "FixProton", 0) == 1;
 
 	// General
@@ -192,7 +196,8 @@ static void ReadConfig()
 	DisableLetterbox = IniHelper::ReadInteger("Display", "DisableLetterbox", 0) == 1;
 	GameHelper::DisableCursorScaling = IniHelper::ReadInteger("Display", "DisableCursorScaling", 0) == 1;
 	ForceBorderlessFullscreen = IniHelper::ReadInteger("Display", "ForceBorderlessFullscreen", 0) == 1;
-	AutoResolution = IniHelper::ReadInteger("Display", "AutoResolution", 1) == 1;
+	FirstAutoResolution = IniHelper::ReadInteger("Display", "FirstAutoResolution", 1) == 1;
+	AutoResolution = IniHelper::ReadInteger("Display", "AutoResolution", 0) == 1;
 	CustomResolution = IniHelper::ReadInteger("Display", "CustomResolution", 0) == 1;
 	CustomResolutionWidth = IniHelper::ReadInteger("Display", "CustomResolutionWidth", 640);
 	CustomResolutionHeight = IniHelper::ReadInteger("Display", "CustomResolutionHeight", 480);
@@ -250,7 +255,7 @@ static void ReadConfig()
 	setAlice2Path = strcmp(Alice2Path, ALICE2_DEFAULT_PATH) != 0;
 
 	// Hook CvarSet only if necessary
-	CvarHooking = FixFullscreenSetting || AutoResolution || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60) || setAlice2Path || ForceBorderlessFullscreen;
+	CvarHooking = FixResolutionModeOOB || FixFullscreenSetting || FirstAutoResolution || AutoResolution || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60) || setAlice2Path || ForceBorderlessFullscreen || FixParticleDistanceRatio;
 }
 
 #pragma region
@@ -262,7 +267,7 @@ static void ReadConfig()
  *    Return the current save directory
  *
  * Used For:
- *    FixHardDiskFull & CustomSavePath
+ *    FixHardDiskFull & CustomSavePath & CvarHooking
  ****************************************************/
 
 typedef char* (__cdecl* sub_417400)();
@@ -332,11 +337,9 @@ static int __cdecl SetHUDPosition_Hook(float x_position, float y_position, float
 {
 	if (FixStretchedHUD)
 	{
-		float current_aspect_ratio = resolution_width / resolution_height;
-		float scaleX = ASPECT_RATIO_4_3 / current_aspect_ratio;
+		float scaleX = ASPECT_RATIO_4_3 / currentAspectRatio;
 
 		float hud_object_x_position = (x_position * 640.0f) / resolution_width;
-		float resolution_width_original = resolution_width;
 
 		if (x_position > 0)
 		{
@@ -345,13 +348,13 @@ static int __cdecl SetHUDPosition_Hook(float x_position, float y_position, float
 			x_position = (x_position - center) * scaleX + center + (widthDifference / 2.0f);
 
 			// Fine tuning
-			if (resolution_width_original != 1280 || resolution_height != 800)
+			if (resolution_width != 1280 || resolution_height != 800)
 			{
-				if (resolution_width_original <= 1920)
+				if (resolution_width <= 1920)
 				{
 					x_position -= 1.0f;
 				}
-				else if (resolution_width_original < 3840)
+				else if (resolution_width < 3840)
 				{
 					x_position -= 2.0f;
 				}
@@ -370,17 +373,17 @@ static int __cdecl SetHUDPosition_Hook(float x_position, float y_position, float
 			x_position = resolution_width / 640.0f * hud_object_x_position;
 
 			// Fine tuning
-			if (resolution_width_original != 1440 || resolution_height != 900)
+			if (resolution_width != 1440 || resolution_height != 900)
 			{
-				if (resolution_width_original == 1280 && resolution_height == 800)
+				if (resolution_width == 1280 && resolution_height == 800)
 				{
 					x_position += 2.0f;
 				}
-				else if (resolution_width_original < 1920)
+				else if (resolution_width < 1920)
 				{
 					x_position += 1.0f;
 				}
-				else if (resolution_width_original < 3840)
+				else if (resolution_width < 3840)
 				{
 					x_position += 2.0f;
 				}
@@ -394,20 +397,17 @@ static int __cdecl SetHUDPosition_Hook(float x_position, float y_position, float
 
 	if (ConsolePortHUD)
 	{
-		float current_width = static_cast<float>(currentWidth);
-		float current_height = static_cast<float>(currentHeight);
-
 		if (x_position < 0)
 		{
-			x_position += current_width / 17.5f;
+			x_position += currentWidth / 17.5f;
 		}
 
 		if (x_position > 0)
 		{
-			x_position -= current_width / 17.5f;
+			x_position -= currentWidth / 17.5f;
 		}
 
-		y_position -= current_height / 10.0f;
+		y_position -= currentHeight / 10.0f;
 	}
 
 	return SetHUDPosition(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16);
@@ -451,22 +451,16 @@ sub_48FC00 RenderShader = nullptr;
 
 static int __cdecl RenderShader_Hook(float x_position, float y_position, float resolution_width, float resolution_height, float a5, float a6, float a7, float a8, int ShaderHandle)
 {
-	float current_width = static_cast<float>(currentWidth);
-	float current_height = static_cast<float>(currentHeight);
-
-	float current_aspect_ratio = current_width / current_height;
-
-	float black_border_width = (current_width - (current_height * ASPECT_RATIO_4_3)) / 2.0f;
-
 	// Pillarbox borders
 	if (x_position == LEFT_BORDER_X_ID) // Left border
 	{
 		// Calculate the scale factor to match the target height
-		float scale_factor = current_height / 720.0f; // Original height of the image is 720
+		float scale_factor = currentHeight / 720.0f; // Original height of the image is 720
+		float black_border_width = (currentWidth - (currentHeight * ASPECT_RATIO_4_3)) / 2.0f;
 
 		// Scale the width and height proportionally
 		resolution_width = 320.0f * scale_factor;
-		resolution_height = current_height;
+		resolution_height = currentHeight;
 
 		// Align the image to the left edge to cover the black border precisely
 		x_position = black_border_width - resolution_width;
@@ -474,14 +468,15 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 	else if (x_position == RIGHT_BORDER_X_ID) // Right border
 	{
 		// Calculate the scale factor to match the target height
-		float scale_factor = current_height / 720.0f; // Original height of the image is 720
+		float scale_factor = currentHeight / 720.0f; // Original height of the image is 720
+		float black_border_width = (currentWidth - (currentHeight * ASPECT_RATIO_4_3)) / 2.0f;
 
 		// Scale the width and height proportionally
 		resolution_width = 320.0f * scale_factor;
-		resolution_height = current_height;
+		resolution_height = currentHeight;
 
 		// Position the image to align precisely with the right black border
-		x_position = current_width - black_border_width;
+		x_position = currentWidth - black_border_width;
 	}
 	else
 	{
@@ -516,15 +511,15 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		// Scale the legalplate
 		if (!isMainMenuShown && strstr(ShaderName, "legalplate") != NULL)
 		{
-			if (current_width > 1280)
+			if (currentWidth > 1280)
 			{
-				float scale_factor = (float)current_height / 720.0f;
+				float scale_factor = (float)currentHeight / 720.0f;
 
 				resolution_width *= scale_factor;
 				resolution_height *= scale_factor;
 
-				x_position = (current_width - resolution_width) / 2.0f;
-				y_position = (current_height - resolution_height) / 2.0f;
+				x_position = (currentWidth - resolution_width) / 2.0f;
+				y_position = (currentHeight - resolution_height) / 2.0f;
 			}
 
 			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
@@ -537,15 +532,15 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 
 			// Determine the scale factor to fill the screen
 			float scale_factor;
-			if (current_aspect_ratio > image_aspect_ratio)
+			if (currentAspectRatio > image_aspect_ratio)
 			{
 				// Screen is wider than 16:9; scale based on width to fill horizontally, cropping top and bottom
-				scale_factor = (float)current_width / 1280.0f;
+				scale_factor = (float)currentWidth / 1280.0f;
 			}
 			else
 			{
 				// Screen is taller than 16:9; scale based on height to fill vertically, cropping sides
-				scale_factor = (float)current_height / 720.0f;
+				scale_factor = (float)currentHeight / 720.0f;
 			}
 
 			// Set scaled dimensions to fill the screen fully
@@ -553,8 +548,8 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 			resolution_height = 720 * scale_factor;
 
 			// Center the image on the screen
-			x_position = (current_width - resolution_width) / 2.0f;
-			y_position = (current_height - resolution_height) / 2.0f;
+			x_position = (currentWidth - resolution_width) / 2.0f;
+			y_position = (currentHeight - resolution_height) / 2.0f;
 
 			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
@@ -572,12 +567,12 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		}
 
 		// Scale the UI
-		if (current_aspect_ratio >= ASPECT_RATIO_4_3)
+		if (currentAspectRatio >= ASPECT_RATIO_4_3)
 		{
-			float target_width = current_height * ASPECT_RATIO_4_3;
-			float scale_factor = target_width / current_width;
+			float target_width = currentHeight * ASPECT_RATIO_4_3;
+			float scale_factor = target_width / currentWidth;
 			resolution_width *= scale_factor;
-			float horizontal_offset = (current_width - target_width) / 2.0f;
+			float horizontal_offset = (currentWidth - target_width) / 2.0f;
 
 			// Exceptions for some of the in-game assets
 			if ((ConsolePortHUD || strcmp(ShaderName, "ui/quicksavecam/quicksavecam") != 0) && strcmp(ShaderName, "ui/dialog/leftFrame") != 0 && strcmp(ShaderName, "ui/dialog/rightFrame") != 0)
@@ -588,8 +583,8 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 			// Save camera position similar to the console version
 			if ((ConsolePortHUD && strcmp(ShaderName, "ui/quicksavecam/quicksavecam") == 0))
 			{
-				x_position = current_width / 6.0f;
-				y_position = current_height / 14.25f;
+				x_position = currentWidth / 6.0f;
+				y_position = currentHeight / 14.25f;
 			}
 
 			// Move the dialog boxes to the center
@@ -677,18 +672,13 @@ static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_po
 		return GetGlyphInfo(this_ptr, font_x_position, font_y_position, a4, a5, a6, a7, a8, font_scale_width, font_scale_height);
 	}
 
-	float current_width = static_cast<float>(currentWidth);
-	float current_height = static_cast<float>(currentHeight);
-
-	float current_aspect_ratio = current_width / current_height;
-
-	if (current_aspect_ratio > ASPECT_RATIO_4_3)
+	if (currentAspectRatio > ASPECT_RATIO_4_3)
 	{
 		// Disable original font scaling, we'll handle it ourselves
 		*(BYTE*)(this_ptr + 24) = 1;
 
-		float target_width = current_height * ASPECT_RATIO_4_3;
-		float horizontal_offset = (current_width - target_width) / 2.0f;
+		float target_width = currentHeight * ASPECT_RATIO_4_3;
+		float horizontal_offset = (currentWidth - target_width) / 2.0f;
 
 		float adjusted_font_x_position = (font_x_position * (target_width / 640.0f)) + horizontal_offset;
 		float adjusted_font_scale_width;
@@ -703,8 +693,8 @@ static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_po
 			adjusted_font_scale_width = font_scale_width * (target_width / 640.0f);
 		}
 
-		float adjusted_font_y_position = font_y_position * (current_height / 480.0f);
-		float adjusted_font_scale_height = font_scale_height * (current_height / 480.0f);
+		float adjusted_font_y_position = font_y_position * (currentHeight / 480.0f);
+		float adjusted_font_scale_height = font_scale_height * (currentHeight / 480.0f);
 
 		// Adjust the position of the text for the dialog box
 		if (isDialog)
@@ -741,16 +731,11 @@ static DWORD* __cdecl SetAliceMirrorViewportParams_Hook(DWORD* a1, float param_x
 	int width = renderEntity[2];
 	int height = renderEntity[3];
 
-	float current_width = static_cast<float>(width);
-	float current_height = static_cast<float>(height);
-
-	float current_aspect_ratio = current_width / current_height;
-
-	if (current_aspect_ratio > ASPECT_RATIO_4_3)
+	if (currentAspectRatio > ASPECT_RATIO_4_3)
 	{
-		float aspect_ratio_adjustment = ASPECT_RATIO_4_3 / current_aspect_ratio;
+		float aspect_ratio_adjustment = ASPECT_RATIO_4_3 / currentAspectRatio;
 
-		int adjusted_width = static_cast<int>(current_width * aspect_ratio_adjustment);
+		int adjusted_width = static_cast<int>(currentWidth * aspect_ratio_adjustment);
 		renderEntity[2] = adjusted_width;
 
 		int x_shift = (width - adjusted_width) / 2;
@@ -869,13 +854,10 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 	// Scale the FOV for non-4:3 aspect ratios
 	if (AutoFOV)
 	{
-		float current_width = static_cast<float>(currentWidth);
-		float current_height = static_cast<float>(currentHeight);
-
-		float current_aspect_ratio = current_width / current_height;
+		currentAspectRatio = static_cast<float>(currentWidth) / static_cast<float>(currentHeight);
 
 		float vFOV = 2.0 * atan(tan(90.0 * M_PI / 180.0 / 2.0) / ASPECT_RATIO_4_3);
-		FOV = 2.0 * atan(tan(vFOV / 2.0) * current_aspect_ratio) * 180.0 / M_PI;
+		FOV = 2.0 * atan(tan(vFOV / 2.0) * currentAspectRatio) * 180.0 / M_PI;
 	}
 
 	// New cursor size
@@ -907,6 +889,12 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 			MemoryHelper::WriteMemory<int>(0x46D321, 0x1C4798C, true);
 			MemoryHelper::WriteMemory<int>(0x46D3B7, 0x1C4798C, true);
 		}
+	}
+
+	// Disable console title screen for aspect ratios greater than 21:9 
+	if (currentAspectRatio > 2.0f)
+	{
+		UseConsoleTitleScreen = false;
 	}
 
 	return GLW_CreatePFD(pPFD, colorbits, depthbits, stencilbits, stereo);
@@ -959,11 +947,6 @@ static void __cdecl ProcessAPIPacket(DWORD* a1, int a2, int* a3)
  * Description:
  *    Intercepts and updates cvars
  * 
- * Used For:
- *    FixFullscreenSetting & AutoResolution & 
- *    TrilinearTextureFiltering & EnhancedLOD & 
- *    CustomFPSLimit & Alice2Path &
- *    ForceBorderlessFullscreen
  ****************************************************/
 
 typedef int(__cdecl* sub_419910)(const char*, const char*, int);
@@ -1015,7 +998,7 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		return 0;
 	}
 
-	if (AutoResolution && !skipAutoResolution && strstr(var_name, "r_mode") != NULL)
+	if ((FirstAutoResolution || AutoResolution || FixResolutionModeOOB || ForceBorderlessFullscreen) && !skipAutoResolution && strstr(var_name, "r_mode") != NULL)
 	{
 		// Prevent re-entering this condition
 		skipAutoResolution = true;
@@ -1028,15 +1011,27 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		std::string directoryPath = GetSavePath_Hook();
 		std::filesystem::path configFilePath = std::filesystem::path(directoryPath) / configFile;
 
-		// No configuration file exists, attempting to set the 'r_mode' to match the screen resolution
-		if (!std::filesystem::exists(configFilePath))
+		// Since this function is executed after, do it before
+		GameHelper::FetchDisplayResolutions();
+
+		auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
+		int resolutionNum = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_NUM, false);
+
+		// Check if 'r_mode' exceeds the total count of available resolution modes
+		if (FixResolutionModeOOB)
 		{
-			// Since this function is executed after, do it before
-			GameHelper::FetchDisplayResolutions();
+			int index;
+			std::istringstream(value) >> index;
 
-			auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
-			int resolutionNum = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_NUM, false);
+			// Check if "index" is within bounds and adjust if necessary
+			if (index >= resolutionNum)
+			{
+				value = "0";
+			}
+		}
 
+		if ((FirstAutoResolution && !std::filesystem::exists(configFilePath)) || (AutoResolution || ForceBorderlessFullscreen))
+		{
 			// Find the 'r_mode' value matching the screen resolution
 			for (int i = 0; i < resolutionNum; i++)
 			{
@@ -1051,6 +1046,7 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 				}
 			}
 		}
+
 	}
 
 	return Cvar_Set(var_name, value, flag);
@@ -1094,9 +1090,7 @@ sub_4C6050 AliceHeadMovement = nullptr;
 static int __fastcall AliceHeadMovement_Hook(int thisPtr, int* _ECX, float* a2, int a3, float* a4, float* a5)
 {
 	isInSettingMenu = true;
-	int result = AliceHeadMovement(thisPtr, a2, a3, a4, a5);
-	isInSettingMenu = false;
-	return result;
+	return AliceHeadMovement(thisPtr, a2, a3, a4, a5);
 }
 
 typedef float(__cdecl* sub_423740)(DWORD*, float*);
@@ -1108,6 +1102,7 @@ static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
 	if (isInSettingMenu && *a1 == 0xC1B40000 && *(a1 + 1) == 0xC2100000 && *(a1 + 2) == 0)
 	{
 		*a1 = 0xC119EB80;
+		isInSettingMenu = false;
 	}
 	return AliceHeadMovementCoordinates(a1, a2);
 }
@@ -1555,10 +1550,10 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
  *    MaxAnisotropy
  ****************************************************/
 
-typedef int(__stdcall* opengl32_glTexParameterf)(int, int, float);
+typedef void (WINAPI* opengl32_glTexParameterf)(GLenum, GLenum, GLfloat);
 opengl32_glTexParameterf original_glTexParameterf = nullptr;
 
-static int __stdcall glTexParameterf_Hook(int target, int pname, float param)
+static void WINAPI glTexParameterf_Hook(GLenum target, GLenum pname, GLfloat param)
 {
 	// Check if the param is a valid mipmap filter mode
 	if (param >= 0x2700 && param <= 0x2703)
@@ -1580,23 +1575,23 @@ static int __stdcall glTexParameterf_Hook(int target, int pname, float param)
 		}
 
 		original_glTexParameterf(target, pname, param);
-		return original_glTexParameterf(target, 0x84FE, (float)MaxAnisotropy);
+		original_glTexParameterf(target, 0x84FE, (float)MaxAnisotropy);
 	}
 
-	return original_glTexParameterf(target, pname, param);
+	original_glTexParameterf(target, pname, param);
 }
 
-typedef int(__stdcall* opengl32_glReadPixels)(int, int, int, int, int, int, int);
+typedef void (WINAPI* opengl32_glReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*);
 opengl32_glReadPixels original_glReadPixels = nullptr;
 
-static int __stdcall glReadPixels_Hook(int x, int y, int width, int height, int format, int type, int data)
+static void WINAPI glReadPixels_Hook(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void* data)
 {
 	if (isTakingSaveScreenshot)
 	{
 		x = saveScreenshotX;
 		isTakingSaveScreenshot = false;
 	}
-	return original_glReadPixels(x, y, width, height, format, type, data);
+	original_glReadPixels(x, y, width, height, format, type, data);
 }
 
 typedef int(__cdecl* sub_46D280)(int, int, int);
@@ -1969,14 +1964,8 @@ static void ApplyFixStretchedGUI()
 	MemoryHelper::MakeNOP(0x4D2AB1, 7, true); // dark rectangle when reassigning a control
 
 	// Save screenshot
-	HMODULE openglLibrary = LoadLibraryA("opengl32");
-	if (openglLibrary)
-	{
-		FARPROC glReadPixels_ptr = GetProcAddress(openglLibrary, "glReadPixels");
-		HookHelper::ApplyHook((void*)glReadPixels_ptr, &glReadPixels_Hook, reinterpret_cast<LPVOID*>(&original_glReadPixels));
-	}
-
 	HookHelper::ApplyHook((void*)0x46D280, &TakeSaveScreenshot_Hook, reinterpret_cast<LPVOID*>(&TakeSaveScreenshot));
+	HookHelper::ApplyHookAPI(L"opengl32", "glReadPixels", &glReadPixels_Hook, reinterpret_cast<LPVOID*>(&original_glReadPixels));
 }
 
 static void ApplyFixDPIScaling()
@@ -2171,7 +2160,7 @@ static void ApplyEnableDevConsole()
 
 static void ApplyCustomSavePath()
 {
-	if (!isUsingCustomSaveDir && !FixHardDiskFull) return;
+	if (!isUsingCustomSaveDir && !FixHardDiskFull && !CvarHooking) return;
 
 	HookHelper::ApplyHook((void*)0x417400, &GetSavePath_Hook, reinterpret_cast<LPVOID*>(&GetSavePath));
 }
@@ -2218,12 +2207,7 @@ static void ApplyEnableAltF4Close()
 
 static void ApplyAnisotropicTextureFiltering()
 {
-	HMODULE openglLibrary = LoadLibraryA("opengl32");
-	if (openglLibrary)
-	{
-		FARPROC glTexParameterf_ptr = GetProcAddress(openglLibrary, "glTexParameterf");
-		HookHelper::ApplyHook((void*)glTexParameterf_ptr, &glTexParameterf_Hook, reinterpret_cast<LPVOID*>(&original_glTexParameterf));
-	}
+	HookHelper::ApplyHookAPI(L"opengl32", "glTexParameterf", &glTexParameterf_Hook, reinterpret_cast<LPVOID*>(&original_glTexParameterf));
 }
 
 static void ApplyProcessAPIPacket()
