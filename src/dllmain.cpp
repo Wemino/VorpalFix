@@ -493,7 +493,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		}
 
 		// Once we get to the main menu
-		if (!isMainMenuShown && strstr(ShaderName, "main") != NULL)
+		if (!isMainMenuShown && strcmp(ShaderName, "main") == 0)
 		{
 			// Resize the cursor if hidden for the title screen
 			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
@@ -504,7 +504,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		}
 
 		// Scale the legalplate
-		if (!isMainMenuShown && strstr(ShaderName, "legalplate") != NULL)
+		if (!isMainMenuShown && strcmp(ShaderName, "legalplate") == 0)
 		{
 			if (currentWidth > 1280)
 			{
@@ -755,7 +755,7 @@ sub_43E030 FS_ZipLoading = nullptr;
 static FILE __cdecl FS_ZipLoading_Hook(const char* FileName)
 {
 	// Skip pak5_mod.pk3
-	if (strstr(FileName, "pak5_mod.pk3") != NULL)
+	if (StringHelper::stricmp(FileName, "pak5_mod.pk3"))
 	{
 		FileName = "\x00";
 	}
@@ -948,51 +948,51 @@ sub_419910 Cvar_Set = nullptr;
 
 static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int flag)
 {
-	if (TrilinearTextureFiltering && strstr(var_name, "r_textureMode") != NULL)
+	if (TrilinearTextureFiltering && StringHelper::stricmp(var_name, "r_textureMode"))
 	{
 		value = "GL_LINEAR_MIPMAP_LINEAR";
 	}
 
 	if (EnhancedLOD)
 	{
-		if (strstr(var_name, "r_lodbias") != NULL)
+		if (StringHelper::stricmp(var_name, "r_lodbias"))
 		{
 			value = "-2";
 		}
-		else if (strstr(var_name, "r_lodCurveError") != NULL)
+		else if (StringHelper::stricmp(var_name, "r_lodCurveError"))
 		{
 			value = "10000";
 		}
 	}
 
-	if (ForceBorderlessFullscreen && strstr(var_name, "r_fullscreen") != NULL)
+	if (ForceBorderlessFullscreen && StringHelper::stricmp(var_name, "r_fullscreen"))
 	{
 		value = "0";
 	}
 
-	if (FixParticleDistanceRatio && strstr(var_name, "cg_particledistanceratio") != NULL)
+	if (FixParticleDistanceRatio && StringHelper::stricmp(var_name, "cg_particledistanceratio"))
 	{
 		value = "0";
 	}
 
-	if (setAlice2Path && strstr(var_name, "s_Alice2URL") != NULL)
+	if (setAlice2Path && StringHelper::stricmp(var_name, "s_Alice2URL"))
 	{
 		value = Alice2Path;
 	}
 
-	if (CustomFPSLimit != 60 && strstr(var_name, "com_maxfps") != NULL)
+	if (CustomFPSLimit != 60 && StringHelper::stricmp(var_name, "com_maxfps"))
 	{
 		value = StringHelper::IntegerToCString(CustomFPSLimit);
 	}
 
 	// Read settings from "base" folder, skip it
-	if (FixFullscreenSetting && !isDefaultFullscreenSettingSkipped && strstr(var_name, "r_fullscreen") != NULL)
+	if (FixFullscreenSetting && !isDefaultFullscreenSettingSkipped && StringHelper::stricmp(var_name, "r_fullscreen"))
 	{
 		isDefaultFullscreenSettingSkipped = true;
 		return 0;
 	}
 
-	if (!skipAutoResolution && (FirstAutoResolution || AutoResolution || FixResolutionModeOOB || ForceBorderlessFullscreen) && strstr(var_name, "r_mode") != NULL)
+	if (!skipAutoResolution && (FirstAutoResolution || AutoResolution || FixResolutionModeOOB || ForceBorderlessFullscreen) && StringHelper::stricmp(var_name, "r_mode"))
 	{
 		// Prevent re-entering this condition
 		skipAutoResolution = true;

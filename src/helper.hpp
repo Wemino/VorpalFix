@@ -423,4 +423,24 @@ namespace StringHelper
 	{
 		return value ? "1" : "0";
 	}
+
+	bool stricmp(const char* str1, const char* str2) 
+	{
+		if (!str1 || !str2) 
+		{
+			return false;
+		}
+
+		while (*str1 && *str2) 
+		{
+			if (tolower(static_cast<unsigned char>(*str1)) != tolower(static_cast<unsigned char>(*str2))) 
+			{
+				return false;
+			}
+			++str1;
+			++str2;
+		}
+
+		return *str1 == '\0' && *str2 == '\0';
+	}
 };
