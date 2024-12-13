@@ -52,7 +52,6 @@ bool isScreenRateFps = false;
 // =============================
 bool isDialog = false;
 bool isResolutionApplied = false;
-bool CvarHooking = false;
 int currentWidth = 0;
 int currentHeight = 0;
 float currentAspectRatio = 0;
@@ -253,9 +252,6 @@ static void ReadConfig()
 
 	// Check if a custom path is set for Alice: Madness Returns
 	setAlice2Path = strcmp(Alice2Path, ALICE2_DEFAULT_PATH) != 0;
-
-	// Hook CvarSet only if necessary
-	CvarHooking = FixResolutionModeOOB || FixFullscreenSetting || FirstAutoResolution || AutoResolution || TrilinearTextureFiltering || EnhancedLOD || (CustomFPSLimit != 60) || setAlice2Path || ForceBorderlessFullscreen || FixParticleDistanceRatio;
 }
 
 #pragma region
@@ -996,7 +992,7 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		return 0;
 	}
 
-	if ((FirstAutoResolution || AutoResolution || FixResolutionModeOOB || ForceBorderlessFullscreen) && !skipAutoResolution && strstr(var_name, "r_mode") != NULL)
+	if (!skipAutoResolution && (FirstAutoResolution || AutoResolution || FixResolutionModeOOB || ForceBorderlessFullscreen) && strstr(var_name, "r_mode") != NULL)
 	{
 		// Prevent re-entering this condition
 		skipAutoResolution = true;
@@ -2158,7 +2154,7 @@ static void ApplyEnableDevConsole()
 
 static void ApplyCustomSavePath()
 {
-	if (!isUsingCustomSaveDir && !FixHardDiskFull && !CvarHooking) return;
+	if (!isUsingCustomSaveDir && !FixHardDiskFull) return;
 
 	HookHelper::ApplyHook((void*)0x417400, &GetSavePath_Hook, reinterpret_cast<LPVOID*>(&GetSavePath));
 }
@@ -2215,8 +2211,6 @@ static void ApplyProcessAPIPacket()
 
 static void ApplyCvarTweaks()
 {
-	if (!CvarHooking) return;
-
 	HookHelper::ApplyHook((void*)0x419910, &Cvar_Set_Hook, reinterpret_cast<LPVOID*>(&Cvar_Set));
 }
 
