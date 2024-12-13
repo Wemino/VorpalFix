@@ -493,7 +493,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		}
 
 		// Once we get to the main menu
-		if (!isMainMenuShown && strcmp(ShaderName, "main") == 0)
+		if (!isMainMenuShown && strstr(ShaderName, "main") != NULL)
 		{
 			// Resize the cursor if hidden for the title screen
 			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
@@ -504,7 +504,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		}
 
 		// Scale the legalplate
-		if (!isMainMenuShown && strcmp(ShaderName, "legalplate") == 0)
+		if (!isMainMenuShown && strstr(ShaderName, "legalplate") != NULL)
 		{
 			if (currentWidth > 1280)
 			{
