@@ -338,7 +338,6 @@ static int __cdecl SetHUDPosition_Hook(float x_position, float y_position, float
 	if (FixStretchedHUD)
 	{
 		float scaleX = ASPECT_RATIO_4_3 / currentAspectRatio;
-
 		float hud_object_x_position = (x_position * 640.0f) / resolution_width;
 
 		if (x_position > 0)
@@ -590,7 +589,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 			// Move the dialog boxes to the center
 			if (strcmp(ShaderName, "ui/dialog/leftFrame") == 0 || strcmp(ShaderName, "ui/dialog/rightFrame") == 0)
 			{
-				x_position = (x_position * scale_factor) + horizontal_offset / 1.65f;
+				x_position = (x_position * scale_factor) + horizontal_offset * 0.6f;
 				isDialog = true;
 			}
 			else
@@ -680,26 +679,25 @@ static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_po
 		float target_width = currentHeight * ASPECT_RATIO_4_3;
 		float horizontal_offset = (currentWidth - target_width) / 2.0f;
 
-		float adjusted_font_x_position = (font_x_position * (target_width / 640.0f)) + horizontal_offset;
-		float adjusted_font_scale_width;
+		float width_scale_factor = target_width / 640.0f;
+		float height_scale_factor = currentHeight / 480.0f;
 
-		// Hack for credits
+		// Adjust font position and scaling
+		float adjusted_font_x_position = (font_x_position * width_scale_factor) + horizontal_offset;
+		float adjusted_font_scale_width = font_scale_width * width_scale_factor;
+		float adjusted_font_y_position = font_y_position * height_scale_factor;
+		float adjusted_font_scale_height = font_scale_height * height_scale_factor;
+
+		// Special case for credits
 		if (a8 == -8.0)
 		{
-			adjusted_font_scale_width = font_scale_width * (target_width / 640.0f) * font_scale_width;
+			adjusted_font_scale_width *= 0.9f;
 		}
-		else
-		{
-			adjusted_font_scale_width = font_scale_width * (target_width / 640.0f);
-		}
-
-		float adjusted_font_y_position = font_y_position * (currentHeight / 480.0f);
-		float adjusted_font_scale_height = font_scale_height * (currentHeight / 480.0f);
 
 		// Adjust the position of the text for the dialog box
 		if (isDialog)
 		{
-			adjusted_font_x_position = (font_x_position * (target_width / 640.0f)) + horizontal_offset / 1.65f;
+			adjusted_font_x_position = (font_x_position * width_scale_factor) + horizontal_offset * 0.6f;
 		}
 
 		return GetGlyphInfo(this_ptr, adjusted_font_x_position, adjusted_font_y_position, a4, a5, a6, a7, a8, adjusted_font_scale_width, adjusted_font_scale_height);
