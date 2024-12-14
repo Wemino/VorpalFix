@@ -6,6 +6,7 @@ A fix that addresses a variety of technical issues and adds quality-of-life impr
 - Fix the random sound selection function. (e.g., Cheshire Cat summon, Vorpal Blade hit sounds and much more)
 - Fix "Hard Disk Full" when the game is installed on a disk with more than 2TB of free space.
 - Fix crashing when saving at resolutions where the width is not a multiple of 4.
+- Fix loading issues with certain remastered character textures.
 - Fix Meta-Essence particle effects not showing correctly when throwable weapons are reappearing in Alice's hand.
 - Fix Alice's blinking animation playing too quickly at high frame rates in the settings menu.
 - Fix HUD stretching in widescreen resolutions. [Before & After](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/hud.gif)

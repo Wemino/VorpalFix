@@ -45,6 +45,7 @@ int VF_UI_LETTERBOX_PTR;
 int VF_R_EXT_MAX_ANISOTROPY_PTR;
 int VF_COM_MAXFPS_PTR;
 
+bool isVorpalFixMenuCvarInitialized = false;
 bool isScreenRateFps = false;
 
 // =============================
@@ -94,6 +95,33 @@ const char* weaponCommands[] =
 	"use blunderbuss"
 };
 
+bool isUsingBrokenPak5 = false;
+const char* correctPaths[] = 
+{
+	"models/characters/cheshire/skin01.ftx",
+	"models/characters/cheshire/skin02.ftx",
+	"models/characters/cheshire/skin02g.ftx",
+	"models/characters/cardguard_club/skin01.ftx",
+	"models/characters/cardguard_diamond/skin02.ftx",
+	"models/characters/cardguard_heart/skin04.ftx",
+	"models/characters/cardguard_spade/skin03.ftx",
+	"models/characters/mock_turtle/mshell.ftx",
+	"models/characters/mock_turtle/mturt.ftx"
+};
+
+const char* brokenPaths[] = 
+{
+	"models/characters/cheshire_cat/skin01.ftx",
+	"models/characters/cheshire_cat/skin02.ftx",
+	"models/characters/cheshire_cat/skin02g.ftx",
+	"models/characters/cardguard/cardguard_club/skin01.ftx",
+	"models/characters/cardguard/cardguard_diamond/skin02.ftx",
+	"models/characters/cardguard/cardguard_heart/skin04.ftx",
+	"models/characters/cardguard/cardguard_spade/skin03.ftx",
+	"models/characters/morckturtle/mshell.ftx",
+	"models/characters/morckturtle/mturt.ftx"
+};
+
 const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 const int LEFT_BORDER_X_ID = 0x1000000;
 const int RIGHT_BORDER_X_ID = 0x2000000;
@@ -108,6 +136,7 @@ const int BLINK_SPEED_RATE = 20;
 bool FixSoundRandomization = false;
 bool FixHardDiskFull = false;
 bool FixSaveScreenshotBufferOverflow = false;
+bool FixPak5 = false;
 bool FixBlinkingAnimationSpeed = false;
 bool FixStretchedHUD = false;
 bool FixStretchedFMV = false;
@@ -163,6 +192,7 @@ static void ReadConfig()
 	FixSoundRandomization = IniHelper::ReadInteger("Fixes", "FixSoundRandomization", 1) == 1;
 	FixHardDiskFull = IniHelper::ReadInteger("Fixes", "FixHardDiskFull", 1) == 1;
 	FixSaveScreenshotBufferOverflow = IniHelper::ReadInteger("Fixes", "FixSaveScreenshotBufferOverflow", 1) == 1;
+	FixPak5 = IniHelper::ReadInteger("Fixes", "FixPak5", 1) == 1;
 	FixBlinkingAnimationSpeed = IniHelper::ReadInteger("Fixes", "FixBlinkingAnimationSpeed", 1) == 1;
 	FixStretchedHUD = IniHelper::ReadInteger("Fixes", "FixStretchedHUD", 1) == 1;
 	FixStretchedFMV = IniHelper::ReadInteger("Fixes", "FixStretchedFMV", 1) == 1;
@@ -755,7 +785,7 @@ sub_43E030 FS_ZipLoading = nullptr;
 static FILE __cdecl FS_ZipLoading_Hook(const char* FileName)
 {
 	// Skip pak5_mod.pk3
-	if (StringHelper::stricmp(FileName, "pak5_mod.pk3"))
+	if (strstr(FileName, "pak5_mod.pk3"))
 	{
 		FileName = "\x00";
 	}
@@ -860,6 +890,7 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 		isCursorResized = false;
 	}
 
+	// Note: Not necessary if 'FixStretchedGUI' is enabled, due to 'TakeSaveScreenshot_Hook'
 	if (FixSaveScreenshotBufferOverflow)
 	{
 		// currentWidth is not a multiple of 4?
@@ -951,6 +982,7 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	if (TrilinearTextureFiltering && StringHelper::stricmp(var_name, "r_textureMode"))
 	{
 		value = "GL_LINEAR_MIPMAP_LINEAR";
+		TrilinearTextureFiltering = false;
 	}
 
 	if (EnhancedLOD)
@@ -968,16 +1000,19 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	if (ForceBorderlessFullscreen && StringHelper::stricmp(var_name, "r_fullscreen"))
 	{
 		value = "0";
+		flag = 0x10; // read-only
 	}
 
 	if (FixParticleDistanceRatio && StringHelper::stricmp(var_name, "cg_particledistanceratio"))
 	{
 		value = "0";
+		FixParticleDistanceRatio = false;
 	}
 
 	if (setAlice2Path && StringHelper::stricmp(var_name, "s_Alice2URL"))
 	{
 		value = Alice2Path;
+		setAlice2Path = false;
 	}
 
 	if (CustomFPSLimit != 60 && StringHelper::stricmp(var_name, "com_maxfps"))
@@ -1040,7 +1075,6 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 				}
 			}
 		}
-
 	}
 
 	return Cvar_Set(var_name, value, flag);
@@ -1099,6 +1133,168 @@ static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
 		isInSettingMenu = false;
 	}
 	return AliceHeadMovementCoordinates(a1, a2);
+}
+
+/****************************************************
+ * Function: UISetCvars_Hook
+ *
+ * Description:
+ *    Hook of the function used by the "ui_setcvars"
+ *    command
+ *
+ * Used For:
+ *    pak7_VorpalFix_menu.pk3
+ ****************************************************/
+
+typedef DWORD(__thiscall* sub_4B9FD0)(DWORD*, char*);
+sub_4B9FD0 UISetCvars = nullptr;
+
+static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_name)
+{
+	// Apply the changes
+	if (strcmp(group_name, "group_vorpalfix") == 0)
+	{
+		// LanguageId - Need a restart
+		int languageId = MemoryHelper::ReadMemory<int>(VF_LANGUAGE_PTR + 0x20, false);
+		IniHelper::iniReader["General"]["LanguageId"] = StringHelper::IntegerToCString(languageId);
+
+		// DisableRemasteredModels - Need a restart
+		bool disableRemasteredModels = MemoryHelper::ReadMemory<int>(VF_REMASTERED_MODELS_PTR + 0x20, false);
+		IniHelper::iniReader["General"]["DisableRemasteredModels"] = StringHelper::IntegerToCString(!disableRemasteredModels);
+
+		// ConsolePortHUD
+		ConsolePortHUD = MemoryHelper::ReadMemory<int>(VF_UI_CONSOLE_HUD_PTR + 0x20, false);
+		IniHelper::iniReader["Display"]["ConsolePortHUD"] = StringHelper::IntegerToCString(ConsolePortHUD);
+
+		// UsePS3ControllerIcons - Need a restart
+		int usePS3ControllerIcons = MemoryHelper::ReadMemory<int>(VF_UI_PS3_PTR + 0x20, false);
+		IniHelper::iniReader["Display"]["UsePS3ControllerIcons"] = StringHelper::IntegerToCString(usePS3ControllerIcons);
+
+		// DisableLetterbox
+		bool isLetterboxEnabled = MemoryHelper::ReadMemory<int>(VF_UI_LETTERBOX_PTR + 0x20, false);
+		IniHelper::iniReader["Display"]["DisableLetterbox"] = StringHelper::IntegerToCString(!isLetterboxEnabled);
+		DisableLetterbox = !isLetterboxEnabled;
+
+		// MaxAnisotropy
+		int maxAnisotropy = MemoryHelper::ReadMemory<int>(VF_R_EXT_MAX_ANISOTROPY_PTR + 0x20, false);
+		IniHelper::iniReader["Graphics"]["MaxAnisotropy"] = StringHelper::IntegerToCString(maxAnisotropy);
+
+		// Execute vid_restart to refresh the textures
+		if (maxAnisotropy != static_cast<int>(MaxAnisotropy))
+		{
+			MaxAnisotropy = static_cast<float>(maxAnisotropy);
+			GameHelper::CallCmd("vid_restart\n", 0);
+		}
+
+		// CustomFPSLimit
+		CustomFPSLimit = MemoryHelper::ReadMemory<int>(VF_COM_MAXFPS_PTR + 0x20, false);
+		IniHelper::iniReader["Graphics"]["CustomFPSLimit"] = StringHelper::IntegerToCString(CustomFPSLimit);
+
+		// Set to monitor's refresh rate
+		if (CustomFPSLimit == -1)
+		{
+			CustomFPSLimit = SystemHelper::GetCurrentDisplayFrequency();
+		}
+
+		// Write the new value
+		int com_maxfps_ptr = MemoryHelper::ReadMemory<int>(COM_MAXFPS_PTR_ADDR, false);
+		MemoryHelper::WriteMemory<int>(com_maxfps_ptr + 0x20, CustomFPSLimit, false);
+
+		// Fix the blinking eyes speed
+		if (FixBlinkingAnimationSpeed)
+		{
+			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x2, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
+			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x1A, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
+			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x22, 4 * CustomFPSLimit / 60, true);
+		}
+
+		IniHelper::Save();
+	}
+
+	return UISetCvars(this_ptr, group_name);
+}
+
+/****************************************************
+ * Function: SetupOpenGLParameters_Hook
+ *
+ * Description:
+ *    Hook of the function used to initialize the
+ *    cvar's used for OpenGL
+ *
+ * Used For:
+ *    pak7_VorpalFix_menu.pk3
+ ****************************************************/
+
+typedef int(__cdecl* sub_46E0D0)();
+sub_46E0D0 SetupOpenGLParameters = nullptr;
+
+static int __cdecl SetupOpenGLParameters_Hook()
+{
+	// Initialize our Cvar's
+	if (!isVorpalFixMenuCvarInitialized)
+	{
+		VF_LANGUAGE_PTR = Cvar_Set("vf_language", StringHelper::IntegerToCString(LanguageId), 0);
+		VF_REMASTERED_MODELS_PTR = Cvar_Set("vf_remastered_models", StringHelper::BoolToCString(!DisableRemasteredModels), 0);
+		VF_UI_CONSOLE_HUD_PTR = Cvar_Set("vf_ui_console_hud", StringHelper::BoolToCString(ConsolePortHUD), 0);
+		VF_UI_PS3_PTR = Cvar_Set("vf_ui_ps3", StringHelper::BoolToCString(UsePS3ControllerIcons), 0);
+		VF_UI_LETTERBOX_PTR = Cvar_Set("vf_ui_letterbox", StringHelper::BoolToCString(!DisableLetterbox), 0);
+		VF_R_EXT_MAX_ANISOTROPY_PTR = Cvar_Set("vf_r_ext_max_anisotropy", StringHelper::FloatToCString(MaxAnisotropy), 0);
+
+		if (isScreenRateFps)
+		{
+			VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", "-1", 0);
+		}
+		else
+		{
+			VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", StringHelper::IntegerToCString(CustomFPSLimit), 0);
+		}
+
+		isVorpalFixMenuCvarInitialized = true;
+	}
+	return SetupOpenGLParameters();
+}
+
+typedef int(__cdecl* sub_41A590)(char*, int*, int, int);
+sub_41A590 Open_File = nullptr;
+
+static int __cdecl Open_File_Hook(char* Source, int* a2, int a3, int a4)
+{
+	for (int i = 0; i < 9; i++)
+	{
+		// Check if the provided file path matches a known incorrect path
+		if (strcmp(Source, correctPaths[i]) == 0)
+		{
+			// If a match is found, redirect to the corresponding correct texture path
+			Source = (char*)brokenPaths[i];
+			break;
+		}
+	}
+	return Open_File(Source, a2, a3, a4);
+}
+
+typedef BYTE(__cdecl* sub_4256E0)(char*);
+sub_4256E0 String_ToLower = nullptr;
+
+static BYTE __cdecl String_ToLower_Hook(char* Buffer)
+{
+	// Check if using the original 'pak5_mod.pk3'
+	if (!isUsingBrokenPak5 && FixPak5 && StringHelper::stricmp(Buffer, brokenPaths[0]))
+	{
+		HookHelper::ApplyHook((void*)0x41A590, &Open_File_Hook, reinterpret_cast<LPVOID*>(&Open_File));
+		isUsingBrokenPak5 = true;
+	}
+
+	// Check if 'pak7_VorpalFix_menu.pk3' is used
+	if (StringHelper::stricmp(Buffer, "ui/control/vorpalfix_options.tga"))
+	{
+		HookHelper::ApplyHook((void*)0x46E0D0, &SetupOpenGLParameters_Hook, reinterpret_cast<LPVOID*>(&SetupOpenGLParameters));
+		HookHelper::ApplyHook((void*)0x4B9FD0, &UISetCvars_Hook, reinterpret_cast<LPVOID*>(&UISetCvars));
+
+		// Disable this hook, nothing else to check
+		MH_DisableHook((void*)0x4256E0);
+	}
+
+	return String_ToLower(Buffer);
 }
 
 /****************************************************
@@ -1597,7 +1793,7 @@ static int __cdecl TakeSaveScreenshot_Hook(int a1, int a2, int a3)
 	saveScreenshotX = (currentWidth - screenshot_width) / 2;
 
 	// Store the new dimension for the screenshot
-	MemoryHelper::WriteMemory<int>(0x513E50, screenshot_width, true);
+	MemoryHelper::WriteMemory<int>(0x513E44, screenshot_width, true);
 
 	// If screenshot_width is not a multiple of 4
 	if (screenshot_width % 4 != 0)
@@ -1607,129 +1803,15 @@ static int __cdecl TakeSaveScreenshot_Hook(int a1, int a2, int a3)
 	}
 
 	// Redirect width read by sub_46D280
-	MemoryHelper::WriteMemory<int>(0x46D28B, 0x513E50, true);
-	MemoryHelper::WriteMemory<int>(0x46D307, 0x513E50, true);
-	MemoryHelper::WriteMemory<int>(0x46D321, 0x513E50, true);
-	MemoryHelper::WriteMemory<int>(0x46D3B7, 0x513E50, true);
+	MemoryHelper::WriteMemory<int>(0x46D28B, 0x513E44, true);
+	MemoryHelper::WriteMemory<int>(0x46D307, 0x513E44, true);
+	MemoryHelper::WriteMemory<int>(0x46D321, 0x513E44, true);
+	MemoryHelper::WriteMemory<int>(0x46D3B7, 0x513E44, true);
 
 	// Tell glReadPixels_Hook to update the x position
 	isTakingSaveScreenshot = true;
 
 	return TakeSaveScreenshot(a1, a2, a3);
-}
-
-/****************************************************
- * Function: UISetCvars_Hook
- *
- * Description:
- *    Hook of the function used by the "ui_setcvars" 
- *    command
- *
- * Used For:
- *    pak7_VorpalFix_menu.pk3
- ****************************************************/
-
-typedef DWORD(__thiscall* sub_4B9FD0)(DWORD*, char*);
-sub_4B9FD0 UISetCvars = nullptr;
-
-static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_name)
-{
-	// Apply the changes
-	if (strcmp(group_name, "group_vorpalfix") == 0)
-	{
-		// LanguageId - Need a restart
-		int languageId = MemoryHelper::ReadMemory<int>(VF_LANGUAGE_PTR + 0x20, false);
-		IniHelper::iniReader["General"]["LanguageId"] = StringHelper::IntegerToCString(languageId);
-
-		// DisableRemasteredModels - Need a restart
-		bool disableRemasteredModels = MemoryHelper::ReadMemory<int>(VF_REMASTERED_MODELS_PTR + 0x20, false);
-		IniHelper::iniReader["General"]["DisableRemasteredModels"] = StringHelper::IntegerToCString(!disableRemasteredModels);
-
-		// ConsolePortHUD
-		ConsolePortHUD = MemoryHelper::ReadMemory<int>(VF_UI_CONSOLE_HUD_PTR + 0x20, false);
-		IniHelper::iniReader["Display"]["ConsolePortHUD"] = StringHelper::IntegerToCString(ConsolePortHUD);
-
-		// UsePS3ControllerIcons - Need a restart
-		int usePS3ControllerIcons = MemoryHelper::ReadMemory<int>(VF_UI_PS3_PTR + 0x20, false);
-		IniHelper::iniReader["Display"]["UsePS3ControllerIcons"] = StringHelper::IntegerToCString(usePS3ControllerIcons);
-
-		// DisableLetterbox
-		bool isLetterboxEnabled = MemoryHelper::ReadMemory<int>(VF_UI_LETTERBOX_PTR + 0x20, false);
-		IniHelper::iniReader["Display"]["DisableLetterbox"] = StringHelper::IntegerToCString(!isLetterboxEnabled);
-		DisableLetterbox = !isLetterboxEnabled;
-
-		// MaxAnisotropy
-		int maxAnisotropy = MemoryHelper::ReadMemory<int>(VF_R_EXT_MAX_ANISOTROPY_PTR + 0x20, false);
-		IniHelper::iniReader["Graphics"]["MaxAnisotropy"] = StringHelper::IntegerToCString(maxAnisotropy);
-
-		// Execute vid_restart to refresh the textures
-		if (maxAnisotropy != static_cast<int>(MaxAnisotropy))
-		{
-			MaxAnisotropy = static_cast<float>(maxAnisotropy);
-			GameHelper::CallCmd("vid_restart\n", 0);
-		}
-
-		// CustomFPSLimit
-		CustomFPSLimit = MemoryHelper::ReadMemory<int>(VF_COM_MAXFPS_PTR + 0x20, false);
-		IniHelper::iniReader["Graphics"]["CustomFPSLimit"] = StringHelper::IntegerToCString(CustomFPSLimit);
-
-		// Set to monitor's refresh rate
-		if (CustomFPSLimit == -1)
-		{
-			CustomFPSLimit = SystemHelper::GetCurrentDisplayFrequency();
-		}
-
-		// Write the new value
-		int com_maxfps_ptr = MemoryHelper::ReadMemory<int>(COM_MAXFPS_PTR_ADDR, false);
-		MemoryHelper::WriteMemory<int>(com_maxfps_ptr + 0x20, CustomFPSLimit, false);
-
-		// Fix the blinking eyes speed
-		if (FixBlinkingAnimationSpeed)
-		{
-			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x2, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
-			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x1A, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
-			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x22, 4 * CustomFPSLimit / 60, true);
-		}
-
-		IniHelper::Save();
-	}
-
-	return UISetCvars(this_ptr, group_name);
-}
-
-/****************************************************
- * Function: SetupOpenGLParameters_Hook
- *
- * Description:
- *    Hook of the function used to initialize the
- *    cvar's used for OpenGL
- *
- * Used For:
- *    pak7_VorpalFix_menu.pk3
- ****************************************************/
-
-typedef int(__cdecl* sub_46E0D0)();
-sub_46E0D0 SetupOpenGLParameters = nullptr;
-
-static int __cdecl SetupOpenGLParameters_Hook()
-{
-	// Initialize our Cvar's
-	VF_LANGUAGE_PTR = Cvar_Set("vf_language", StringHelper::IntegerToCString(LanguageId), 0);
-	VF_REMASTERED_MODELS_PTR = Cvar_Set("vf_remastered_models", StringHelper::BoolToCString(!DisableRemasteredModels), 0);
-	VF_UI_CONSOLE_HUD_PTR = Cvar_Set("vf_ui_console_hud", StringHelper::BoolToCString(ConsolePortHUD), 0);
-	VF_UI_PS3_PTR = Cvar_Set("vf_ui_ps3", StringHelper::BoolToCString(UsePS3ControllerIcons), 0);
-	VF_UI_LETTERBOX_PTR = Cvar_Set("vf_ui_letterbox", StringHelper::BoolToCString(!DisableLetterbox), 0);
-	VF_R_EXT_MAX_ANISOTROPY_PTR = Cvar_Set("vf_r_ext_max_anisotropy", StringHelper::FloatToCString(MaxAnisotropy), 0);
-
-	if (isScreenRateFps)
-	{
-		VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", "-1", 0);
-	}
-	else
-	{
-		VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", StringHelper::IntegerToCString(CustomFPSLimit), 0);
-	}
-	return SetupOpenGLParameters();
 }
 
 /****************************************************
@@ -2216,15 +2298,12 @@ static void ApplyCvarTweaks()
 
 static void ApplyResolutionChangeHook()
 {
-	if (!AutoFOV && !FixStretchedGUI && !FixSaveScreenshotBufferOverflow) return;
-
 	HookHelper::ApplyHook((void*)0x46FC70, &GLW_CreatePFD_Hook, reinterpret_cast<LPVOID*>(&GLW_CreatePFD));
 }
 
-static void InitializeMenuCvar()
+static void InitializeGameLoadingChecks()
 {
-	HookHelper::ApplyHook((void*)0x46E0D0, &SetupOpenGLParameters_Hook, reinterpret_cast<LPVOID*>(&SetupOpenGLParameters));
-	HookHelper::ApplyHook((void*)0x4B9FD0, &UISetCvars_Hook, reinterpret_cast<LPVOID*>(&UISetCvars));
+	HookHelper::ApplyHook((void*)0x4256E0, &String_ToLower_Hook, reinterpret_cast<LPVOID*>(&String_ToLower));
 }
 
 #pragma endregion Apply Patches
@@ -2268,7 +2347,7 @@ static void Init()
 	// Misc
 	ApplyCvarTweaks();
 	ApplyResolutionChangeHook();
-	InitializeMenuCvar();
+	InitializeGameLoadingChecks();
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
