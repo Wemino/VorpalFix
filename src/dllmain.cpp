@@ -456,13 +456,15 @@ sub_490130 SetFMVPosition = nullptr;
 
 static int __cdecl SetFMVPosition_Hook(int x_position, int y_position, int resolution_width, int resolution_height, int a5, int a6, int a7)
 {
+	int video_width = resolution_width;
+
 	if (currentAspectRatio > ASPECT_RATIO_4_3)
 	{
-		resolution_width = static_cast<int>(resolution_height * ASPECT_RATIO_4_3);
-		x_position = (resolution_width - resolution_width) / 2;
+		video_width = static_cast<int>(resolution_height * ASPECT_RATIO_4_3);
+		x_position = (resolution_width - video_width) / 2;
 	}
 
-	return SetFMVPosition(x_position, y_position, resolution_width, resolution_height, a5, a6, a7);
+	return SetFMVPosition(x_position, y_position, video_width, resolution_height, a5, a6, a7);
 }
 
 /****************************************************
