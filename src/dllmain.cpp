@@ -1264,14 +1264,17 @@ sub_41A590 Open_File = nullptr;
 
 static int __cdecl Open_File_Hook(char* Source, int* a2, int a3, int a4)
 {
-	for (int i = 0; i < 9; i++)
+	if (*reinterpret_cast<uint64_t*>(Source + 3) == 0x726168632F736C65) // Optimization: Check for "els/char" in file path
 	{
-		// Check if the provided file path matches a known incorrect path
-		if (strcmp(Source, correctPaths[i]) == 0)
+		for (int i = 0; i < 9; i++)
 		{
-			// If a match is found, redirect to the corresponding correct texture path
-			Source = (char*)brokenPaths[i];
-			break;
+			// Check if the provided file path matches a known incorrect path
+			if (strcmp(Source, correctPaths[i]) == 0)
+			{
+				// If a match is found, redirect to the corresponding correct texture path
+				Source = (char*)brokenPaths[i];
+				break;
+			}
 		}
 	}
 	return Open_File(Source, a2, a3, a4);
