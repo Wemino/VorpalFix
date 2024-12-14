@@ -361,80 +361,82 @@ sub_446050 SetHUDPosition = nullptr;
 
 static int __cdecl SetHUDPosition_Hook(float x_position, float y_position, float resolution_width, float resolution_height, int a5, float* a6, float* a7, float* a8, int a9, const char* a10, __int16 a11, float* a12, float* a13, float a14, float a15, int a16)
 {
-	if (FixStretchedHUD)
+	if (currentAspectRatio > ASPECT_RATIO_4_3)
 	{
-		float scaleX = ASPECT_RATIO_4_3 / currentAspectRatio;
-		float hud_object_x_position = (x_position * 640.0f) / resolution_width;
-
-		if (x_position > 0)
+		if (FixStretchedHUD)
 		{
-			float center = resolution_width / 2.0f;
-			float widthDifference = resolution_width - (resolution_width * scaleX);
-			x_position = (x_position - center) * scaleX + center + (widthDifference / 2.0f);
+			float scaleX = ASPECT_RATIO_4_3 / currentAspectRatio;
+			float hud_object_x_position = (x_position * 640.0f) / resolution_width;
 
-			// Fine tuning
-			if (resolution_width != 1280 || resolution_height != 800)
+			if (x_position > 0)
 			{
-				if (resolution_width <= 1920)
+				float center = resolution_width / 2.0f;
+				float widthDifference = resolution_width - (resolution_width * scaleX);
+				x_position = (x_position - center) * scaleX + center + (widthDifference / 2.0f);
+
+				// Fine tuning
+				if (resolution_width != 1280 || resolution_height != 800)
 				{
-					x_position -= 1.0f;
+					if (resolution_width <= 1920)
+					{
+						x_position -= 1.0f;
+					}
+					else if (resolution_width < 3840)
+					{
+						x_position -= 2.0f;
+					}
+					else
+					{
+						x_position -= 3.0f;
+					}
 				}
-				else if (resolution_width < 3840)
+			}
+
+			// Adjust width scaling for the HUD elements on the left
+			resolution_width *= scaleX;
+
+			if (x_position < 0)
+			{
+				x_position = resolution_width / 640.0f * hud_object_x_position;
+
+				// Fine tuning
+				if (resolution_width != 1440 || resolution_height != 900)
 				{
-					x_position -= 2.0f;
-				}
-				else
-				{
-					x_position -= 3.0f;
+					if (resolution_width == 1280 && resolution_height == 800)
+					{
+						x_position += 2.0f;
+					}
+					else if (resolution_width < 1920)
+					{
+						x_position += 1.0f;
+					}
+					else if (resolution_width < 3840)
+					{
+						x_position += 2.0f;
+					}
+					else
+					{
+						x_position += 3.0f;
+					}
 				}
 			}
 		}
 
-		// Adjust width scaling for the HUD elements on the left
-		resolution_width *= scaleX;
-
-		if (x_position < 0)
+		if (ConsolePortHUD)
 		{
-			x_position = resolution_width / 640.0f * hud_object_x_position;
-
-			// Fine tuning
-			if (resolution_width != 1440 || resolution_height != 900)
+			if (x_position < 0)
 			{
-				if (resolution_width == 1280 && resolution_height == 800)
-				{
-					x_position += 2.0f;
-				}
-				else if (resolution_width < 1920)
-				{
-					x_position += 1.0f;
-				}
-				else if (resolution_width < 3840)
-				{
-					x_position += 2.0f;
-				}
-				else
-				{
-					x_position += 3.0f;
-				}
+				x_position += currentWidth / 17.5f;
 			}
+
+			if (x_position > 0)
+			{
+				x_position -= currentWidth / 17.5f;
+			}
+
+			y_position -= currentHeight / 10.0f;
 		}
 	}
-
-	if (ConsolePortHUD)
-	{
-		if (x_position < 0)
-		{
-			x_position += currentWidth / 17.5f;
-		}
-
-		if (x_position > 0)
-		{
-			x_position -= currentWidth / 17.5f;
-		}
-
-		y_position -= currentHeight / 10.0f;
-	}
-
 	return SetHUDPosition(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16);
 }
 
@@ -454,10 +456,13 @@ sub_490130 SetFMVPosition = nullptr;
 
 static int __cdecl SetFMVPosition_Hook(int x_position, int y_position, int resolution_width, int resolution_height, int a5, int a6, int a7)
 {
-	int video_width = static_cast<int>(resolution_height * ASPECT_RATIO_4_3);
-	x_position = (resolution_width - video_width) / 2;
+	if (currentAspectRatio > ASPECT_RATIO_4_3)
+	{
+		resolution_width = static_cast<int>(resolution_height * ASPECT_RATIO_4_3);
+		x_position = (resolution_width - resolution_width) / 2;
+	}
 
-	return SetFMVPosition(x_position, y_position, video_width, resolution_height, a5, a6, a7);
+	return SetFMVPosition(x_position, y_position, resolution_width, resolution_height, a5, a6, a7);
 }
 
 /****************************************************
@@ -592,7 +597,7 @@ static int __cdecl RenderShader_Hook(float x_position, float y_position, float r
 		}
 
 		// Scale the UI
-		if (currentAspectRatio >= ASPECT_RATIO_4_3)
+		if (currentAspectRatio > ASPECT_RATIO_4_3)
 		{
 			float target_width = currentHeight * ASPECT_RATIO_4_3;
 			float scale_factor = target_width / currentWidth;
