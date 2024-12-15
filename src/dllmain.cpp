@@ -17,22 +17,23 @@
 // =============================
 // Memory Addresses 
 // =============================
-const int CURRENT_WIDTH_ADDR = 0x1C4798C;
-const int CURRENT_HEIGHT_ADDR = 0x1C47990;
-const int CURRENT_LANG = 0x7CF868;
-const int STARTUP_STATE_ADDR = 0x7CCA20;
-const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
-const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
-const int DISPLAY_MODE_NUM = 0x7D40C8;
-const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
-const int DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
-const int TOTAL_FRAME_TIME = 0x11C8AA0;
-const int UI_WAIT_TIMER = 0x12EF948;
+const int MAIN_ENTRY_POINT = 0x4DF0A3;
 const int CODE_CAVE_SOUND = 0x513490;
 const int CODE_CAVE_INTRO = 0x513B90;
 const int CODE_CAVE_BLINK = 0x513E08;
 const int CODE_CAVE_WIDTH = 0x513E40;
-const int MAIN_ENTRY_POINT = 0x4DF0A3;
+const int STARTUP_STATE_ADDR = 0x7CCA20;
+const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
+const int CURRENT_LANG = 0x7CF868;
+const int DISPLAY_MODE_NUM = 0x7D40C8;
+const int TOTAL_FRAME_TIME = 0x11C8AA0;
+const int UI_WAIT_TIMER = 0x12EF948;
+const int CURRENT_WEAPON_ID = 0x12F3D60;
+const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
+const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
+const int DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
+const int CURRENT_WIDTH_ADDR = 0x1C4798C;
+const int CURRENT_HEIGHT_ADDR = 0x1C47990;
 
 // =============================
 // VorpalFix Menu
@@ -63,10 +64,10 @@ bool isUsingCustomSaveDir = false;
 bool skipAutoResolution = false;
 bool isAnisotropyRetrieved = false;
 bool isInSettingMenu = false;
+bool isTakingSaveScreenshot = false;
 int saveScreenshotX = 0;
 
 bool hasLookedForLocalizationFiles = false;
-bool isTakingSaveScreenshot = false;
 size_t localizationFilesToLoad = 0;
 std::vector<std::string> pk3LocFiles;
 
@@ -143,6 +144,8 @@ void(__cdecl* SetUIBorder)() = nullptr; // 0x44B100
 int(__cdecl* PushMenu)(const char*) = nullptr; // 0x44C1B0
 void(__cdecl* TriggerMainMenu)(int) = nullptr; // 0x44C4F0
 void(__thiscall* ShowDialogBoxText)(int) = nullptr; // 0x452CF0
+const char* (__cdecl* LoadLocalizationFile)() = nullptr; // 0x4615F0
+MMRESULT(__cdecl* UpdateControllerState)() = nullptr; // 0x4635A0
 int(__stdcall* lpfnWndProc_MSG)(HWND, UINT, int, LPARAM) = nullptr; // 0x46C600
 int(__cdecl* TakeSaveScreenshot)(int, int, int) = nullptr; // 0x46D280
 int(__cdecl* SetupOpenGLParameters)() = nullptr; // 0x46E0D0
@@ -155,8 +158,6 @@ BYTE(__thiscall* LoadUI)(DWORD*, char*) = nullptr; // 0x4C1AC0
 int(__thiscall* GetGlyphInfo)(int, float, float, int, int, float, float, float, float, float) = nullptr; // 0x4C0A10
 DWORD* (__cdecl* SetAliceMirrorViewportParams)(DWORD*, float, float, float, float, float) = nullptr; // 0x4C5D30
 int(__thiscall* UpdateHeadOrientationFromMouse)(int, float*, int, float*, float*) = nullptr; // 0x4C6050
-const char* (__cdecl* LoadLocalizationFile)() = nullptr; // 0x4615F0
-MMRESULT(__cdecl* UpdateControllerState)() = nullptr; // 0x4635A0
 HWND(WINAPI* ori_CreateWindowExA)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
 void(WINAPI* ori_glTexParameterf)(GLenum, GLenum, GLfloat);
 void(WINAPI* ori_glReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*);
@@ -785,7 +786,7 @@ static void __cdecl LoadSoundtrackFile_Hook()
 // Function used to open and load the pk3 files
 static FILE __cdecl FS_LoadZipFile_Hook(const char* FileName)
 {
-	// Skip pak5_mod.pk3
+	// Skip pak5_mod.pk3 and disable the hook
 	if (strstr(FileName, "pak5_mod.pk3"))
 	{
 		FileName = "\x00";
@@ -947,6 +948,189 @@ static void __fastcall ShowDialogBoxText_Hook(int this_ptr, int* _ECX)
 	ShowDialogBoxText(this_ptr);
 }
 
+// Hook function used to load the localization pk3 file
+static const char* __cdecl LoadLocalizationFile_Hook()
+{
+	if (!hasLookedForLocalizationFiles)
+	{
+		int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG, false);
+
+		std::string searchPath = "";
+		switch (lang)
+		{
+		case 1: searchPath = "base/loc/DEU/"; break;
+		case 2: searchPath = "base/loc/FRA/"; break;
+		case 3: searchPath = "base/loc/ESN/"; break;
+		default: searchPath = "base/loc/INT/"; break;
+		}
+
+		// Get *.pk3 inside "base/loc/<lang>/"
+		pk3LocFiles = SystemHelper::GetLocPk3Files(searchPath);
+
+		// Get the number of files to load
+		localizationFilesToLoad = pk3LocFiles.size();
+
+		// Loop back to this function if we got more than one file to load
+		if (localizationFilesToLoad > 0)
+		{
+			// Fix stack pointer after the CALL
+			char opCodeArray[] = { 0x83, 0xEC, 0x0C };
+			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
+
+			// Loop back to 4615F0 for every files
+			MemoryHelper::MakeCALL(0x41CB4E, 0x41CB32, true);
+		}
+
+		// Load the original localization file
+		hasLookedForLocalizationFiles = true;
+		return LoadLocalizationFile();
+	}
+
+	// If we still have files to load
+	if (localizationFilesToLoad > 0)
+	{
+		int currentIndex = pk3LocFiles.size() - localizationFilesToLoad;
+		localizationFilesToLoad--;
+
+		if (localizationFilesToLoad == 0)
+		{
+			// No more files, restore original instructions
+			char opCodeArray[] = { 0x33, 0xFF, 0x39, 0x7C, 0x24, 0x0C, 0x7E, 0x3F };
+			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
+		}
+
+		// Return the file path
+		return pk3LocFiles[currentIndex].c_str();
+	}
+
+	return LoadLocalizationFile();
+}
+
+// Hook of the function used to parse the controller state, add some more features
+static MMRESULT __cdecl UpdateControllerState_Hook()
+{
+	int xinput_state = MemoryHelper::ReadMemory<int>(0x7CF880, false);
+
+	// Save current weapon to d-pad
+	if (xinput_state & 0x40) // If left stick is pressed
+	{
+		isHoldingLeftStick = true;
+
+		int dpadId = -1;
+		switch (xinput_state & 0x0F)
+		{
+		case 0x01: // D-Pad Up
+			dpadId = 1;
+			break;
+		case 0x02: // D-Pad Down
+			dpadId = 2;
+			break;
+		case 0x04: // D-Pad Left
+			dpadId = 3;
+			break;
+		case 0x08: // D-Pad Right
+			dpadId = 4;
+			break;
+		default:
+			dpadId = -1; // No matching D-Pad button pressed
+			break;
+		}
+
+		int currentWeaponId = MemoryHelper::ReadMemory<int>(CURRENT_WEAPON_ID, false);
+		if (dpadId != -1 && currentWeaponId != -1) // If dpad is pressed and if holding a weapon
+		{
+			char** lastWeaponSet = nullptr;
+
+			switch (dpadId)
+			{
+			case 1:
+				lastWeaponSet = &lastWeaponIdUp;
+				break;
+			case 2:
+				lastWeaponSet = &lastWeaponIdDown;
+				break;
+			case 3:
+				lastWeaponSet = &lastWeaponIdLeft;
+				break;
+			case 4:
+				lastWeaponSet = &lastWeaponIdRight;
+				break;
+			}
+
+			char* currentWeaponName = GameHelper::GetWeaponName(currentWeaponId);
+
+			// If holding a different weapon
+			if (*lastWeaponSet == nullptr || strcmp(currentWeaponName, *lastWeaponSet) != 0)
+			{
+				// Build the command
+				char* weaponCommand = (char*)malloc(strlen("use ") + strlen(currentWeaponName) + 1);
+				if (weaponCommand != NULL)
+				{
+					sprintf(weaponCommand, "use %s", currentWeaponName);
+
+					// Free the old weapon name
+					if (*lastWeaponSet != nullptr)
+					{
+						free(*lastWeaponSet);
+					}
+
+					// Remember the last weapon name
+					*lastWeaponSet = strdup(currentWeaponName);
+
+					// Bind the new command
+					switch (dpadId)
+					{
+					case 1:
+						Bind(GameHelper::GetKeyId("JOY5"), weaponCommand);
+						break;
+					case 2:
+						Bind(GameHelper::GetKeyId("JOY7"), weaponCommand);
+						break;
+					case 3:
+						Bind(GameHelper::GetKeyId("JOY8"), weaponCommand);
+						break;
+					case 4:
+						Bind(GameHelper::GetKeyId("JOY6"), weaponCommand);
+						break;
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		isHoldingLeftStick = false;
+	}
+
+	// Right Stick Pressed + A
+	if ((xinput_state & 0x1080) == 0x1080)
+	{
+		int totalFrameTime = MemoryHelper::ReadMemory<int>(TOTAL_FRAME_TIME, false);
+
+		// Don't accidentally spam the command every frames
+		if ((totalFrameTime - lastQuickSaveFrame) >= 50)
+		{
+			GameHelper::CallCmd("loadgame quicksave\n", 0);
+			lastQuickSaveFrame = totalFrameTime;
+		}
+	}
+
+	// Right Stick Pressed + B
+	if ((xinput_state & 0x2080) == 0x2080)
+	{
+		int totalFrameTime = MemoryHelper::ReadMemory<int>(TOTAL_FRAME_TIME, false);
+
+		// Don't accidentally spam the command every frames
+		if ((totalFrameTime - lastQuickSaveFrame) >= 50)
+		{
+			GameHelper::CallCmd("savegame quicksave\n", 0);
+			lastQuickSaveFrame = totalFrameTime;
+		}
+	}
+
+	return UpdateControllerState();
+}
+
 // Force the game to exit if Alt+F4 is pressed
 static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, int wParam, LPARAM lParam)
 {
@@ -965,15 +1149,15 @@ static int __cdecl TakeSaveScreenshot_Hook(int a1, int a2, int a3)
 	int screenshot_width = static_cast<int>(currentHeight * ASPECT_RATIO_4_3);
 	saveScreenshotX = (currentWidth - screenshot_width) / 2;
 
-	// Store the new dimension for the screenshot
-	MemoryHelper::WriteMemory<int>(0x513E44, screenshot_width, true);
-
 	// If screenshot_width is not a multiple of 4
 	if (screenshot_width % 4 != 0)
 	{
 		// Adjust the width to be the largest multiple of 4 less than currentWidth
 		screenshot_width = screenshot_width - (screenshot_width % 4);
 	}
+
+	// Store the new dimension for the screenshot
+	MemoryHelper::WriteMemory<int>(0x513E44, screenshot_width, true);
 
 	// Redirect width read by sub_46D280
 	MemoryHelper::WriteMemory<int>(0x46D28B, 0x513E44, true);
@@ -1057,6 +1241,7 @@ static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 		MemoryHelper::WriteMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR, CustomResolutionHeight, false);
 	}
 
+	// We only have to do this once
 	MH_DisableHook((void*)0x47ABE0);
 
 	return QGL_Init(lpLibFileName);
@@ -1395,189 +1580,6 @@ static DWORD* __cdecl SetAliceMirrorViewportParams_Hook(DWORD* a1, float param_x
 	}
 
 	return renderEntity;
-}
-
-// Hook function used to load the localization pk3 file
-static const char* __cdecl LoadLocalizationFile_Hook()
-{
-	if (!hasLookedForLocalizationFiles)
-	{
-		int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG, false);
-
-		std::string searchPath = "";
-		switch (lang)
-		{
-			case 1: searchPath = "base/loc/DEU/"; break;
-			case 2: searchPath = "base/loc/FRA/"; break;
-			case 3: searchPath = "base/loc/ESN/"; break;
-			default: searchPath = "base/loc/INT/"; break;
-		}
-
-		// Get *.pk3 inside "base/loc/<lang>/"
-		pk3LocFiles = SystemHelper::GetLocPk3Files(searchPath);
-
-		// Get the number of files to load
-		localizationFilesToLoad = pk3LocFiles.size();
-
-		// Loop back to this function if we got more than one file to load
-		if (localizationFilesToLoad > 0)
-		{
-			// Fix stack pointer after the CALL
-			char opCodeArray[] = { 0x83, 0xEC, 0x0C };
-			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
-
-			// Loop back to 4615F0 for every files
-			MemoryHelper::MakeCALL(0x41CB4E, 0x41CB32, true);
-		}
-
-		// Load the original localization file
-		hasLookedForLocalizationFiles = true;
-		return LoadLocalizationFile();
-	}
-
-	// If we still have files to load
-	if (localizationFilesToLoad > 0)
-	{
-		int currentIndex = pk3LocFiles.size() - localizationFilesToLoad;
-		localizationFilesToLoad--;
-
-		if (localizationFilesToLoad == 0)
-		{
-			// No more files, restore original instructions
-			char opCodeArray[] = { 0x33, 0xFF, 0x39, 0x7C, 0x24, 0x0C, 0x7E, 0x3F };
-			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
-		}
-
-		// Return the file path
-		return pk3LocFiles[currentIndex].c_str();
-	}
-
-	return LoadLocalizationFile();
-}
-
-// Hook of the function used to parse the controller state, add some more features
-static MMRESULT __cdecl UpdateControllerState_Hook()
-{
-	int xinput_state = MemoryHelper::ReadMemory<int>(0x7CF880, false);
-
-	// Save current weapon to d-pad
-	if (xinput_state & 0x40) // If left stick is pressed
-	{
-		isHoldingLeftStick = true;
-
-		int dpadId = -1;
-		switch (xinput_state & 0x0F)
-		{
-			case 0x01: // D-Pad Up
-				dpadId = 1;
-				break;
-			case 0x02: // D-Pad Down
-				dpadId = 2;
-				break;
-			case 0x04: // D-Pad Left
-				dpadId = 3;
-				break;
-			case 0x08: // D-Pad Right
-				dpadId = 4;
-				break;
-			default:
-				dpadId = -1; // No matching D-Pad button pressed
-				break;
-		}
-
-		int currentWeaponId = MemoryHelper::ReadMemory<int>(0x12F3D60, false);
-		if (dpadId != -1 && currentWeaponId != -1) // If dpad is pressed and if holding a weapon
-		{
-			char** lastWeaponSet = nullptr;
-
-			switch (dpadId)
-			{
-				case 1:
-					lastWeaponSet = &lastWeaponIdUp;
-					break;
-				case 2:
-					lastWeaponSet = &lastWeaponIdDown;
-					break;
-				case 3:
-					lastWeaponSet = &lastWeaponIdLeft;
-					break;
-				case 4:
-					lastWeaponSet = &lastWeaponIdRight;
-					break;
-			}
-
-			char* currentWeaponName = GameHelper::GetWeaponName(currentWeaponId);
-
-			// If holding a different weapon
-			if (*lastWeaponSet == nullptr || strcmp(currentWeaponName, *lastWeaponSet) != 0)
-			{
-				// Build the command
-				char* weaponCommand = (char*)malloc(strlen("use ") + strlen(currentWeaponName) + 1);
-				if (weaponCommand != NULL)
-				{
-					sprintf(weaponCommand, "use %s", currentWeaponName);
-
-					// Free the old weapon name
-					if (*lastWeaponSet != nullptr)
-					{
-						free(*lastWeaponSet);
-					}
-
-					// Remember the last weapon name
-					*lastWeaponSet = strdup(currentWeaponName);
-
-					// Bind the new command
-					switch (dpadId)
-					{
-						case 1:
-							Bind(GameHelper::GetKeyId("JOY5"), weaponCommand);
-							break;
-						case 2:
-							Bind(GameHelper::GetKeyId("JOY7"), weaponCommand);
-							break;
-						case 3:
-							Bind(GameHelper::GetKeyId("JOY8"), weaponCommand);
-							break;
-						case 4:
-							Bind(GameHelper::GetKeyId("JOY6"), weaponCommand);
-							break;
-					}
-				}
-			}
-		}
-	}
-	else
-	{
-		isHoldingLeftStick = false;
-	}
-
-	// Right Stick Pressed + A
-	if ((xinput_state & 0x1080) == 0x1080)
-	{
-		int totalFrameTime = MemoryHelper::ReadMemory<int>(TOTAL_FRAME_TIME, false);
-
-		// Don't accidentally spam the command every frames
-		if ((totalFrameTime - lastQuickSaveFrame) >= 50)
-		{
-			GameHelper::CallCmd("loadgame quicksave\n", 0);
-			lastQuickSaveFrame = totalFrameTime;
-		}
-	}
-
-	// Right Stick Pressed + B
-	if ((xinput_state & 0x2080) == 0x2080)
-	{
-		int totalFrameTime = MemoryHelper::ReadMemory<int>(TOTAL_FRAME_TIME, false);
-
-		// Don't accidentally spam the command every frames
-		if ((totalFrameTime - lastQuickSaveFrame) >= 50)
-		{
-			GameHelper::CallCmd("savegame quicksave\n", 0);
-			lastQuickSaveFrame = totalFrameTime;
-		}
-	}
-
-	return UpdateControllerState();
 }
 
 // Adds borders to hide the pillarbox when scaling the menu
