@@ -20,14 +20,14 @@
 const int CURRENT_WIDTH_ADDR = 0x1C4798C;
 const int CURRENT_HEIGHT_ADDR = 0x1C47990;
 const int CURRENT_LANG = 0x7CF868;
+const int STARTUP_STATE_ADDR = 0x7CCA20;
 const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
 const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
-const int DISPLAY_MODE_PTR_ADDR = 0x1C463E8;
 const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
 const int DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
-const int COM_MAXFPS_PTR_ADDR = 0x12EF928;
 const int TOTAL_FRAME_TIME = 0x11C8AA0;
+const int UI_WAIT_TIMER = 0x12EF948;
 const int CODE_CAVE_SOUND = 0x513490;
 const int CODE_CAVE_INTRO = 0x513B90;
 const int CODE_CAVE_BLINK = 0x513E08;
@@ -45,14 +45,12 @@ int VF_UI_LETTERBOX_PTR;
 int VF_R_EXT_MAX_ANISOTROPY_PTR;
 int VF_COM_MAXFPS_PTR;
 
-bool isVorpalFixMenuCvarInitialized = false;
 bool isScreenRateFps = false;
 
 // =============================
 // Variables 
 // =============================
 bool isDialog = false;
-bool isResolutionApplied = false;
 int currentWidth = 0;
 int currentHeight = 0;
 float currentAspectRatio = 0;
@@ -61,11 +59,8 @@ bool isDefaultFullscreenSettingSkipped = false;
 bool isUsingControllerMenu = false;
 bool isMainMenuShown = false;
 bool isTitleBgSet = false;
-bool isRestartedForLinux = false;
-bool isControllerBinded = false;
 bool isUsingCustomSaveDir = false;
 bool skipAutoResolution = false;
-bool setAlice2Path = false;
 bool isAnisotropyRetrieved = false;
 bool isInSettingMenu = false;
 int saveScreenshotX = 0;
@@ -127,6 +122,44 @@ const int LEFT_BORDER_X_ID = 0x1000000;
 const int RIGHT_BORDER_X_ID = 0x2000000;
 const char* ALICE2_DEFAULT_PATH = "..\\..\\Alice2\\Binaries\\Win32\\AliceMadnessReturns.exe";
 const int BLINK_SPEED_RATE = 20;
+
+// =============================
+// Original Function Pointers
+// =============================
+int(__cdecl* Bind)(int, char*) = nullptr; // 0x407870
+char* (__cdecl* GetSavePath)() = nullptr; // 0x417400
+int(__cdecl* CallCmd)(char*, char) = nullptr; // 0x4158F0
+int(__cdecl* Cvar_Set)(const char*, const char*, int) = nullptr; // 0x419910
+int(__cdecl* FS_FOpenFileRead)(char*, int*, int, int) = nullptr; // 0x41A590
+int(__cdecl* CheckDiskFreeSpace)() = nullptr; // 0x41D1E0
+void(__cdecl* ParseEntityUpdates)(DWORD*, int, int*) = nullptr; // 0x420390
+float(__cdecl* UpdateHeadOrientation)(DWORD*, float*) = nullptr; // 0x423740
+BYTE(__cdecl* Str_To_Lower)(char*) = nullptr; // 0x4256E0
+void(__cdecl* LoadSoundtrackFile)() = nullptr; // 0x429600
+FILE(__cdecl* FS_LoadZipFile)(const char*) = nullptr; // 0x43E030
+int(__cdecl* RenderHUD)(float, float, float, float, int, float*, float*, float*, int, const char*, __int16, float*, float*, float, float, int) = nullptr; // 0x446050
+int(__cdecl* IsGameStarted)() = nullptr; // 0x449DF0
+void(__cdecl* SetUIBorder)() = nullptr; // 0x44B100
+int(__cdecl* PushMenu)(const char*) = nullptr; // 0x44C1B0
+void(__cdecl* TriggerMainMenu)(int) = nullptr; // 0x44C4F0
+void(__thiscall* ShowDialogBoxText)(int) = nullptr; // 0x452CF0
+int(__stdcall* lpfnWndProc_MSG)(HWND, UINT, int, LPARAM) = nullptr; // 0x46C600
+int(__cdecl* TakeSaveScreenshot)(int, int, int) = nullptr; // 0x46D280
+int(__cdecl* SetupOpenGLParameters)() = nullptr; // 0x46E0D0
+int(__cdecl* GLW_CreatePFD)(void*, unsigned __int8, char, unsigned __int8, int) = nullptr; // 0x46FC70
+int(__cdecl* QGL_Init)(LPCSTR) = nullptr; // 0x47ABE0
+int(__cdecl* RE_StretchPic)(float, float, float, float, float, float, float, float, int) = nullptr; // 0x48FC00
+int(__cdecl* RE_StretchRaw)(int, int, int, int, int, int, int) = nullptr; // 0x490130
+DWORD(__thiscall* UISetCvars)(DWORD*, char*) = nullptr; // 0x4B9FD0
+BYTE(__thiscall* LoadUI)(DWORD*, char*) = nullptr; // 0x4C1AC0
+int(__thiscall* GetGlyphInfo)(int, float, float, int, int, float, float, float, float, float) = nullptr; // 0x4C0A10
+DWORD* (__cdecl* SetAliceMirrorViewportParams)(DWORD*, float, float, float, float, float) = nullptr; // 0x4C5D30
+int(__thiscall* UpdateHeadOrientationFromMouse)(int, float*, int, float*, float*) = nullptr; // 0x4C6050
+const char* (__cdecl* LoadLocalizationFile)() = nullptr; // 0x4615F0
+MMRESULT(__cdecl* UpdateControllerState)() = nullptr; // 0x4635A0
+HWND(WINAPI* ori_CreateWindowExA)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
+void(WINAPI* ori_glTexParameterf)(GLenum, GLenum, GLfloat);
+void(WINAPI* ori_glReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*);
 
 // =============================
 // Ini Variables
@@ -279,62 +312,276 @@ static void ReadConfig()
 
 		CustomSavePath = formattedSavePath;
 	}
-
-	// Check if a custom path is set for Alice: Madness Returns
-	setAlice2Path = strcmp(Alice2Path, ALICE2_DEFAULT_PATH) != 0;
 }
 
 #pragma region
 
-/****************************************************
- * Function: GetSavePath_Hook
- *
- * Description:
- *    Return the current save directory
- *
- * Used For:
- *    FixHardDiskFull & CustomSavePath & CvarHooking
- ****************************************************/
+// Used to force borderless fullscreen when the main window is initialized
+static HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
+{
+	// Style of the main window
+	if (dwStyle == 0x10C80000)
+	{
+		auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
 
-typedef char* (__cdecl* sub_417400)();
-sub_417400 GetSavePath = nullptr;
+		dwStyle = WS_VISIBLE + WS_POPUP;
 
+		nWidth = screenWidth;
+		nHeight = screenHeight;
+
+		X = 0;
+		Y = 0;
+	}
+
+	return ori_CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+}
+
+// Hook glTexParameterf to perform anisotropy filtering
+static void WINAPI glTexParameterf_Hook(GLenum target, GLenum pname, GLfloat param)
+{
+	// Check if the param is a valid mipmap filter mode
+	if (param >= 0x2700 && param <= 0x2703)
+	{
+		if (!isAnisotropyRetrieved)
+		{
+			// Retrieve the maximum anisotropy level supported by the hardware with GL_MAX_TEXTURE_MAX_ANISOTROPY
+			float maxAnisotropy;
+			glGetFloatv(0x84FF, &maxAnisotropy);
+
+			// Check if the user's MaxAnisotropy exceeds the hardware's capability
+			if (MaxAnisotropy > maxAnisotropy)
+			{
+				// Adjust to hardware-supported level
+				MaxAnisotropy = maxAnisotropy;
+			}
+
+			isAnisotropyRetrieved = true;
+		}
+
+		ori_glTexParameterf(target, pname, param);
+		ori_glTexParameterf(target, 0x84FE, (float)MaxAnisotropy); // GL_TEXTURE_MAX_ANISOTROPY
+	}
+	else
+	{
+		ori_glTexParameterf(target, pname, param);
+	}
+}
+
+// Hook glReadPixels to adjust the x position of the screeshot used for the save snapshot
+static void WINAPI glReadPixels_Hook(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void* data)
+{
+	if (isTakingSaveScreenshot)
+	{
+		x = saveScreenshotX;
+		isTakingSaveScreenshot = false;
+	}
+
+	ori_glReadPixels(x, y, width, height, format, type, data);
+}
+
+// Hook of the function used by the "bind" command
+static int __cdecl Bind_Hook(int keyId, char* cmd_name)
+{
+	if (strcmp(cmd_name, "toggleconsole") == 0)
+	{
+		// Handle default keys that are not recognized by the game, use "F2" as default
+		if (keyId == 96 || keyId == 126)
+		{
+			keyId = GameHelper::GetKeyId("F2");
+		}
+
+		char cmpInstruction[] = { 0x81, 0xFF };
+
+		// cmp toggleConsoleKeyId instead of hardcoded cmp 96 and cmp 126 (` and ~)
+		MemoryHelper::WriteMemoryRaw(0x40823A, cmpInstruction, sizeof(cmpInstruction), true);
+		MemoryHelper::WriteMemory<int>(0x40823C, keyId, true);
+		MemoryHelper::MakeNOP(0x408240, 6, true);
+	}
+
+	return Bind(keyId, cmd_name);
+}
+
+// Hook of the command function
+static int __cdecl CallCmd_Hook(char* cmd, char a2)
+{
+	// If holding the left stick to assign a weapon
+	if (isHoldingLeftStick)
+	{
+		if (cmd == nullptr)
+		{
+			return CallCmd(cmd, a2);
+		}
+
+		// Convert the input command to lowercase for case-insensitive comparison
+		std::string inputCommand(cmd);
+		std::transform(inputCommand.begin(), inputCommand.end(), inputCommand.begin(), ::tolower);
+
+		// Check if 'cmd' is in the list of commands
+		for (const auto& command : weaponCommands)
+		{
+			if (inputCommand == command)
+			{
+				return 0; // Return 0 if the command matches, skip the weapon switch command that has been replaced
+			}
+		}
+	}
+
+	return CallCmd(cmd, a2);
+}
+
+// Return the current save directory
 static char* __cdecl GetSavePath_Hook()
 {
 	if (isUsingCustomSaveDir)
 	{
 		return CustomSavePath;
 	}
+
 	return GetSavePath();
 }
 
-/****************************************************
- * Function: CheckDiskFreeSpace_Hook
- *
- * Description:
- *    Calculate the free space on the disk used to 
- *    store the save data
- *
- * Used For:
- *    FixHardDiskFull
- ****************************************************/
+// Intercepts and updates cvars
+static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int flag)
+{
+	// If the game has fully started (all relevant cvars have been initialized), disable this hook
+	if (MemoryHelper::ReadMemory<int>(STARTUP_STATE_ADDR, false) == -1)
+	{
+		MH_DisableHook((void*)0x419910);
+	}
 
-typedef int(__cdecl* sub_41D1E0)();
-sub_41D1E0 CheckDiskFreeSpace = nullptr;
+	if (TrilinearTextureFiltering && StringHelper::stricmp(var_name, "r_textureMode"))
+	{
+		value = "GL_LINEAR_MIPMAP_LINEAR";
+	}
 
+	if (EnhancedLOD)
+	{
+		if (StringHelper::stricmp(var_name, "r_lodbias"))
+		{
+			value = "-2";
+		}
+		else if (StringHelper::stricmp(var_name, "r_lodCurveError"))
+		{
+			value = "10000";
+		}
+	}
+
+	if (ForceBorderlessFullscreen && StringHelper::stricmp(var_name, "r_fullscreen"))
+	{
+		value = "0";
+		flag = 0x10; // read-only
+	}
+
+	if (FixParticleDistanceRatio && StringHelper::stricmp(var_name, "cg_particledistanceratio"))
+	{
+		value = "0";
+	}
+
+	if (StringHelper::stricmp(var_name, "s_Alice2URL"))
+	{
+		value = Alice2Path;
+	}
+
+	if (CustomFPSLimit != 60 && StringHelper::stricmp(var_name, "com_maxfps"))
+	{
+		value = StringHelper::IntegerToCString(CustomFPSLimit);
+	}
+
+	// Read settings from "base" folder, skip it
+	if (FixFullscreenSetting && !isDefaultFullscreenSettingSkipped && StringHelper::stricmp(var_name, "r_fullscreen"))
+	{
+		isDefaultFullscreenSettingSkipped = true;
+		return 0;
+	}
+
+	if (!skipAutoResolution && (FirstAutoResolution || AutoResolution || FixResolutionModeOOB || ForceBorderlessFullscreen) && StringHelper::stricmp(var_name, "r_mode"))
+	{
+		// Prevent re-entering this condition
+		skipAutoResolution = true;
+
+		// Get config file path
+		const char* configFile = (MemoryHelper::ReadMemory<int>(CURRENT_LANG, false) == 2)
+			? "config_pc_fra.cfg"
+			: "config.cfg";
+
+		std::string directoryPath = GetSavePath_Hook();
+		std::filesystem::path configFilePath = std::filesystem::path(directoryPath) / configFile;
+
+		// Since this function is executed after, do it before
+		GameHelper::FetchDisplayResolutions();
+
+		auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
+		int resolutionNum = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_NUM, false);
+
+		// Check if 'r_mode' exceeds the total count of available resolution modes
+		if (FixResolutionModeOOB)
+		{
+			int index;
+			std::istringstream(value) >> index;
+
+			// Check if "index" is within bounds and adjust if necessary
+			if (index >= resolutionNum)
+			{
+				value = "0";
+			}
+		}
+
+		// If we want 'r_mode' to match the screen resolution
+		if ((FirstAutoResolution && !std::filesystem::exists(configFilePath)) || (AutoResolution || ForceBorderlessFullscreen))
+		{
+			// Find the 'r_mode' value matching the screen resolution
+			for (int i = 0; i < resolutionNum; i++)
+			{
+				int screenWidthMode = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR + (i * 8), false);
+				int screenHeightMode = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR + (i * 8), false);
+
+				if (screenWidth == screenWidthMode && screenHeight == screenHeightMode)
+				{
+					Cvar_Set(var_name, value, flag); // Set the default value
+					GameHelper::UpdateCvar(var_name, StringHelper::IntegerToCString(i), flag); // Update 'r_mode' to the index of the matching screen resolution
+					break;
+				}
+			}
+		}
+	}
+
+	return Cvar_Set(var_name, value, flag);
+}
+
+// Hook to redirect texture file reads to correct paths in 'pak5_mod.pk3'
+static int __cdecl FS_FOpenFileRead_Hook(char* Source, int* a2, int a3, int a4)
+{
+	// Fast check for "els/char" substring in the file path
+	if (*reinterpret_cast<uint64_t*>(Source + 3) == 0x726168632F736C65)
+	{
+		for (int i = 0; i < 9; i++)
+		{
+			// Check if the provided file path matches a known incorrect path
+			if (strcmp(Source, correctPaths[i]) == 0)
+			{
+				// If a match is found, redirect to the corresponding correct texture path
+				Source = (char*)brokenPaths[i];
+				break;
+			}
+		}
+	}
+
+	return FS_FOpenFileRead(Source, a2, a3, a4);
+}
+
+// Calculate the free space on the disk used to store the save data
 static int __cdecl CheckDiskFreeSpace_Hook()
 {
-	char* savePath = GetSavePath_Hook();
 	unsigned __int64 freeBytesAvailable = 0;
 	unsigned __int64 totalNumberOfBytes = 0;
 	unsigned __int64 totalNumberOfFreeBytes = 0;
 
-	if (GetDiskFreeSpaceExA(savePath, (PULARGE_INTEGER)&freeBytesAvailable, (PULARGE_INTEGER)&totalNumberOfBytes, (PULARGE_INTEGER)&totalNumberOfFreeBytes))
+	if (GetDiskFreeSpaceExA(GetSavePath_Hook(), (PULARGE_INTEGER)&freeBytesAvailable, (PULARGE_INTEGER)&totalNumberOfBytes, (PULARGE_INTEGER)&totalNumberOfFreeBytes))
 	{
 		// Convert the available free bytes to KB
 		unsigned __int64 freeSpaceInKB = freeBytesAvailable >> 10;
 
-		// If the free space is >= 0x80000000, cap it at 0x7FFFFFFF instead of -1
+		// If the free space is >= 0x80000000, cap it at 0x7FFFFFFF instead of 0x80000000
 		if (freeSpaceInKB >= 0x80000000)
 			freeSpaceInKB = 0x7FFFFFFF;
 
@@ -345,21 +592,211 @@ static int __cdecl CheckDiskFreeSpace_Hook()
 	return 2048;
 }
 
-/****************************************************
- * Function: SetHUDPosition_Hook
- *
- * Description:
- *    Adjust the HUD position and scaling for non-4:3 
- *    aspect ratios
- *
- * Used For:
- *    FixStretchedHUD & ConsolePortHUD
- ****************************************************/
+// Process the snapshot returned from the server (fgamex86.dll) and modify specific properties
+static void __cdecl ProcessSnapshot(DWORD* a1, int a2, int* a3)
+{
+	float* fovPtr = (float*)((DWORD)a2 - 0x50);
 
-typedef int(__cdecl* sub_446050)(float, float, float, float, int, float*, float*, float*, int, const char*, __int16, float*, float*, float, float, int);
-sub_446050 SetHUDPosition = nullptr;
+	if (*fovPtr != FOV)
+	{
+		*fovPtr = FOV;
+	}
 
-static int __cdecl SetHUDPosition_Hook(float x_position, float y_position, float resolution_width, float resolution_height, int a5, float* a6, float* a7, float* a8, int a9, const char* a10, __int16 a11, float* a12, float* a13, float a14, float a15, int a16)
+	if (DisableLetterbox)
+	{
+		int* letterboxPtr = (int*)((DWORD)a2 - 0x35C);
+		int* isCinematicPtr = (int*)((DWORD)a2 - 0x364);
+
+		*letterboxPtr = 0;
+
+		// Zoom a bit during cutscenes
+		if (AutoFOV && *isCinematicPtr == 1)
+		{
+			*fovPtr = FOV / 1.18f;
+		}
+	}
+
+	ParseEntityUpdates(a1, a2, a3);
+}
+
+// Make sure Alice is not looking at the top left of the screen when using a controller
+static float __cdecl UpdateHeadOrientation_Hook(DWORD* a1, float* a2)
+{
+	if (isInSettingMenu && *a1 == 0xC1B40000 && *(a1 + 1) == 0xC2100000 && *(a1 + 2) == 0)
+	{
+		*a1 = 0xC119EB80;
+		isInSettingMenu = false;
+	}
+
+	return UpdateHeadOrientation(a1, a2);
+}
+
+// Hook to check if we are in the setting menu and not in-game 
+static int __fastcall UpdateHeadOrientationFromMouse_Hook(int thisPtr, int* _ECX, float* a2, int a3, float* a4, float* a5)
+{
+	isInSettingMenu = true;
+	return UpdateHeadOrientationFromMouse(thisPtr, a2, a3, a4, a5);
+}
+
+// Initialize the cvars used for the VorpalFix menu
+static int __cdecl SetupOpenGLParameters_Hook()
+{
+	VF_LANGUAGE_PTR = Cvar_Set("vf_language", StringHelper::IntegerToCString(LanguageId), 0);
+	VF_REMASTERED_MODELS_PTR = Cvar_Set("vf_remastered_models", StringHelper::BoolToCString(!DisableRemasteredModels), 0);
+	VF_UI_CONSOLE_HUD_PTR = Cvar_Set("vf_ui_console_hud", StringHelper::BoolToCString(ConsolePortHUD), 0);
+	VF_UI_PS3_PTR = Cvar_Set("vf_ui_ps3", StringHelper::BoolToCString(UsePS3ControllerIcons), 0);
+	VF_UI_LETTERBOX_PTR = Cvar_Set("vf_ui_letterbox", StringHelper::BoolToCString(!DisableLetterbox), 0);
+	VF_R_EXT_MAX_ANISOTROPY_PTR = Cvar_Set("vf_r_ext_max_anisotropy", StringHelper::FloatToCString(MaxAnisotropy), 0);
+
+	if (isScreenRateFps)
+	{
+		VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", "-1", 0);
+	}
+	else
+	{
+		VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", StringHelper::IntegerToCString(CustomFPSLimit), 0);
+	}
+
+	// We only need to do that once
+	MH_DisableHook((void*)0x46E0D0);
+	return SetupOpenGLParameters();
+}
+
+// Hook of the function used by the "ui_setcvars" command, used to save the VorpalFix menu settings to the INI
+static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_name)
+{
+	// Apply the changes
+	if (strcmp(group_name, "group_vorpalfix") == 0)
+	{
+		// LanguageId - Need a restart
+		int languageId = MemoryHelper::ReadMemory<int>(VF_LANGUAGE_PTR + 0x20, false);
+		IniHelper::iniReader["General"]["LanguageId"] = StringHelper::IntegerToCString(languageId);
+
+		// DisableRemasteredModels - Need a restart
+		bool disableRemasteredModels = MemoryHelper::ReadMemory<int>(VF_REMASTERED_MODELS_PTR + 0x20, false);
+		IniHelper::iniReader["General"]["DisableRemasteredModels"] = StringHelper::IntegerToCString(!disableRemasteredModels);
+
+		// ConsolePortHUD
+		ConsolePortHUD = MemoryHelper::ReadMemory<int>(VF_UI_CONSOLE_HUD_PTR + 0x20, false);
+		IniHelper::iniReader["Display"]["ConsolePortHUD"] = StringHelper::IntegerToCString(ConsolePortHUD);
+
+		// UsePS3ControllerIcons - Need a restart
+		int usePS3ControllerIcons = MemoryHelper::ReadMemory<int>(VF_UI_PS3_PTR + 0x20, false);
+		IniHelper::iniReader["Display"]["UsePS3ControllerIcons"] = StringHelper::IntegerToCString(usePS3ControllerIcons);
+
+		// DisableLetterbox
+		bool isLetterboxEnabled = MemoryHelper::ReadMemory<int>(VF_UI_LETTERBOX_PTR + 0x20, false);
+		IniHelper::iniReader["Display"]["DisableLetterbox"] = StringHelper::IntegerToCString(!isLetterboxEnabled);
+		DisableLetterbox = !isLetterboxEnabled;
+
+		// MaxAnisotropy
+		int maxAnisotropy = MemoryHelper::ReadMemory<int>(VF_R_EXT_MAX_ANISOTROPY_PTR + 0x20, false);
+		IniHelper::iniReader["Graphics"]["MaxAnisotropy"] = StringHelper::IntegerToCString(maxAnisotropy);
+
+		// Execute vid_restart to refresh the textures
+		if (maxAnisotropy != static_cast<int>(MaxAnisotropy))
+		{
+			MaxAnisotropy = static_cast<float>(maxAnisotropy);
+			GameHelper::CallCmd("vid_restart\n", 0);
+		}
+
+		// CustomFPSLimit
+		CustomFPSLimit = MemoryHelper::ReadMemory<int>(VF_COM_MAXFPS_PTR + 0x20, false);
+		IniHelper::iniReader["Graphics"]["CustomFPSLimit"] = StringHelper::IntegerToCString(CustomFPSLimit);
+
+		// Set to monitor's refresh rate
+		if (CustomFPSLimit == -1)
+		{
+			CustomFPSLimit = SystemHelper::GetCurrentDisplayFrequency();
+		}
+
+		// Write the new value
+		GameHelper::UpdateCvar("com_maxfps", StringHelper::IntegerToCString(CustomFPSLimit), 1);
+
+		// Fix the blinking eyes speed
+		if (FixBlinkingAnimationSpeed)
+		{
+			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x2, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
+			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x1A, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
+			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x22, 4 * CustomFPSLimit / 60, true);
+		}
+
+		IniHelper::Save();
+	}
+
+	return UISetCvars(this_ptr, group_name);
+}
+
+// Function executed during the unzipping phase to check for specific file presence
+static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
+{
+	// Check if using the original 'pak5_mod.pk3' with broken paths
+	if (!isUsingBrokenPak5 && FixPak5 && StringHelper::stricmp(Buffer, brokenPaths[0]))
+	{
+		HookHelper::ApplyHook((void*)0x41A590, &FS_FOpenFileRead_Hook, (LPVOID*)&FS_FOpenFileRead);
+		isUsingBrokenPak5 = true;
+	}
+
+	// Check if 'pak7_VorpalFix_menu.pk3' is used
+	if (StringHelper::stricmp(Buffer, "ui/control/vorpalfix_options.tga"))
+	{
+		HookHelper::ApplyHook((void*)0x46E0D0, &SetupOpenGLParameters_Hook, (LPVOID*)&SetupOpenGLParameters);
+		HookHelper::ApplyHook((void*)0x4B9FD0, &UISetCvars_Hook, (LPVOID*)&UISetCvars);
+	}
+
+	// Disable this hook, nothing else to check
+	if (StringHelper::stricmp(Buffer, "opengl32"))
+	{
+		MH_DisableHook((void*)0x4256E0);
+	}
+
+	return Str_To_Lower(Buffer);
+}
+
+// Hook of the function used to load a sound file
+static void __cdecl LoadSoundtrackFile_Hook()
+{
+	// Restart the engine to show the menu correctly
+	if (FixProton)
+	{
+		GameHelper::CallCmd("vid_restart\n", 0);
+	}
+
+	// Make sure that the controller keys are correctly binded
+	if (CustomControllerBindings)
+	{
+		Bind(GameHelper::GetKeyId("JOY1"), "cheshire");
+		Bind(GameHelper::GetKeyId("JOY4"), "togglemenu");
+		Bind(GameHelper::GetKeyId("JOY9"), "+attackleft");
+		Bind(GameHelper::GetKeyId("JOY10"), "+attackright");
+		Bind(GameHelper::GetKeyId("JOY11"), "prevweapon");
+		Bind(GameHelper::GetKeyId("JOY12"), "nextweapon");
+		Bind(GameHelper::GetKeyId("JOY13"), "+attackleft");
+		Bind(GameHelper::GetKeyId("JOY14"), "+UseAndDown");
+		Bind(GameHelper::GetKeyId("JOY15"), "+moveup");
+		Bind(GameHelper::GetKeyId("JOY16"), "+attackright");
+	}
+
+	// Nothing else to do here
+	MH_DisableHook((void*)0x429600);
+	LoadSoundtrackFile();
+}
+
+// Function used to open and load the pk3 files
+static FILE __cdecl FS_LoadZipFile_Hook(const char* FileName)
+{
+	// Skip pak5_mod.pk3
+	if (strstr(FileName, "pak5_mod.pk3"))
+	{
+		FileName = "\x00";
+		MH_DisableHook((void*)0x43E030);
+	}
+
+	return FS_LoadZipFile(FileName);
+}
+
+// Adjust the HUD position and scaling for non-4:3 aspect ratios
+static int __cdecl RenderHUD_Hook(float x_position, float y_position, float resolution_width, float resolution_height, int a5, float* a6, float* a7, float* a8, int a9, const char* a10, __int16 a11, float* a12, float* a13, float a14, float a15, int a16)
 {
 	if (currentAspectRatio > ASPECT_RATIO_4_3)
 	{
@@ -437,240 +874,66 @@ static int __cdecl SetHUDPosition_Hook(float x_position, float y_position, float
 			y_position -= currentHeight / 10.0f;
 		}
 	}
-	return SetHUDPosition(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16);
+
+	return RenderHUD(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16);
 }
 
-/****************************************************
- * Function: SetFMVPosition_Hook
- *
- * Description:
- *    Adjust the FMV position and scaling for non-4:3
- *    aspect ratios
- *
- * Used For:
- *    FixStretchedFMV
- ****************************************************/
-
-typedef int(__cdecl* sub_490130)(int, int, int, int, int, int, int);
-sub_490130 SetFMVPosition = nullptr;
-
-static int __cdecl SetFMVPosition_Hook(int x_position, int y_position, int resolution_width, int resolution_height, int a5, int a6, int a7)
+// Hook of the function used by the "loadgame" and "savegame" commands, to determine if those can be used
+static int __cdecl IsGameStarted_Hook()
 {
-	int video_width = resolution_width;
-
-	if (currentAspectRatio > ASPECT_RATIO_4_3)
+	if (isMainMenuShown)
 	{
-		video_width = static_cast<int>(resolution_height * ASPECT_RATIO_4_3);
-		x_position = (resolution_width - video_width) / 2;
-	}
-
-	return SetFMVPosition(x_position, y_position, video_width, resolution_height, a5, a6, a7);
-}
-
-/****************************************************
- * Function: RenderShader_Hook
- *
- * Description:
- *    Adjust the menu position and scaling for non-4:3
- *    aspect ratios
- *
- * Used For:
- *    FixStretchedGUI & UseConsoleTitleScreen
- ****************************************************/
-
-typedef int(__cdecl* sub_48FC00)(float, float, float, float, float, float, float, float, int);
-sub_48FC00 RenderShader = nullptr;
-
-static int __cdecl RenderShader_Hook(float x_position, float y_position, float resolution_width, float resolution_height, float a5, float a6, float a7, float a8, int ShaderHandle)
-{
-	// Pillarbox borders
-	if (x_position == LEFT_BORDER_X_ID) // Left border
-	{
-		// Calculate the scale factor to match the target height
-		float scale_factor = currentHeight / 720.0f; // Original height of the image is 720
-		float black_border_width = (currentWidth - (currentHeight * ASPECT_RATIO_4_3)) / 2.0f;
-
-		// Scale the width and height proportionally
-		resolution_width = 320.0f * scale_factor;
-		resolution_height = currentHeight;
-
-		// Align the image to the left edge to cover the black border precisely
-		x_position = black_border_width - resolution_width;
-	}
-	else if (x_position == RIGHT_BORDER_X_ID) // Right border
-	{
-		// Calculate the scale factor to match the target height
-		float scale_factor = currentHeight / 720.0f; // Original height of the image is 720
-		float black_border_width = (currentWidth - (currentHeight * ASPECT_RATIO_4_3)) / 2.0f;
-
-		// Scale the width and height proportionally
-		resolution_width = 320.0f * scale_factor;
-		resolution_height = currentHeight;
-
-		// Position the image to align precisely with the right black border
-		x_position = currentWidth - black_border_width;
+		// We no longer need this hook
+		MH_DisableHook((void*)0x449DF0);
+		return IsGameStarted();
 	}
 	else
 	{
-		char* ShaderName = *(char**)(SHADERS_CACHE_ADDR + 0x4 * ShaderHandle);
-		BYTE isConsoleOpen = (*(BYTE**)CONSOLE_THREAD_PTR_ADDR && *(*(BYTE**)CONSOLE_THREAD_PTR_ADDR + 0xCC)) ? *(*(BYTE**)CONSOLE_THREAD_PTR_ADDR + 0xCC) : 0;
-
-		// Resize the mouse when needed
-		if (!isCursorResized && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
-		{
-			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
-			GameHelper::ResizePopupMessage(currentWidth, currentHeight); // Does not scale well
-			isCursorResized = true;
-		}
-
-		// Workaround to be able to use the console
-		if (isConsoleOpen == 1 && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
-		{
-			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-		}
-
-		// Once we get to the main menu
-		if (!isMainMenuShown && strstr(ShaderName, "main") != NULL)
-		{
-			// Resize the cursor if hidden for the title screen
-			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
-			isMainMenuShown = true;
-
-			// Hack: Change back to 'Escape' to enter the main menu instead of 'Enter'
-			MemoryHelper::WriteMemory<char>(0x4082C3, 0x1B, true);
-		}
-
-		// Scale the legalplate
-		if (!isMainMenuShown && strstr(ShaderName, "legalplate") != NULL)
-		{
-			if (currentWidth > 1280)
-			{
-				float scale_factor = (float)currentHeight / 720.0f;
-
-				resolution_width *= scale_factor;
-				resolution_height *= scale_factor;
-
-				x_position = (currentWidth - resolution_width) / 2.0f;
-				y_position = (currentHeight - resolution_height) / 2.0f;
-			}
-
-			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-		}
-
-		// Scale the title screen
-		if (!isMainMenuShown && strcmp(ShaderName, "title_bg") == 0)
-		{
-			float image_aspect_ratio = 1280.0f / 720.0f;
-
-			// Determine the scale factor to fill the screen
-			float scale_factor;
-			if (currentAspectRatio > image_aspect_ratio)
-			{
-				// Screen is wider than 16:9; scale based on width to fill horizontally, cropping top and bottom
-				scale_factor = (float)currentWidth / 1280.0f;
-			}
-			else
-			{
-				// Screen is taller than 16:9; scale based on height to fill vertically, cropping sides
-				scale_factor = (float)currentHeight / 720.0f;
-			}
-
-			// Set scaled dimensions to fill the screen fully
-			resolution_width = 1280 * scale_factor;
-			resolution_height = 720 * scale_factor;
-
-			// Center the image on the screen
-			x_position = (currentWidth - resolution_width) / 2.0f;
-			y_position = (currentHeight - resolution_height) / 2.0f;
-
-			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-		}
-
-		// Full screen effects
-		if (strcmp(ShaderName, "textures/special/drugfade") == 0 || strcmp(ShaderName, "textures/special/icefade") == 0)
-		{
-			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-		}
-
-		// Pop-up message
-		if (strcmp(ShaderName, "ui/control/press_any_key") == 0)
-		{
-			return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-		}
-
-		// Scale the UI
-		if (currentAspectRatio > ASPECT_RATIO_4_3)
-		{
-			float target_width = currentHeight * ASPECT_RATIO_4_3;
-			float scale_factor = target_width / currentWidth;
-			resolution_width *= scale_factor;
-			float horizontal_offset = (currentWidth - target_width) / 2.0f;
-
-			// Exceptions for some of the in-game assets
-			if ((ConsolePortHUD || strcmp(ShaderName, "ui/quicksavecam/quicksavecam") != 0) && strcmp(ShaderName, "ui/dialog/leftFrame") != 0 && strcmp(ShaderName, "ui/dialog/rightFrame") != 0)
-			{
-				x_position = (x_position * scale_factor) + horizontal_offset;
-			}
-
-			// Save camera position similar to the console version
-			if ((ConsolePortHUD && strcmp(ShaderName, "ui/quicksavecam/quicksavecam") == 0))
-			{
-				x_position = currentWidth / 6.0f;
-				y_position = currentHeight / 14.25f;
-			}
-
-			// Move the dialog boxes to the center
-			if (strcmp(ShaderName, "ui/dialog/leftFrame") == 0 || strcmp(ShaderName, "ui/dialog/rightFrame") == 0)
-			{
-				x_position = (x_position * scale_factor) + horizontal_offset * 0.6f;
-				isDialog = true;
-			}
-			else
-			{
-				isDialog = false;
-			}
-		}
+		// Block loadgame/savegame commands on the title screen
+		return 0;
 	}
-	return RenderShader(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 }
 
-/****************************************************
- * Function: SetUIBorder_Hook
- * 
- * Description:
- *    Adds borders to hide the pillarbox when scaling
- *    the menu
- * 
- * Used For:
- *    FixStretchedGUI
- ****************************************************/
-
-typedef void(__cdecl* nullsub_4)();
-nullsub_4 SetUIBorder = nullptr;
-
-static void __cdecl SetUIBorder_Hook()
+// Hook of the "pushmenu" command
+static int __cdecl PushMenu_Hook(const char* menu_name)
 {
-	if (isDialog) return;
+	if (FixMenuTransitionTiming && strcmp(menu_name, "newgame") == 0)
+	{
+		// Clicking too fast and one time on any difficulty won't remove the menu from the FMV, add a delay
+		MemoryHelper::WriteMemory<int>(UI_WAIT_TIMER, 1200, false);
+	}
 
-	int border = GameHelper::GetTga(18, "border1_left");
-	RenderShader_Hook(LEFT_BORDER_X_ID, 0, 0, 0, 0.0, 0.0, 1.0, 1.0, *(DWORD*)(border + 4));
-	RenderShader_Hook(RIGHT_BORDER_X_ID, 0, 0, 0, 1.0, 0.0, 0.0, 1.0, *(DWORD*)(border + 4));
+	// Override the main menu with the title screen
+	if (!isTitleBgSet && UseConsoleTitleScreen && strcmp(menu_name, "main") == 0)
+	{
+		// Hide the cursor
+		GameHelper::ResizeCursor(true, currentWidth, currentHeight);
+		isTitleBgSet = true;
+		return PushMenu("title");
+	}
+	else
+	{
+		return PushMenu(menu_name);
+	}
 }
 
-/****************************************************
- * Function: ShowDialogBoxText_Hook
- *
- * Description:
- *    Adjust the vertical alignment of the text in
- *    the dialog box for two-line messages
- * 
- * Used For:
- *    FixStretchedGUI
- ****************************************************/
+// Hook of the function used to trigger the main menu when 'Escape' is pressed
+static void __cdecl TriggerMainMenu_Hook(int a1)
+{
+	if (isMainMenuShown)
+	{
+		// We no longer need this hook
+		MH_DisableHook((void*)0x44C4F0);
+		TriggerMainMenu(a1);
+	}
+	else
+	{
+		// Hack to force the main menu when on the title screen, otherwise black screen
+		PushMenu_Hook("main");
+	}
+}
 
-typedef void(__thiscall* sub_452CF0)(int);
-sub_452CF0 ShowDialogBoxText = nullptr;
-
+// Adjust the vertical alignment of the text in the dialog box for two-line messages
 static void __fastcall ShowDialogBoxText_Hook(int this_ptr, int* _ECX)
 {
 	int currentDialogLines = MemoryHelper::ReadMemory<int>(this_ptr + 0x1D8, false);
@@ -680,175 +943,11 @@ static void __fastcall ShowDialogBoxText_Hook(int this_ptr, int* _ECX)
 	{
 		MemoryHelper::WriteMemory<int>(this_ptr + 0x1D8, 3, false);
 	}
+
 	ShowDialogBoxText(this_ptr);
 }
 
-/****************************************************
- * Function: GetGlyphInfo_Hook
- *
- * Description:
- *    Scale the font
- *
- * Used For:
- *    FixStretchedGUI
- ****************************************************/
-
-typedef int(__thiscall* sub_4C0A10)(int, float, float, int, int, float, float, float, float, float);
-sub_4C0A10 GetGlyphInfo = nullptr;
-
-static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_position, float font_y_position, int a4, int a5, float a6, float a7, float a8, float font_scale_width, float font_scale_height)
-{
-	// Don't mess with the console
-	if (font_x_position <= 3.0)
-	{
-		return GetGlyphInfo(this_ptr, font_x_position, font_y_position, a4, a5, a6, a7, a8, font_scale_width, font_scale_height);
-	}
-
-	if (currentAspectRatio > ASPECT_RATIO_4_3)
-	{
-		// Disable original font scaling, we'll handle it ourselves
-		*(BYTE*)(this_ptr + 24) = 1;
-
-		float target_width = currentHeight * ASPECT_RATIO_4_3;
-		float horizontal_offset = (currentWidth - target_width) / 2.0f;
-
-		float width_scale_factor = target_width / 640.0f;
-		float height_scale_factor = currentHeight / 480.0f;
-
-		// Adjust font position and scaling
-		float adjusted_font_x_position = (font_x_position * width_scale_factor) + horizontal_offset;
-		float adjusted_font_scale_width = font_scale_width * width_scale_factor;
-		float adjusted_font_y_position = font_y_position * height_scale_factor;
-		float adjusted_font_scale_height = font_scale_height * height_scale_factor;
-
-		// Special case for credits
-		if (a8 == -8.0)
-		{
-			adjusted_font_scale_width *= 0.9f;
-		}
-
-		// Adjust the position of the text for the dialog box
-		if (isDialog)
-		{
-			adjusted_font_x_position = (font_x_position * width_scale_factor) + horizontal_offset * 0.6f;
-		}
-
-		return GetGlyphInfo(this_ptr, adjusted_font_x_position, adjusted_font_y_position, a4, a5, a6, a7, a8, adjusted_font_scale_width, adjusted_font_scale_height);
-	}
-	else
-	{
-		return GetGlyphInfo(this_ptr, font_x_position, font_y_position, a4, a5, a6, a7, a8, font_scale_width, font_scale_height);
-	}
-}
-
-/****************************************************
- * Function: SetAliceMirrorViewportParams_Hook
- *
- * Description:
- *    Adjust the scaling and position of Alice's 3D
- *    model in the settings menu
- *
- * Used For:
- *    FixStretchedGUI
- ****************************************************/
-
-typedef DWORD* (__cdecl* sub_4C5D30)(DWORD*, float, float, float, float, float);
-sub_4C5D30 SetAliceMirrorViewportParams = nullptr;
-
-static DWORD* __cdecl SetAliceMirrorViewportParams_Hook(DWORD* a1, float param_x, float param_y, float param_width, float param_height, float param_fov)
-{
-	DWORD* renderEntity = SetAliceMirrorViewportParams(a1, param_x, param_y, param_width, param_height, param_fov);
-
-	int width = renderEntity[2];
-	int height = renderEntity[3];
-
-	if (currentAspectRatio > ASPECT_RATIO_4_3)
-	{
-		float aspect_ratio_adjustment = ASPECT_RATIO_4_3 / currentAspectRatio;
-
-		int adjusted_width = static_cast<int>(currentWidth * aspect_ratio_adjustment);
-		renderEntity[2] = adjusted_width;
-
-		int x_shift = (width - adjusted_width) / 2;
-		renderEntity[0] = x_shift;
-	}
-
-	return renderEntity;
-}
-
-/****************************************************
- * Function: FS_ZipLoading_Hook
- *
- * Description:
- *    Function used to open and load the pk3 files
- *
- * Used For:
- *    DisableRemasteredModels
- ****************************************************/
-
-typedef FILE(__cdecl* sub_43E030)(const char*);
-sub_43E030 FS_ZipLoading = nullptr;
-
-static FILE __cdecl FS_ZipLoading_Hook(const char* FileName)
-{
-	// Skip pak5_mod.pk3
-	if (strstr(FileName, "pak5_mod.pk3"))
-	{
-		FileName = "\x00";
-	}
-
-	return FS_ZipLoading(FileName);
-}
-
-/****************************************************
- * Function: QGL_Init_Hook
- *
- * Description:
- *    Function used to adjust the resolution settings
- *    before the initialization of OpenGL
- *
- * Used For:
- *    CustomResolution
- ****************************************************/
-
-typedef int(__cdecl* sub_47ABE0)(LPCSTR);
-sub_47ABE0 QGL_Init = nullptr;
-
-static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
-{
-	// Do it once
-	if (!isResolutionApplied)
-	{
-		if (CustomResolution && !ForceBorderlessFullscreen)
-		{
-			// Set current resolution mode to 0
-			int r_mode_ptr = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_PTR_ADDR, false);
-			MemoryHelper::WriteMemory<int>(r_mode_ptr + 0x20, 0, false);
-
-			// Replace resolution 0 with the custom one
-			MemoryHelper::WriteMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR, CustomResolutionWidth, false);
-			MemoryHelper::WriteMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR, CustomResolutionHeight, false);
-
-			isResolutionApplied = true;
-		}
-	}
-
-	return QGL_Init(lpLibFileName);
-}
-
-/****************************************************
- * Function: lpfnWndProc_MSG_Hook
- *
- * Description:
- *    Force the game to exit if Alt+F4 is pressed
- *
- * Used For:
- *    EnableAltF4Close
- ****************************************************/
-
-typedef int(__stdcall* sub_46C600)(HWND, UINT, int, LPARAM);
-sub_46C600 lpfnWndProc_MSG = nullptr;
-
+// Force the game to exit if Alt+F4 is pressed
 static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, int wParam, LPARAM lParam)
 {
 	// Alt+F4
@@ -860,22 +959,35 @@ static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, int wParam, LPARA
 	return lpfnWndProc_MSG(hWnd, Msg, wParam, lParam);
 }
 
-/****************************************************
- * Function: GLW_CreatePFD_Hook
- *
- * Description:
- *    Hooks into the resolution update process to
- *    manage related variable adjustments, including
- *    FOV value and correcting the screenshot buffer 
- *    size to ensure it's a multiple of 4
- *
- * Used For:
- *    FixSaveScreenshotBufferOverflow & FixStretchedGUI & AutoFOV
- ****************************************************/
+// Hook for the function that takes a screenshot for the saved snapshot, ensuring it is captured as if the game is running in a 4:3 aspect ratio.
+static int __cdecl TakeSaveScreenshot_Hook(int a1, int a2, int a3)
+{
+	int screenshot_width = static_cast<int>(currentHeight * ASPECT_RATIO_4_3);
+	saveScreenshotX = (currentWidth - screenshot_width) / 2;
 
-typedef int(__cdecl* sub_46FC70)(void*, unsigned __int8, char, unsigned __int8, int);
-sub_46FC70 GLW_CreatePFD = nullptr;
+	// Store the new dimension for the screenshot
+	MemoryHelper::WriteMemory<int>(0x513E44, screenshot_width, true);
 
+	// If screenshot_width is not a multiple of 4
+	if (screenshot_width % 4 != 0)
+	{
+		// Adjust the width to be the largest multiple of 4 less than currentWidth
+		screenshot_width = screenshot_width - (screenshot_width % 4);
+	}
+
+	// Redirect width read by sub_46D280
+	MemoryHelper::WriteMemory<int>(0x46D28B, 0x513E44, true);
+	MemoryHelper::WriteMemory<int>(0x46D307, 0x513E44, true);
+	MemoryHelper::WriteMemory<int>(0x46D321, 0x513E44, true);
+	MemoryHelper::WriteMemory<int>(0x46D3B7, 0x513E44, true);
+
+	// Tell glReadPixels_Hook to update the x position
+	isTakingSaveScreenshot = true;
+
+	return TakeSaveScreenshot(a1, a2, a3);
+}
+
+// Hooks the resolution update process to cache relevant variables
 static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, char depthbits, unsigned __int8 stencilbits, int stereo)
 {
 	// Resolution updated, update the variables
@@ -932,395 +1044,194 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 	return GLW_CreatePFD(pPFD, colorbits, depthbits, stencilbits, stereo);
 }
 
-/****************************************************
- * Function: ProcessAPIPacket
- *
- * Description:
- *    Updates the Field of View (FOV) from the snapshot
- *    received from the server. If the FOV needs to be
- *    changed, it is updated accordingly
- *
- * Used For:
- *    AutoFOV & FOV & DisableLetterbox
- ****************************************************/
-
-typedef void(__cdecl* sub_420390)(DWORD*, int, int*);
-sub_420390 MSG_DoStuff = nullptr;
-
-static void __cdecl ProcessAPIPacket(DWORD* a1, int a2, int* a3)
+// Function used to adjust the resolution settings before the initialization of OpenGL
+static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 {
-	float* fovPtr = (float*)((DWORD)a2 - 0x50);
-
-	if (*fovPtr != FOV)
+	if (!ForceBorderlessFullscreen)
 	{
-		*fovPtr = FOV;
+		// Set current resolution mode to 0
+		GameHelper::UpdateCvar("r_mode", "0", 33);
+
+		// Replace resolution 0 with the custom one
+		MemoryHelper::WriteMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR, CustomResolutionWidth, false);
+		MemoryHelper::WriteMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR, CustomResolutionHeight, false);
 	}
 
-	if (DisableLetterbox)
-	{
-		int* letterboxPtr = (int*)((DWORD)a2 - 0x35C);
-		int* isCinematicPtr = (int*)((DWORD)a2 - 0x364);
+	MH_DisableHook((void*)0x47ABE0);
 
-		*letterboxPtr = 0;
-
-		// Zoom a bit during cutscenes
-		if (AutoFOV && *isCinematicPtr == 1)
-		{
-			*fovPtr = FOV / 1.18f;
-		}
-	}
-
-	MSG_DoStuff(a1, a2, a3);
+	return QGL_Init(lpLibFileName);
 }
 
-/****************************************************
- * Function: Cvar_Set_Hook
- *
- * Description:
- *    Intercepts and updates cvars
- * 
- ****************************************************/
-
-typedef int(__cdecl* sub_419910)(const char*, const char*, int);
-sub_419910 Cvar_Set = nullptr;
-
-static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int flag)
+// Adjust the menu position and scaling for non-4:3 aspect ratios
+static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float resolution_width, float resolution_height, float a5, float a6, float a7, float a8, int ShaderHandle)
 {
-	if (TrilinearTextureFiltering && StringHelper::stricmp(var_name, "r_textureMode"))
+	// Pillarbox borders
+	if (x_position == LEFT_BORDER_X_ID) // Left border
 	{
-		value = "GL_LINEAR_MIPMAP_LINEAR";
-		TrilinearTextureFiltering = false;
-	}
+		// Calculate the scale factor to match the target height
+		float scale_factor = currentHeight / 720.0f; // Original height of the image is 720
+		float black_border_width = (currentWidth - (currentHeight * ASPECT_RATIO_4_3)) / 2.0f;
 
-	if (EnhancedLOD)
+		// Scale the width and height proportionally
+		resolution_width = 320.0f * scale_factor;
+		resolution_height = currentHeight;
+
+		// Align the image to the left edge to cover the black border precisely
+		x_position = black_border_width - resolution_width;
+	}
+	else if (x_position == RIGHT_BORDER_X_ID) // Right border
 	{
-		if (StringHelper::stricmp(var_name, "r_lodbias"))
+		// Calculate the scale factor to match the target height
+		float scale_factor = currentHeight / 720.0f; // Original height of the image is 720
+		float black_border_width = (currentWidth - (currentHeight * ASPECT_RATIO_4_3)) / 2.0f;
+
+		// Scale the width and height proportionally
+		resolution_width = 320.0f * scale_factor;
+		resolution_height = currentHeight;
+
+		// Position the image to align precisely with the right black border
+		x_position = currentWidth - black_border_width;
+	}
+	else
+	{
+		char* ShaderName = *(char**)(SHADERS_CACHE_ADDR + 0x4 * ShaderHandle);
+		BYTE isConsoleOpen = (*(BYTE**)CONSOLE_THREAD_PTR_ADDR && *(*(BYTE**)CONSOLE_THREAD_PTR_ADDR + 0xCC)) ? *(*(BYTE**)CONSOLE_THREAD_PTR_ADDR + 0xCC) : 0;
+
+		// Resize the mouse when needed
+		if (!isCursorResized && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
 		{
-			value = "-2";
+			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
+			GameHelper::ResizePopupMessage(currentWidth, currentHeight); // Does not scale well
+			isCursorResized = true;
 		}
-		else if (StringHelper::stricmp(var_name, "r_lodCurveError"))
+
+		// Workaround to be able to use the console
+		if (isConsoleOpen == 1 && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
 		{
-			value = "10000";
+			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
-	}
 
-	if (ForceBorderlessFullscreen && StringHelper::stricmp(var_name, "r_fullscreen"))
-	{
-		value = "0";
-		flag = 0x10; // read-only
-	}
-
-	if (FixParticleDistanceRatio && StringHelper::stricmp(var_name, "cg_particledistanceratio"))
-	{
-		value = "0";
-		FixParticleDistanceRatio = false;
-	}
-
-	if (setAlice2Path && StringHelper::stricmp(var_name, "s_Alice2URL"))
-	{
-		value = Alice2Path;
-		setAlice2Path = false;
-	}
-
-	if (CustomFPSLimit != 60 && StringHelper::stricmp(var_name, "com_maxfps"))
-	{
-		value = StringHelper::IntegerToCString(CustomFPSLimit);
-	}
-
-	// Read settings from "base" folder, skip it
-	if (FixFullscreenSetting && !isDefaultFullscreenSettingSkipped && StringHelper::stricmp(var_name, "r_fullscreen"))
-	{
-		isDefaultFullscreenSettingSkipped = true;
-		return 0;
-	}
-
-	if (!skipAutoResolution && (FirstAutoResolution || AutoResolution || FixResolutionModeOOB || ForceBorderlessFullscreen) && StringHelper::stricmp(var_name, "r_mode"))
-	{
-		// Prevent re-entering this condition
-		skipAutoResolution = true;
-
-		// Get config file path
-		const char* configFile = (MemoryHelper::ReadMemory<int>(CURRENT_LANG, false) == 2)
-			? "config_pc_fra.cfg"
-			: "config.cfg";
-
-		std::string directoryPath = GetSavePath_Hook();
-		std::filesystem::path configFilePath = std::filesystem::path(directoryPath) / configFile;
-
-		// Since this function is executed after, do it before
-		GameHelper::FetchDisplayResolutions();
-
-		auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
-		int resolutionNum = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_NUM, false);
-
-		// Check if 'r_mode' exceeds the total count of available resolution modes
-		if (FixResolutionModeOOB)
+		// Once we get to the main menu
+		if (!isMainMenuShown && strstr(ShaderName, "main") != NULL)
 		{
-			int index;
-			std::istringstream(value) >> index;
+			// Resize the cursor if hidden for the title screen
+			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
+			isMainMenuShown = true;
 
-			// Check if "index" is within bounds and adjust if necessary
-			if (index >= resolutionNum)
+			// Hack: Change back to 'Escape' to enter the main menu instead of 'Enter'
+			MemoryHelper::WriteMemory<char>(0x4082C3, 0x1B, true);
+		}
+
+		// Scale the legalplate
+		if (!isMainMenuShown && strstr(ShaderName, "legalplate") != NULL)
+		{
+			if (currentWidth > 1280)
 			{
-				value = "0";
+				float scale_factor = (float)currentHeight / 720.0f;
+
+				resolution_width *= scale_factor;
+				resolution_height *= scale_factor;
+
+				x_position = (currentWidth - resolution_width) / 2.0f;
+				y_position = (currentHeight - resolution_height) / 2.0f;
 			}
+
+			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
 
-		if ((FirstAutoResolution && !std::filesystem::exists(configFilePath)) || (AutoResolution || ForceBorderlessFullscreen))
+		// Scale the title screen
+		if (!isMainMenuShown && strcmp(ShaderName, "title_bg") == 0)
 		{
-			// Find the 'r_mode' value matching the screen resolution
-			for (int i = 0; i < resolutionNum; i++)
-			{
-				int screenWidthMode = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR + (i * 8), false);
-				int screenHeightMode = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR + (i * 8), false);
+			float image_aspect_ratio = 1280.0f / 720.0f;
 
-				if (screenWidth == screenWidthMode && screenHeight == screenHeightMode)
-				{
-					Cvar_Set(var_name, value, flag); // Set the default value
-					GameHelper::UpdateCvar(var_name, StringHelper::IntegerToCString(i), flag); // Update 'r_mode' to the index of the matching screen resolution
-					break;
-				}
+			// Determine the scale factor to fill the screen
+			float scale_factor;
+			if (currentAspectRatio > image_aspect_ratio)
+			{
+				// Screen is wider than 16:9; scale based on width to fill horizontally, cropping top and bottom
+				scale_factor = (float)currentWidth / 1280.0f;
 			}
-		}
-	}
-
-	return Cvar_Set(var_name, value, flag);
-}
-
-/****************************************************
- * Function: CreateWindowExA_Hook
- *
- * Description:
- *    Used to force borderless fullscreen when the
- *    main window is initialized
- *
- * Used For:
- *    ForceBorderlessFullscreen
- ****************************************************/
-
-typedef HWND(WINAPI* CreateWindowExA_t)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
-CreateWindowExA_t fpCreateWindowExA = NULL;
-
-static HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
-{
-	if (dwStyle == 0x10C80000)
-	{
-		auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
-
-		dwStyle = WS_VISIBLE + WS_POPUP;
-
-		nWidth = screenWidth;
-		nHeight = screenHeight;
-
-		X = 0;
-		Y = 0;
-	}
-
-	return fpCreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
-}
-
-typedef int(__thiscall* sub_4C6050)(int, float*, int, float*, float*);
-sub_4C6050 AliceHeadMovement = nullptr;
-
-static int __fastcall AliceHeadMovement_Hook(int thisPtr, int* _ECX, float* a2, int a3, float* a4, float* a5)
-{
-	isInSettingMenu = true;
-	return AliceHeadMovement(thisPtr, a2, a3, a4, a5);
-}
-
-typedef float(__cdecl* sub_423740)(DWORD*, float*);
-sub_423740 AliceHeadMovementCoordinates = nullptr;
-
-static float __cdecl AliceHeadMovementCoordinates_Hook(DWORD* a1, float* a2)
-{
-	// Make sure Alice is not looking at the top left of the screen when the mouse is disabled
-	if (isInSettingMenu && *a1 == 0xC1B40000 && *(a1 + 1) == 0xC2100000 && *(a1 + 2) == 0)
-	{
-		*a1 = 0xC119EB80;
-		isInSettingMenu = false;
-	}
-	return AliceHeadMovementCoordinates(a1, a2);
-}
-
-/****************************************************
- * Function: UISetCvars_Hook
- *
- * Description:
- *    Hook of the function used by the "ui_setcvars"
- *    command
- *
- * Used For:
- *    pak7_VorpalFix_menu.pk3
- ****************************************************/
-
-typedef DWORD(__thiscall* sub_4B9FD0)(DWORD*, char*);
-sub_4B9FD0 UISetCvars = nullptr;
-
-static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_name)
-{
-	// Apply the changes
-	if (strcmp(group_name, "group_vorpalfix") == 0)
-	{
-		// LanguageId - Need a restart
-		int languageId = MemoryHelper::ReadMemory<int>(VF_LANGUAGE_PTR + 0x20, false);
-		IniHelper::iniReader["General"]["LanguageId"] = StringHelper::IntegerToCString(languageId);
-
-		// DisableRemasteredModels - Need a restart
-		bool disableRemasteredModels = MemoryHelper::ReadMemory<int>(VF_REMASTERED_MODELS_PTR + 0x20, false);
-		IniHelper::iniReader["General"]["DisableRemasteredModels"] = StringHelper::IntegerToCString(!disableRemasteredModels);
-
-		// ConsolePortHUD
-		ConsolePortHUD = MemoryHelper::ReadMemory<int>(VF_UI_CONSOLE_HUD_PTR + 0x20, false);
-		IniHelper::iniReader["Display"]["ConsolePortHUD"] = StringHelper::IntegerToCString(ConsolePortHUD);
-
-		// UsePS3ControllerIcons - Need a restart
-		int usePS3ControllerIcons = MemoryHelper::ReadMemory<int>(VF_UI_PS3_PTR + 0x20, false);
-		IniHelper::iniReader["Display"]["UsePS3ControllerIcons"] = StringHelper::IntegerToCString(usePS3ControllerIcons);
-
-		// DisableLetterbox
-		bool isLetterboxEnabled = MemoryHelper::ReadMemory<int>(VF_UI_LETTERBOX_PTR + 0x20, false);
-		IniHelper::iniReader["Display"]["DisableLetterbox"] = StringHelper::IntegerToCString(!isLetterboxEnabled);
-		DisableLetterbox = !isLetterboxEnabled;
-
-		// MaxAnisotropy
-		int maxAnisotropy = MemoryHelper::ReadMemory<int>(VF_R_EXT_MAX_ANISOTROPY_PTR + 0x20, false);
-		IniHelper::iniReader["Graphics"]["MaxAnisotropy"] = StringHelper::IntegerToCString(maxAnisotropy);
-
-		// Execute vid_restart to refresh the textures
-		if (maxAnisotropy != static_cast<int>(MaxAnisotropy))
-		{
-			MaxAnisotropy = static_cast<float>(maxAnisotropy);
-			GameHelper::CallCmd("vid_restart\n", 0);
-		}
-
-		// CustomFPSLimit
-		CustomFPSLimit = MemoryHelper::ReadMemory<int>(VF_COM_MAXFPS_PTR + 0x20, false);
-		IniHelper::iniReader["Graphics"]["CustomFPSLimit"] = StringHelper::IntegerToCString(CustomFPSLimit);
-
-		// Set to monitor's refresh rate
-		if (CustomFPSLimit == -1)
-		{
-			CustomFPSLimit = SystemHelper::GetCurrentDisplayFrequency();
-		}
-
-		// Write the new value
-		int com_maxfps_ptr = MemoryHelper::ReadMemory<int>(COM_MAXFPS_PTR_ADDR, false);
-		MemoryHelper::WriteMemory<int>(com_maxfps_ptr + 0x20, CustomFPSLimit, false);
-
-		// Fix the blinking eyes speed
-		if (FixBlinkingAnimationSpeed)
-		{
-			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x2, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
-			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x1A, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
-			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x22, 4 * CustomFPSLimit / 60, true);
-		}
-
-		IniHelper::Save();
-	}
-
-	return UISetCvars(this_ptr, group_name);
-}
-
-/****************************************************
- * Function: SetupOpenGLParameters_Hook
- *
- * Description:
- *    Hook of the function used to initialize the
- *    cvar's used for OpenGL
- *
- * Used For:
- *    pak7_VorpalFix_menu.pk3
- ****************************************************/
-
-typedef int(__cdecl* sub_46E0D0)();
-sub_46E0D0 SetupOpenGLParameters = nullptr;
-
-static int __cdecl SetupOpenGLParameters_Hook()
-{
-	// Initialize our Cvar's
-	if (!isVorpalFixMenuCvarInitialized)
-	{
-		VF_LANGUAGE_PTR = Cvar_Set("vf_language", StringHelper::IntegerToCString(LanguageId), 0);
-		VF_REMASTERED_MODELS_PTR = Cvar_Set("vf_remastered_models", StringHelper::BoolToCString(!DisableRemasteredModels), 0);
-		VF_UI_CONSOLE_HUD_PTR = Cvar_Set("vf_ui_console_hud", StringHelper::BoolToCString(ConsolePortHUD), 0);
-		VF_UI_PS3_PTR = Cvar_Set("vf_ui_ps3", StringHelper::BoolToCString(UsePS3ControllerIcons), 0);
-		VF_UI_LETTERBOX_PTR = Cvar_Set("vf_ui_letterbox", StringHelper::BoolToCString(!DisableLetterbox), 0);
-		VF_R_EXT_MAX_ANISOTROPY_PTR = Cvar_Set("vf_r_ext_max_anisotropy", StringHelper::FloatToCString(MaxAnisotropy), 0);
-
-		if (isScreenRateFps)
-		{
-			VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", "-1", 0);
-		}
-		else
-		{
-			VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", StringHelper::IntegerToCString(CustomFPSLimit), 0);
-		}
-
-		isVorpalFixMenuCvarInitialized = true;
-	}
-	return SetupOpenGLParameters();
-}
-
-typedef int(__cdecl* sub_41A590)(char*, int*, int, int);
-sub_41A590 Open_File = nullptr;
-
-static int __cdecl Open_File_Hook(char* Source, int* a2, int a3, int a4)
-{
-	if (*reinterpret_cast<uint64_t*>(Source + 3) == 0x726168632F736C65) // Optimization: Check for "els/char" in file path
-	{
-		for (int i = 0; i < 9; i++)
-		{
-			// Check if the provided file path matches a known incorrect path
-			if (strcmp(Source, correctPaths[i]) == 0)
+			else
 			{
-				// If a match is found, redirect to the corresponding correct texture path
-				Source = (char*)brokenPaths[i];
-				break;
+				// Screen is taller than 16:9; scale based on height to fill vertically, cropping sides
+				scale_factor = (float)currentHeight / 720.0f;
+			}
+
+			// Set scaled dimensions to fill the screen fully
+			resolution_width = 1280 * scale_factor;
+			resolution_height = 720 * scale_factor;
+
+			// Center the image on the screen
+			x_position = (currentWidth - resolution_width) / 2.0f;
+			y_position = (currentHeight - resolution_height) / 2.0f;
+
+			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+		}
+
+		// Full screen effects
+		if (strcmp(ShaderName, "textures/special/drugfade") == 0 || strcmp(ShaderName, "textures/special/icefade") == 0)
+		{
+			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+		}
+
+		// Pop-up message
+		if (strcmp(ShaderName, "ui/control/press_any_key") == 0)
+		{
+			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+		}
+
+		// Scale the UI
+		if (currentAspectRatio > ASPECT_RATIO_4_3)
+		{
+			float target_width = currentHeight * ASPECT_RATIO_4_3;
+			float scale_factor = target_width / currentWidth;
+			resolution_width *= scale_factor;
+			float horizontal_offset = (currentWidth - target_width) / 2.0f;
+
+			// Exceptions for some of the in-game assets
+			if ((ConsolePortHUD || strcmp(ShaderName, "ui/quicksavecam/quicksavecam") != 0) && strcmp(ShaderName, "ui/dialog/leftFrame") != 0 && strcmp(ShaderName, "ui/dialog/rightFrame") != 0)
+			{
+				x_position = (x_position * scale_factor) + horizontal_offset;
+			}
+
+			// Save camera position similar to the console version
+			if ((ConsolePortHUD && strcmp(ShaderName, "ui/quicksavecam/quicksavecam") == 0))
+			{
+				x_position = currentWidth / 6.0f;
+				y_position = currentHeight / 14.25f;
+			}
+
+			// Move the dialog boxes to the center
+			if (strcmp(ShaderName, "ui/dialog/leftFrame") == 0 || strcmp(ShaderName, "ui/dialog/rightFrame") == 0)
+			{
+				x_position = (x_position * scale_factor) + horizontal_offset * 0.6f;
+				isDialog = true;
+			}
+			else
+			{
+				isDialog = false;
 			}
 		}
 	}
-	return Open_File(Source, a2, a3, a4);
+
+	return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 }
 
-typedef BYTE(__cdecl* sub_4256E0)(char*);
-sub_4256E0 String_ToLower = nullptr;
-
-static BYTE __cdecl String_ToLower_Hook(char* Buffer)
+// Adjust the FMV position and scaling for non-4:3 aspect ratios
+static int __cdecl RE_StretchRaw_Hook(int x_position, int y_position, int resolution_width, int resolution_height, int a5, int a6, int a7)
 {
-	// Check if using the original 'pak5_mod.pk3'
-	if (!isUsingBrokenPak5 && FixPak5 && StringHelper::stricmp(Buffer, brokenPaths[0]))
+	int video_width = resolution_width;
+
+	if (currentAspectRatio > ASPECT_RATIO_4_3)
 	{
-		HookHelper::ApplyHook((void*)0x41A590, &Open_File_Hook, reinterpret_cast<LPVOID*>(&Open_File));
-		isUsingBrokenPak5 = true;
+		video_width = static_cast<int>(resolution_height * ASPECT_RATIO_4_3);
+		x_position = (resolution_width - video_width) / 2;
 	}
 
-	// Check if 'pak7_VorpalFix_menu.pk3' is used
-	if (StringHelper::stricmp(Buffer, "ui/control/vorpalfix_options.tga"))
-	{
-		HookHelper::ApplyHook((void*)0x46E0D0, &SetupOpenGLParameters_Hook, reinterpret_cast<LPVOID*>(&SetupOpenGLParameters));
-		HookHelper::ApplyHook((void*)0x4B9FD0, &UISetCvars_Hook, reinterpret_cast<LPVOID*>(&UISetCvars));
-
-		// Disable this hook, nothing else to check
-		MH_DisableHook((void*)0x4256E0);
-	}
-
-	return String_ToLower(Buffer);
+	return RE_StretchRaw(x_position, y_position, video_width, resolution_height, a5, a6, a7);
 }
 
-/****************************************************
- * Function: LoadUI_Hook
- *
- * Description:
- *    Load the menu files from 'pak6_VorpalFix.pk3'
- *    when required
- *
- * Used For:
- *    UseConsoleTitleScreen & EnableControllerIcons
- ****************************************************/
-
-typedef DWORD(__thiscall* sub_4C1AC0)(DWORD*, char*);
-sub_4C1AC0 LoadUI = nullptr;
-
+// Load the menu files from 'pak6_VorpalFix.pk3' when required
 static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 {
 	int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG, false);
@@ -1345,8 +1256,8 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 			MemoryHelper::MakeNOP(0x40676E, 2, true);
 
 			// For Alice's 3d model in the settings
-			HookHelper::ApplyHook((void*)0x423740, &AliceHeadMovementCoordinates_Hook, reinterpret_cast<LPVOID*>(&AliceHeadMovementCoordinates));
-			HookHelper::ApplyHook((void*)0x4C6050, &AliceHeadMovement_Hook, reinterpret_cast<LPVOID*>(&AliceHeadMovement));
+			HookHelper::ApplyHook((void*)0x423740, &UpdateHeadOrientation_Hook, (LPVOID*)&UpdateHeadOrientation);
+			HookHelper::ApplyHook((void*)0x4C6050, &UpdateHeadOrientationFromMouse_Hook, (LPVOID*)&UpdateHeadOrientationFromMouse);
 		}
 	}
 
@@ -1418,204 +1329,133 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 	return LoadUI(ptr, ui_path);
 }
 
-/****************************************************
- * Function: Bind_Hook
- *
- * Description:
- *    Hook of the function used by the "bind" command
- *
- * Used For:
- *    EnableDevConsole
- ****************************************************/
-
-typedef int(__cdecl* sub_407870)(int, char*);
-sub_407870 Bind = nullptr;
-
-static int __cdecl Bind_Hook(int keyId, char* cmd_name)
+// Scale the font
+static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_position, float font_y_position, int a4, int a5, float a6, float a7, float a8, float font_scale_width, float font_scale_height)
 {
-	if (strcmp(cmd_name, "toggleconsole") == 0)
+	// Don't mess with the console
+	if (font_x_position <= 3.0)
 	{
-		// Handle default keys that are not recognized by the game, use "F2" as default
-		if (keyId == 96 || keyId == 126)
+		return GetGlyphInfo(this_ptr, font_x_position, font_y_position, a4, a5, a6, a7, a8, font_scale_width, font_scale_height);
+	}
+
+	if (currentAspectRatio > ASPECT_RATIO_4_3)
+	{
+		// Disable original font scaling, we'll handle it ourselves
+		*(BYTE*)(this_ptr + 24) = 1;
+
+		float target_width = currentHeight * ASPECT_RATIO_4_3;
+		float horizontal_offset = (currentWidth - target_width) / 2.0f;
+
+		float width_scale_factor = target_width / 640.0f;
+		float height_scale_factor = currentHeight / 480.0f;
+
+		// Adjust font position and scaling
+		float adjusted_font_x_position = (font_x_position * width_scale_factor) + horizontal_offset;
+		float adjusted_font_scale_width = font_scale_width * width_scale_factor;
+		float adjusted_font_y_position = font_y_position * height_scale_factor;
+		float adjusted_font_scale_height = font_scale_height * height_scale_factor;
+
+		// Special case for credits
+		if (a8 == -8.0)
 		{
-			keyId = GameHelper::GetKeyId("F2");
+			adjusted_font_scale_width *= 0.9f;
 		}
 
-		char cmpInstruction[] = { 0x81, 0xFF };
+		// Adjust the position of the text for the dialog box
+		if (isDialog)
+		{
+			adjusted_font_x_position = (font_x_position * width_scale_factor) + horizontal_offset * 0.6f;
+		}
 
-		// cmp toggleConsoleKeyId instead of hardcoded cmp 96 and cmp 126 (` and ~)
-		MemoryHelper::WriteMemoryRaw(0x40823A, cmpInstruction, sizeof(cmpInstruction), true);
-		MemoryHelper::WriteMemory<int>(0x40823C, keyId, true);
-		MemoryHelper::MakeNOP(0x408240, 6, true);
-	}
-	return Bind(keyId, cmd_name);
-}
-
-/****************************************************
- * Function: PushMenu_Hook
- *
- * Description:
- *    Hook of the "pushmenu" command
- *
- * Used For:
- *    UseConsoleTitleScreen & FixMenuTransitionTiming
- ****************************************************/
-
-typedef int(__cdecl* sub_44C1B0)(const char*);
-sub_44C1B0 PushMenu = nullptr;
-
-static int __cdecl PushMenu_Hook(const char* menu_name)
-{
-	if (FixMenuTransitionTiming && strcmp(menu_name, "newgame") == 0)
-	{
-		// Clicking too fast and one time on any difficulty won't remove the menu from the FMV, add a delay
-		MemoryHelper::WriteMemory<int>(0x12EF948, 1200, false);
-	}
-
-	// Override the main menu with the title screen
-	if (!isTitleBgSet && UseConsoleTitleScreen && strcmp(menu_name, "main") == 0)
-	{
-		// Hide the cursor
-		GameHelper::ResizeCursor(true, currentWidth, currentHeight);
-		isTitleBgSet = true;
-		return PushMenu("title");
+		return GetGlyphInfo(this_ptr, adjusted_font_x_position, adjusted_font_y_position, a4, a5, a6, a7, a8, adjusted_font_scale_width, adjusted_font_scale_height);
 	}
 	else
 	{
-		return PushMenu(menu_name);
+		return GetGlyphInfo(this_ptr, font_x_position, font_y_position, a4, a5, a6, a7, a8, font_scale_width, font_scale_height);
 	}
 }
 
-typedef int(__cdecl* sub_4158F0)(char*, char);
-sub_4158F0 CallCmd = nullptr;
-
-static int __cdecl CallCmd_Hook(char* a1, char a2)
+// Adjust the scaling and position of Alice's 3D model in the settings menu
+static DWORD* __cdecl SetAliceMirrorViewportParams_Hook(DWORD* a1, float param_x, float param_y, float param_width, float param_height, float param_fov)
 {
-	// If holding the left stick to assign a weapon
-	if (isHoldingLeftStick)
+	DWORD* renderEntity = SetAliceMirrorViewportParams(a1, param_x, param_y, param_width, param_height, param_fov);
+
+	int width = renderEntity[2];
+	int height = renderEntity[3];
+
+	if (currentAspectRatio > ASPECT_RATIO_4_3)
 	{
-		if (a1 == nullptr)
+		float aspect_ratio_adjustment = ASPECT_RATIO_4_3 / currentAspectRatio;
+
+		int adjusted_width = static_cast<int>(currentWidth * aspect_ratio_adjustment);
+		renderEntity[2] = adjusted_width;
+
+		int x_shift = (width - adjusted_width) / 2;
+		renderEntity[0] = x_shift;
+	}
+
+	return renderEntity;
+}
+
+// Hook function used to load the localization pk3 file
+static const char* __cdecl LoadLocalizationFile_Hook()
+{
+	if (!hasLookedForLocalizationFiles)
+	{
+		int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG, false);
+
+		std::string searchPath = "";
+		switch (lang)
 		{
-			return CallCmd(a1, a2);
+			case 1: searchPath = "base/loc/DEU/"; break;
+			case 2: searchPath = "base/loc/FRA/"; break;
+			case 3: searchPath = "base/loc/ESN/"; break;
+			default: searchPath = "base/loc/INT/"; break;
 		}
 
-		// Convert the input command to lowercase for case-insensitive comparison
-		std::string inputCommand(a1);
-		std::transform(inputCommand.begin(), inputCommand.end(), inputCommand.begin(), ::tolower);
+		// Get *.pk3 inside "base/loc/<lang>/"
+		pk3LocFiles = SystemHelper::GetLocPk3Files(searchPath);
 
-		// Check if the input command is in the list of commands
-		for (const auto& command : weaponCommands)
+		// Get the number of files to load
+		localizationFilesToLoad = pk3LocFiles.size();
+
+		// Loop back to this function if we got more than one file to load
+		if (localizationFilesToLoad > 0)
 		{
-			if (inputCommand == command)
-			{
-				return 0; // Return 0 if the command matches, skip the command that has been replaced
-			}
+			// Fix stack pointer after the CALL
+			char opCodeArray[] = { 0x83, 0xEC, 0x0C };
+			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
+
+			// Loop back to 4615F0 for every files
+			MemoryHelper::MakeCALL(0x41CB4E, 0x41CB32, true);
 		}
+
+		// Load the original localization file
+		hasLookedForLocalizationFiles = true;
+		return LoadLocalizationFile();
 	}
 
-	return CallCmd(a1, a2);
+	// If we still have files to load
+	if (localizationFilesToLoad > 0)
+	{
+		int currentIndex = pk3LocFiles.size() - localizationFilesToLoad;
+		localizationFilesToLoad--;
+
+		if (localizationFilesToLoad == 0)
+		{
+			// No more files, restore original instructions
+			char opCodeArray[] = { 0x33, 0xFF, 0x39, 0x7C, 0x24, 0x0C, 0x7E, 0x3F };
+			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
+		}
+
+		// Return the file path
+		return pk3LocFiles[currentIndex].c_str();
+	}
+
+	return LoadLocalizationFile();
 }
 
-/****************************************************
- * Function: TriggerMainMenu_Hook
- *
- * Description:
- *    Hook of the function used to trigger the main
- *    menu when 'Escape' is pressed
- *
- * Used For:
- *    UseConsoleTitleScreen
- ****************************************************/
-
-typedef void(__cdecl* sub_44C4F0)(int);
-sub_44C4F0 TriggerMainMenu = nullptr;
-
-static void __cdecl TriggerMainMenu_Hook(int a1)
-{
-	if (isMainMenuShown)
-	{
-		TriggerMainMenu(a1);
-	}
-	else
-	{
-		// Hack to force the main menu when on the title screen, otherwise black screen
-		PushMenu_Hook("main");
-	}
-}
-
-/****************************************************
- * Function: IsGameStarted_Hook
- *
- * Description:
- *    Hook of the function used by the "loadgame" and
- *    "savegame" commands, to determine if those can
- *    be used
- *
- * Used For:
- *    UseConsoleTitleScreen
- ****************************************************/
-
-typedef int(__cdecl* sub_449DF0)();
-sub_449DF0 IsGameStarted = nullptr;
-
-static int __cdecl IsGameStarted_Hook()
-{
-	if (isMainMenuShown)
-	{
-		return IsGameStarted();
-	}
-	else
-	{
-		// Block loadgame/savegame commands on the title screen
-		return 0;
-	}
-}
-
-/****************************************************
- * Function: PlayIntroMusic_Hook
- *
- * Description:
- *    Hook of the function used to play the music of
- *    the main menu
- *
- * Used For:
- *    FixProton & CustomControllerBindings
- ****************************************************/
-
-typedef void(__cdecl* sub_429600)();
-sub_429600 PlayIntroMusic = nullptr;
-
-static void __cdecl PlayIntroMusic_Hook()
-{
-	// Restart the engine to show the menu correctly
-	if (FixProton && !isRestartedForLinux)
-	{
-		GameHelper::CallCmd("vid_restart\n", 0);
-		isRestartedForLinux = true;
-	}
-
-	// Make sure that the controller keys are correctly binded
-	if (CustomControllerBindings && !isControllerBinded)
-	{
-		Bind(GameHelper::GetKeyId("JOY1"), "cheshire");
-		Bind(GameHelper::GetKeyId("JOY4"), "togglemenu");
-		Bind(GameHelper::GetKeyId("JOY9"), "+attackleft");
-		Bind(GameHelper::GetKeyId("JOY10"), "+attackright");
-		Bind(GameHelper::GetKeyId("JOY11"), "prevweapon");
-		Bind(GameHelper::GetKeyId("JOY12"), "nextweapon");
-		Bind(GameHelper::GetKeyId("JOY13"), "+attackleft");
-		Bind(GameHelper::GetKeyId("JOY14"), "+UseAndDown");
-		Bind(GameHelper::GetKeyId("JOY15"), "+moveup");
-		Bind(GameHelper::GetKeyId("JOY16"), "+attackright");
-		isControllerBinded = true;
-	}
-
-	PlayIntroMusic();
-}
-
-typedef MMRESULT(__cdecl* sub_4635A0)();
-sub_4635A0 UpdateControllerState = nullptr;
-
+// Hook of the function used to parse the controller state, add some more features
 static MMRESULT __cdecl UpdateControllerState_Hook()
 {
 	int xinput_state = MemoryHelper::ReadMemory<int>(0x7CF880, false);
@@ -1740,159 +1580,14 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 	return UpdateControllerState();
 }
 
-/****************************************************
- * Function: glTexParameterf_Hook
- *
- * Description:
- *    Hook of 'glTexParameterf' from OpenGL
- *
- * Used For:
- *    MaxAnisotropy
- ****************************************************/
-
-typedef void (WINAPI* opengl32_glTexParameterf)(GLenum, GLenum, GLfloat);
-opengl32_glTexParameterf original_glTexParameterf = nullptr;
-
-static void WINAPI glTexParameterf_Hook(GLenum target, GLenum pname, GLfloat param)
+// Adds borders to hide the pillarbox when scaling the menu
+static void __cdecl SetUIBorder_Hook()
 {
-	// Check if the param is a valid mipmap filter mode
-	if (param >= 0x2700 && param <= 0x2703)
-	{
-		if (!isAnisotropyRetrieved)
-		{
-			// Retrieve the maximum anisotropy level supported by the hardware
-			float maxAnisotropy;
-			glGetFloatv(0x84FF, &maxAnisotropy);
+	if (isDialog) return;
 
-			// Check if the user's MaxAnisotropy exceeds the hardware's capability
-			if (MaxAnisotropy > maxAnisotropy)
-			{
-				// Adjust to hardware-supported level
-				MaxAnisotropy = maxAnisotropy;
-			}
-
-			isAnisotropyRetrieved = true;
-		}
-
-		original_glTexParameterf(target, pname, param);
-		original_glTexParameterf(target, 0x84FE, (float)MaxAnisotropy);
-	}
-
-	original_glTexParameterf(target, pname, param);
-}
-
-typedef void (WINAPI* opengl32_glReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*);
-opengl32_glReadPixels original_glReadPixels = nullptr;
-
-static void WINAPI glReadPixels_Hook(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void* data)
-{
-	if (isTakingSaveScreenshot)
-	{
-		x = saveScreenshotX;
-		isTakingSaveScreenshot = false;
-	}
-	original_glReadPixels(x, y, width, height, format, type, data);
-}
-
-typedef int(__cdecl* sub_46D280)(int, int, int);
-sub_46D280 TakeSaveScreenshot = nullptr;
-
-static int __cdecl TakeSaveScreenshot_Hook(int a1, int a2, int a3)
-{
-	int screenshot_width = static_cast<int>(currentHeight * ASPECT_RATIO_4_3);
-	saveScreenshotX = (currentWidth - screenshot_width) / 2;
-
-	// Store the new dimension for the screenshot
-	MemoryHelper::WriteMemory<int>(0x513E44, screenshot_width, true);
-
-	// If screenshot_width is not a multiple of 4
-	if (screenshot_width % 4 != 0)
-	{
-		// Adjust the width to be the largest multiple of 4 less than currentWidth
-		screenshot_width = screenshot_width - (screenshot_width % 4);
-	}
-
-	// Redirect width read by sub_46D280
-	MemoryHelper::WriteMemory<int>(0x46D28B, 0x513E44, true);
-	MemoryHelper::WriteMemory<int>(0x46D307, 0x513E44, true);
-	MemoryHelper::WriteMemory<int>(0x46D321, 0x513E44, true);
-	MemoryHelper::WriteMemory<int>(0x46D3B7, 0x513E44, true);
-
-	// Tell glReadPixels_Hook to update the x position
-	isTakingSaveScreenshot = true;
-
-	return TakeSaveScreenshot(a1, a2, a3);
-}
-
-/****************************************************
- * Function: LoadLocalizationFile_Hook
- *
- * Description:
- *    Hook of the function used to load the localization
- *    files inside "base/loc/"
- *
- * Used For:
- *    FixLocalizationFiles
- ****************************************************/
-
-typedef char*(__cdecl* sub_4615F0)();
-sub_4615F0 LoadLocalizationFile = nullptr;
-
-static const char* __cdecl LoadLocalizationFile_Hook()
-{
-	if (!hasLookedForLocalizationFiles)
-	{
-		int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG, false);
-
-		std::string searchPath = "";
-		switch (lang)
-		{
-			case 1: searchPath = "base/loc/DEU/"; break;
-			case 2: searchPath = "base/loc/FRA/"; break;
-			case 3: searchPath = "base/loc/ESN/"; break;
-			default: searchPath = "base/loc/INT/"; break;
-		}
-
-		// Get *.pk3 inside "base/loc/<lang>/"
-		pk3LocFiles = SystemHelper::GetLocPk3Files(searchPath);
-
-		// Get the number of files to load
-	    localizationFilesToLoad = pk3LocFiles.size();
-
-		// Loop back to this function if we got more than one file to load
-		if (localizationFilesToLoad > 0)
-		{
-			// Fix stack pointer after the CALL
-			char opCodeArray[] = { 0x83, 0xEC, 0x0C };
-			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
-
-			// Loop back to 4615F0 for every files
-			MemoryHelper::MakeCALL(0x41CB4E, 0x41CB32, true);
-		}
-
-		// Load the original localization file
-		hasLookedForLocalizationFiles = true;
-		return LoadLocalizationFile();
-	}
-
-	// If we still have files to load
-	if (localizationFilesToLoad > 0)
-	{
-		int currentIndex = pk3LocFiles.size() - localizationFilesToLoad;
-		localizationFilesToLoad--;
-
-		if (localizationFilesToLoad == 0)
-		{
-			// No more files, restore original instructions
-			char opCodeArray[] = { 0x33, 0xFF, 0x39, 0x7C, 0x24, 0x0C, 0x7E, 0x3F };
-			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
-		}
-
-		// Return the file path
-		return pk3LocFiles[currentIndex].c_str();
-	}
-
-	return LoadLocalizationFile();
+	int border = GameHelper::UI_GetStaticMap(18, "border1_left");
+	RE_StretchPic_Hook(LEFT_BORDER_X_ID, 0, 0, 0, 0.0, 0.0, 1.0, 1.0, *(DWORD*)(border + 4));
+	RE_StretchPic_Hook(RIGHT_BORDER_X_ID, 0, 0, 0, 1.0, 0.0, 0.0, 1.0, *(DWORD*)(border + 4));
 }
 
 #pragma endregion Hooks with MinHook
@@ -1985,7 +1680,7 @@ static void ApplyFixHardDiskFull()
 {
 	if (!FixHardDiskFull) return;
 
-	HookHelper::ApplyHook((void*)0x41D1E0, &CheckDiskFreeSpace_Hook, reinterpret_cast<LPVOID*>(&CheckDiskFreeSpace));
+	HookHelper::ApplyHook((void*)0x41D1E0, &CheckDiskFreeSpace_Hook, (LPVOID*)&CheckDiskFreeSpace);
 }
 
 static void ApplyFixBlinkingAnimationSpeed()
@@ -2023,7 +1718,7 @@ static void ApplyFixBlinkingAnimationSpeed()
 
 static void ApplyFixStretchedHUD()
 {
-	HookHelper::ApplyHook((void*)0x446050, &SetHUDPosition_Hook, reinterpret_cast<LPVOID*>(&SetHUDPosition));
+	HookHelper::ApplyHook((void*)0x446050, &RenderHUD_Hook, (LPVOID*)&RenderHUD);
 
 	// hud_item_foldout
 	MemoryHelper::WriteMemory<float>(0x5218A8, 258.6f, true);
@@ -2035,23 +1730,23 @@ static void ApplyFixStretchedFMV()
 {
 	if (!FixStretchedFMV) return;
 
-	HookHelper::ApplyHook((void*)0x490130, &SetFMVPosition_Hook, reinterpret_cast<LPVOID*>(&SetFMVPosition));
+	HookHelper::ApplyHook((void*)0x490130, &RE_StretchRaw_Hook, (LPVOID*)&RE_StretchRaw);
 }
 
 static void ApplyFixStretchedGUI()
 {
 	if (!FixStretchedGUI) return;
 
-	HookHelper::ApplyHook((void*)0x48FC00, &RenderShader_Hook, reinterpret_cast<LPVOID*>(&RenderShader)); // UI Scaling
-	HookHelper::ApplyHook((void*)0x44B100, &SetUIBorder_Hook, reinterpret_cast<LPVOID*>(&SetUIBorder)); // Add the borders
-	HookHelper::ApplyHook((void*)0x4C0A10, &GetGlyphInfo_Hook, reinterpret_cast<LPVOID*>(&GetGlyphInfo)); // Font Scaling
-	HookHelper::ApplyHook((void*)0x4C5D30, &SetAliceMirrorViewportParams_Hook, reinterpret_cast<LPVOID*>(&SetAliceMirrorViewportParams)); // Scale Alice's 3D model in the settings menu
-	HookHelper::ApplyHook((void*)0x452CF0, &ShowDialogBoxText_Hook, reinterpret_cast<LPVOID*>(&ShowDialogBoxText));
+	HookHelper::ApplyHook((void*)0x48FC00, &RE_StretchPic_Hook, (LPVOID*)&RE_StretchPic); // UI Scaling
+	HookHelper::ApplyHook((void*)0x44B100, &SetUIBorder_Hook, (LPVOID*)&SetUIBorder); // Add the borders
+	HookHelper::ApplyHook((void*)0x4C0A10, &GetGlyphInfo_Hook, (LPVOID*)&GetGlyphInfo); // Font Scaling
+	HookHelper::ApplyHook((void*)0x4C5D30, &SetAliceMirrorViewportParams_Hook, (LPVOID*)&SetAliceMirrorViewportParams); // Scale Alice's 3D model in the settings menu
+	HookHelper::ApplyHook((void*)0x452CF0, &ShowDialogBoxText_Hook, (LPVOID*)&ShowDialogBoxText);
 	MemoryHelper::MakeNOP(0x4D2AB1, 7, true); // dark rectangle when reassigning a control
 
 	// Save screenshot
-	HookHelper::ApplyHook((void*)0x46D280, &TakeSaveScreenshot_Hook, reinterpret_cast<LPVOID*>(&TakeSaveScreenshot));
-	HookHelper::ApplyHookAPI(L"opengl32", "glReadPixels", &glReadPixels_Hook, reinterpret_cast<LPVOID*>(&original_glReadPixels));
+	HookHelper::ApplyHook((void*)0x46D280, &TakeSaveScreenshot_Hook, (LPVOID*)&TakeSaveScreenshot);
+	HookHelper::ApplyHookAPI(L"opengl32", "glReadPixels", &glReadPixels_Hook, (LPVOID*)&ori_glReadPixels);
 }
 
 static void ApplyFixDPIScaling()
@@ -2110,7 +1805,7 @@ static void ApplyFixMenuTransitionTiming()
 {
 	if (!FixMenuTransitionTiming) return;
 
-	HookHelper::ApplyHook((void*)0x44C1B0, &PushMenu_Hook, reinterpret_cast<LPVOID*>(&PushMenu));
+	HookHelper::ApplyHook((void*)0x44C1B0, &PushMenu_Hook, (LPVOID*)&PushMenu);
 
 	// Increase the time allowed to skip the intro so that the game can load properly
 	MemoryHelper::WriteMemory<int>(0x4082FC, 0x3200, true);
@@ -2120,14 +1815,14 @@ static void ApplyFixLocalizationFiles()
 {
 	if (!FixLocalizationFiles) return;
 
-	HookHelper::ApplyHook((void*)0x4615F0, &LoadLocalizationFile_Hook, reinterpret_cast<LPVOID*>(&LoadLocalizationFile));
+	HookHelper::ApplyHook((void*)0x4615F0, &LoadLocalizationFile_Hook, (LPVOID*)&LoadLocalizationFile);
 }
 
 static void ApplyFixProton()
 {
 	if (!FixProton && !CustomControllerBindings) return;
 
-	HookHelper::ApplyHook((void*)0x429600, &PlayIntroMusic_Hook, reinterpret_cast<LPVOID*>(&PlayIntroMusic));
+	HookHelper::ApplyHook((void*)0x429600, &LoadSoundtrackFile_Hook, (LPVOID*)&LoadSoundtrackFile);
 }
 
 static void ApplyLaunchWithoutAlice2()
@@ -2141,8 +1836,8 @@ static void ApplyCustomControllerBindings()
 {
 	if (!CustomControllerBindings) return;
 
-	HookHelper::ApplyHook((void*)0x4635A0, &UpdateControllerState_Hook, reinterpret_cast<LPVOID*>(&UpdateControllerState));
-	HookHelper::ApplyHook((void*)0x4158F0, &CallCmd_Hook, reinterpret_cast<LPVOID*>(&CallCmd));
+	HookHelper::ApplyHook((void*)0x4635A0, &UpdateControllerState_Hook, (LPVOID*)&UpdateControllerState);
+	HookHelper::ApplyHook((void*)0x4158F0, &CallCmd_Hook, (LPVOID*)&CallCmd);
 }
 
 static void ApplyPreventAlice2OnExit()
@@ -2164,12 +1859,12 @@ static void ApplyUseConsoleTitleScreen()
 	// Already hooked if 'FixMenuTransitionTiming' is used
 	if (!FixMenuTransitionTiming)
 	{
-		HookHelper::ApplyHook((void*)0x44C1B0, &PushMenu_Hook, reinterpret_cast<LPVOID*>(&PushMenu));
+		HookHelper::ApplyHook((void*)0x44C1B0, &PushMenu_Hook, (LPVOID*)&PushMenu);
 	}
 
-	HookHelper::ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, reinterpret_cast<LPVOID*>(&LoadUI));
-	HookHelper::ApplyHook((void*)0x44C4F0, &TriggerMainMenu_Hook, reinterpret_cast<LPVOID*>(&TriggerMainMenu));
-	HookHelper::ApplyHook((void*)0x449DF0, &IsGameStarted_Hook, reinterpret_cast<LPVOID*>(&IsGameStarted));
+	HookHelper::ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, (LPVOID*)&LoadUI);
+	HookHelper::ApplyHook((void*)0x44C4F0, &TriggerMainMenu_Hook, (LPVOID*)&TriggerMainMenu);
+	HookHelper::ApplyHook((void*)0x449DF0, &IsGameStarted_Hook, (LPVOID*)&IsGameStarted);
 }
 
 static void ApplyUseOriginalIntroVideos()
@@ -2236,19 +1931,19 @@ static void ApplyDisableRemasteredModels()
 {
 	if (!DisableRemasteredModels) return;
 
-	HookHelper::ApplyHook((void*)0x43E030, &FS_ZipLoading_Hook, reinterpret_cast<LPVOID*>(&FS_ZipLoading));
+	HookHelper::ApplyHook((void*)0x43E030, &FS_LoadZipFile_Hook, (LPVOID*)&FS_LoadZipFile);
 }
 
 static void ApplyEnableDevConsole()
 {
-	HookHelper::ApplyHook((void*)0x407870, &Bind_Hook, reinterpret_cast<LPVOID*>(&Bind));
+	HookHelper::ApplyHook((void*)0x407870, &Bind_Hook, (LPVOID*)&Bind);
 }
 
 static void ApplyCustomSavePath()
 {
 	if (!isUsingCustomSaveDir && !FixHardDiskFull) return;
 
-	HookHelper::ApplyHook((void*)0x417400, &GetSavePath_Hook, reinterpret_cast<LPVOID*>(&GetSavePath));
+	HookHelper::ApplyHook((void*)0x417400, &GetSavePath_Hook, (LPVOID*)&GetSavePath);
 }
 
 static void ApplyEnableControllerIcons()
@@ -2258,7 +1953,7 @@ static void ApplyEnableControllerIcons()
 	// Already hooked if 'UseConsoleTitleScreen' is used
 	if (!UseConsoleTitleScreen)
 	{
-		HookHelper::ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, reinterpret_cast<LPVOID*>(&LoadUI));
+		HookHelper::ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, (LPVOID*)&LoadUI);
 	}
 }
 
@@ -2274,46 +1969,46 @@ static void ApplyForceBorderlessFullscreen()
 {
 	if (!ForceBorderlessFullscreen) return;
 
-	HookHelper::ApplyHook(&CreateWindowExA, &CreateWindowExA_Hook, (LPVOID*)&fpCreateWindowExA);
+	HookHelper::ApplyHookAPI(L"user32.dll", "CreateWindowExA", &CreateWindowExA_Hook, (LPVOID*)&ori_CreateWindowExA);
 }
 
 static void ApplyCustomResolution()
 {
 	if (!CustomResolution) return;
 
-	HookHelper::ApplyHook((void*)0x47ABE0, &QGL_Init_Hook, reinterpret_cast<LPVOID*>(&QGL_Init));
+	HookHelper::ApplyHook((void*)0x47ABE0, &QGL_Init_Hook, (LPVOID*)&QGL_Init);
 }
 
 static void ApplyEnableAltF4Close()
 {
 	if (!EnableAltF4Close) return;
 
-	HookHelper::ApplyHook((void*)0x46C600, &lpfnWndProc_MSG_Hook, reinterpret_cast<LPVOID*>(&lpfnWndProc_MSG));
+	HookHelper::ApplyHook((void*)0x46C600, &lpfnWndProc_MSG_Hook, (LPVOID*)&lpfnWndProc_MSG);
 }
 
 static void ApplyAnisotropicTextureFiltering()
 {
-	HookHelper::ApplyHookAPI(L"opengl32", "glTexParameterf", &glTexParameterf_Hook, reinterpret_cast<LPVOID*>(&original_glTexParameterf));
+	HookHelper::ApplyHookAPI(L"opengl32", "glTexParameterf", &glTexParameterf_Hook, (LPVOID*)&ori_glTexParameterf);
 }
 
 static void ApplyProcessAPIPacket()
 {
-	HookHelper::ApplyHook((void*)0x420390, &ProcessAPIPacket, reinterpret_cast<LPVOID*>(&MSG_DoStuff));
+	HookHelper::ApplyHook((void*)0x420390, &ProcessSnapshot, (LPVOID*)&ParseEntityUpdates);
 }
 
 static void ApplyCvarTweaks()
 {
-	HookHelper::ApplyHook((void*)0x419910, &Cvar_Set_Hook, reinterpret_cast<LPVOID*>(&Cvar_Set));
+	HookHelper::ApplyHook((void*)0x419910, &Cvar_Set_Hook, (LPVOID*)&Cvar_Set);
 }
 
 static void ApplyResolutionChangeHook()
 {
-	HookHelper::ApplyHook((void*)0x46FC70, &GLW_CreatePFD_Hook, reinterpret_cast<LPVOID*>(&GLW_CreatePFD));
+	HookHelper::ApplyHook((void*)0x46FC70, &GLW_CreatePFD_Hook, (LPVOID*)&GLW_CreatePFD);
 }
 
 static void InitializeGameLoadingChecks()
 {
-	HookHelper::ApplyHook((void*)0x4256E0, &String_ToLower_Hook, reinterpret_cast<LPVOID*>(&String_ToLower));
+	HookHelper::ApplyHook((void*)0x4256E0, &Str_To_Lower_Hook, (LPVOID*)&Str_To_Lower);
 }
 
 #pragma endregion Apply Patches
@@ -2382,11 +2077,12 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 			}
 			break;
 		}
-		case DLL_THREAD_ATTACH:
-		case DLL_THREAD_DETACH:
 		case DLL_PROCESS_DETACH:
+		{
+			MH_Uninitialize();
 			break;
 		}
+	}
 	return TRUE;
 }
 
