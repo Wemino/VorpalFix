@@ -1157,13 +1157,13 @@ static int __cdecl TakeSaveScreenshot_Hook(int a1, int a2, int a3)
 	}
 
 	// Store the new dimension for the screenshot
-	MemoryHelper::WriteMemory<int>(0x513E44, screenshot_width, true);
+	MemoryHelper::WriteMemory<int>(CODE_CAVE_WIDTH, screenshot_width, true);
 
 	// Redirect width read by sub_46D280
-	MemoryHelper::WriteMemory<int>(0x46D28B, 0x513E44, true);
-	MemoryHelper::WriteMemory<int>(0x46D307, 0x513E44, true);
-	MemoryHelper::WriteMemory<int>(0x46D321, 0x513E44, true);
-	MemoryHelper::WriteMemory<int>(0x46D3B7, 0x513E44, true);
+	MemoryHelper::WriteMemory<int>(0x46D28B, CODE_CAVE_WIDTH, true);
+	MemoryHelper::WriteMemory<int>(0x46D307, CODE_CAVE_WIDTH, true);
+	MemoryHelper::WriteMemory<int>(0x46D321, CODE_CAVE_WIDTH, true);
+	MemoryHelper::WriteMemory<int>(0x46D3B7, CODE_CAVE_WIDTH, true);
 
 	// Tell glReadPixels_Hook to update the x position
 	isTakingSaveScreenshot = true;
@@ -1194,20 +1194,20 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 	}
 
 	// Note: Not necessary if 'FixStretchedGUI' is enabled, due to 'TakeSaveScreenshot_Hook'
-	if (FixSaveScreenshotBufferOverflow)
+	if (FixSaveScreenshotBufferOverflow && !FixStretchedGUI)
 	{
 		// currentWidth is not a multiple of 4?
 		if (currentWidth % 4 != 0)
 		{
 			// Adjust the width to be the largest multiple of 4 less than currentWidth
 			int safeWidth = currentWidth - (currentWidth % 4);
-			MemoryHelper::WriteMemory<int>(0x513E40, safeWidth, true);
+			MemoryHelper::WriteMemory<int>(CODE_CAVE_WIDTH, safeWidth, true);
 
 			// Redirect the width read by sub_46D280 to the safe width
-			MemoryHelper::WriteMemory<int>(0x46D28B, 0x513E40, true);
-			MemoryHelper::WriteMemory<int>(0x46D307, 0x513E40, true);
-			MemoryHelper::WriteMemory<int>(0x46D321, 0x513E40, true);
-			MemoryHelper::WriteMemory<int>(0x46D3B7, 0x513E40, true);
+			MemoryHelper::WriteMemory<int>(0x46D28B, CODE_CAVE_WIDTH, true);
+			MemoryHelper::WriteMemory<int>(0x46D307, CODE_CAVE_WIDTH, true);
+			MemoryHelper::WriteMemory<int>(0x46D321, CODE_CAVE_WIDTH, true);
+			MemoryHelper::WriteMemory<int>(0x46D3B7, CODE_CAVE_WIDTH, true);
 		}
 		else
 		{
