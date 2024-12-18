@@ -1782,7 +1782,7 @@ static void ApplyFixDPIScaling()
 			}
 		}
 	}
-	else if (IsWindows7OrGreater())
+	else if (IsWindowsVistaOrGreater())
 	{
 		library = LoadLibrary(L"user32.dll");
 		if (library)
