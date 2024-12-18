@@ -1177,12 +1177,11 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 	// Resolution updated, update the variables
 	currentWidth = MemoryHelper::ReadMemory<int>(CURRENT_WIDTH_ADDR, false);
 	currentHeight = MemoryHelper::ReadMemory<int>(CURRENT_HEIGHT_ADDR, false);
+	currentAspectRatio = static_cast<float>(currentWidth) / static_cast<float>(currentHeight);
 
 	// Scale the FOV for non-4:3 aspect ratios
 	if (AutoFOV)
 	{
-		currentAspectRatio = static_cast<float>(currentWidth) / static_cast<float>(currentHeight);
-
 		float vFOV = 2.0 * atan(tan(90.0 * M_PI / 180.0 / 2.0) / ASPECT_RATIO_4_3);
 		FOV = 2.0 * atan(tan(vFOV / 2.0) * currentAspectRatio) * 180.0 / M_PI;
 	}
