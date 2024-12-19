@@ -156,8 +156,9 @@ int(__cdecl* RE_StretchRaw)(int, int, int, int, int, int, int) = nullptr; // 0x4
 DWORD(__thiscall* UISetCvars)(DWORD*, char*) = nullptr; // 0x4B9FD0
 BYTE(__thiscall* LoadUI)(DWORD*, char*) = nullptr; // 0x4C1AC0
 int(__thiscall* GetGlyphInfo)(int, float, float, int, int, float, float, float, float, float) = nullptr; // 0x4C0A10
-DWORD* (__cdecl* SetAliceMirrorViewportParams)(DWORD*, float, float, float, float, float) = nullptr; // 0x4C5D30
+DWORD*(__cdecl* SetAliceMirrorViewportParams)(DWORD*, float, float, float, float, float) = nullptr; // 0x4C5D30
 int(__thiscall* UpdateHeadOrientationFromMouse)(int, float*, int, float*, float*) = nullptr; // 0x4C6050
+BOOL(WINAPI* ori_GetDiskFreeSpaceA)(LPCSTR, LPDWORD, LPDWORD, LPDWORD, LPDWORD);
 HWND(WINAPI* ori_CreateWindowExA)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
 void(WINAPI* ori_glTexParameterf)(GLenum, GLenum, GLfloat);
 void(WINAPI* ori_glReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*);
@@ -552,8 +553,8 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 // Hook to redirect texture file reads to correct paths in 'pak5_mod.pk3'
 static int __cdecl FS_FOpenFileRead_Hook(char* Source, int* a2, int a3, int a4)
 {
-	// Fast check for "els/char" substring in the file path
-	if (*reinterpret_cast<uint64_t*>(Source + 3) == 0x726168632F736C65)
+	// Fast check for "s/ch" substring in the file path and if the character name start with either 'c' or 'm'
+	if (*reinterpret_cast<uint32_t*>(Source + 5) == 0x68632F73 && (Source[18] == 'c' || Source[18] == 'm'))
 	{
 		for (int i = 0; i < 9; i++)
 		{
@@ -584,7 +585,9 @@ static int __cdecl CheckDiskFreeSpace_Hook()
 
 		// If the free space is >= 0x80000000, cap it at 0x7FFFFFFF instead of 0x80000000
 		if (freeSpaceInKB >= 0x80000000)
+		{
 			freeSpaceInKB = 0x7FFFFFFF;
+		}
 
 		return (int)freeSpaceInKB;
 	}
@@ -1193,7 +1196,7 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 	}
 
 	// Note: Not necessary if 'FixStretchedGUI' is enabled, due to 'TakeSaveScreenshot_Hook'
-	if (FixSaveScreenshotBufferOverflow && !FixStretchedGUI)
+	if (!FixStretchedGUI && FixSaveScreenshotBufferOverflow)
 	{
 		// currentWidth is not a multiple of 4?
 		if (currentWidth % 4 != 0)
@@ -1219,7 +1222,7 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 	}
 
 	// Disable console title screen for aspect ratios greater than 21:9 
-	if (currentAspectRatio > 2.0f)
+	if (UseConsoleTitleScreen && currentAspectRatio > 2.0f)
 	{
 		UseConsoleTitleScreen = false;
 	}
@@ -1542,7 +1545,7 @@ static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_po
 		// Special case for credits
 		if (a8 == -8.0)
 		{
-			adjusted_font_scale_width *= 0.9f;
+			//adjusted_font_x_position *= 0.8f;
 		}
 
 		// Adjust the position of the text for the dialog box
@@ -1942,8 +1945,6 @@ static void ApplyEnableDevConsole()
 
 static void ApplyCustomSavePath()
 {
-	if (!isUsingCustomSaveDir && !FixHardDiskFull) return;
-
 	HookHelper::ApplyHook((void*)0x417400, &GetSavePath_Hook, (LPVOID*)&GetSavePath);
 }
 
