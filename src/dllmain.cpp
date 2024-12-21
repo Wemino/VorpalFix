@@ -29,6 +29,7 @@ const int DISPLAY_MODE_NUM = 0x7D40C8;
 const int TOTAL_FRAME_TIME = 0x11C8AA0;
 const int UI_WAIT_TIMER = 0x12EF948;
 const int CURRENT_WEAPON_ID = 0x12F3D60;
+const int IS_IN_MENU = 0x14EB498;
 const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
 const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
 const int DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
@@ -66,6 +67,7 @@ bool isAnisotropyRetrieved = false;
 bool isInSettingMenu = false;
 bool isTakingSaveScreenshot = false;
 int saveScreenshotX = 0;
+bool isInCredits = false;
 
 bool hasLookedForLocalizationFiles = false;
 size_t localizationFilesToLoad = 0;
@@ -77,7 +79,7 @@ char* lastWeaponIdUp = nullptr;
 char* lastWeaponIdDown = nullptr;
 char* lastWeaponIdLeft = nullptr;
 char* lastWeaponIdRight = nullptr;
-const char* weaponCommands[] = 
+const char* weaponCommands[] =
 {
 	"use watch",
 	"use knife",
@@ -92,7 +94,7 @@ const char* weaponCommands[] =
 };
 
 bool isUsingBrokenPak5 = false;
-const char* correctPaths[] = 
+const char* correctPaths[] =
 {
 	"models/characters/cheshire/skin01.ftx",
 	"models/characters/cheshire/skin02.ftx",
@@ -105,7 +107,7 @@ const char* correctPaths[] =
 	"models/characters/mock_turtle/mturt.ftx"
 };
 
-const char* brokenPaths[] = 
+const char* brokenPaths[] =
 {
 	"models/characters/cheshire_cat/skin01.ftx",
 	"models/characters/cheshire_cat/skin02.ftx",
@@ -142,6 +144,7 @@ int(__cdecl* RenderHUD)(float, float, float, float, int, float*, float*, float*,
 int(__cdecl* IsGameStarted)() = nullptr; // 0x449DF0
 void(__cdecl* SetUIBorder)() = nullptr; // 0x44B100
 int(__cdecl* PushMenu)(const char*) = nullptr; // 0x44C1B0
+int(__cdecl* ForceMenu)(const char*) = nullptr; // 0x44C280
 void(__cdecl* TriggerMainMenu)(int) = nullptr; // 0x44C4F0
 void(__thiscall* ShowDialogBoxText)(int) = nullptr; // 0x452CF0
 const char* (__cdecl* LoadLocalizationFile)() = nullptr; // 0x4615F0
@@ -153,12 +156,13 @@ int(__cdecl* GLW_CreatePFD)(void*, unsigned __int8, char, unsigned __int8, int) 
 int(__cdecl* QGL_Init)(LPCSTR) = nullptr; // 0x47ABE0
 int(__cdecl* RE_StretchPic)(float, float, float, float, float, float, float, float, int) = nullptr; // 0x48FC00
 int(__cdecl* RE_StretchRaw)(int, int, int, int, int, int, int) = nullptr; // 0x490130
+int(__cdecl* UpdateRenderContext)(int, int, int, int, float, float, float, float, float, float) = nullptr; // 0x4907F0
+int(__cdecl* ConfigureScissor)(int, int, int, int) = nullptr; // 0x4908D0
 DWORD(__thiscall* UISetCvars)(DWORD*, char*) = nullptr; // 0x4B9FD0
 BYTE(__thiscall* LoadUI)(DWORD*, char*) = nullptr; // 0x4C1AC0
 int(__thiscall* GetGlyphInfo)(int, float, float, int, int, float, float, float, float, float) = nullptr; // 0x4C0A10
-DWORD*(__cdecl* SetAliceMirrorViewportParams)(DWORD*, float, float, float, float, float) = nullptr; // 0x4C5D30
+DWORD* (__cdecl* SetAliceMirrorViewportParams)(DWORD*, float, float, float, float, float) = nullptr; // 0x4C5D30
 int(__thiscall* UpdateHeadOrientationFromMouse)(int, float*, int, float*, float*) = nullptr; // 0x4C6050
-BOOL(WINAPI* ori_GetDiskFreeSpaceA)(LPCSTR, LPDWORD, LPDWORD, LPDWORD, LPDWORD);
 HWND(WINAPI* ori_CreateWindowExA)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
 void(WINAPI* ori_glTexParameterf)(GLenum, GLenum, GLfloat);
 void(WINAPI* ori_glReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*);
@@ -901,6 +905,15 @@ static int __cdecl IsGameStarted_Hook()
 // Hook of the "pushmenu" command
 static int __cdecl PushMenu_Hook(const char* menu_name)
 {
+	if (FixStretchedGUI && strcmp(menu_name, "credits") == 0)
+	{
+		isInCredits = true;
+	}
+	else
+	{
+		isInCredits = false;
+	}
+
 	if (FixMenuTransitionTiming && strcmp(menu_name, "newgame") == 0)
 	{
 		// Clicking too fast and one time on any difficulty won't remove the menu from the FMV, add a delay
@@ -919,6 +932,21 @@ static int __cdecl PushMenu_Hook(const char* menu_name)
 	{
 		return PushMenu(menu_name);
 	}
+}
+
+// Hook of the "forcemenu" command
+static int __cdecl ForceMenu_Hook(const char* menu_name)
+{
+	if (FixStretchedGUI && strcmp(menu_name, "credits") == 0)
+	{
+		isInCredits = true;
+	}
+	else
+	{
+		isInCredits = false;
+	}
+
+	return ForceMenu(menu_name);
 }
 
 // Hook of the function used to trigger the main menu when 'Escape' is pressed
@@ -1355,13 +1383,28 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
 
+		// Credits
+		if (isInCredits)
+		{
+			// Don't check for credits when in-game
+			if (MemoryHelper::ReadMemory<int>(IS_IN_MENU, false) == 0)
+			{
+				isInCredits = false;
+			}
+
+			if (strcmp(ShaderName, "ui/bar") == 0 || strcmp(ShaderName, "ui/credits/alice") == 0 || strcmp(ShaderName, "ui/credits/bill") == 0)
+			{
+				return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+			}
+		}
+
 		// Full screen effects
 		if (strcmp(ShaderName, "textures/special/drugfade") == 0 || strcmp(ShaderName, "textures/special/icefade") == 0)
 		{
 			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
 
-		// Pop-up message
+		// Pop-up message that does not scale well with this function
 		if (strcmp(ShaderName, "ui/control/press_any_key") == 0)
 		{
 			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
@@ -1416,6 +1459,50 @@ static int __cdecl RE_StretchRaw_Hook(int x_position, int y_position, int resolu
 	}
 
 	return RE_StretchRaw(x_position, y_position, video_width, resolution_height, a5, a6, a7);
+}
+
+// Adjust the scaling of the 'AutoScroll' control in credits
+static int __cdecl UpdateRenderContext_Hook(int x, int y, int width, int height, float a5, float a6, float a7, float a8, float a9, float a10)
+{
+	if (isInCredits && x != 0)
+	{
+		float target_width = currentHeight * ASPECT_RATIO_4_3;
+
+		if (currentAspectRatio > ASPECT_RATIO_4_3)
+		{
+			float scale_factor = target_width / currentWidth;
+			float horizontal_offset = (currentWidth - target_width) / 2.0f;
+
+			GLint adjusted_x = static_cast<GLint>((x * scale_factor) + horizontal_offset);
+			GLsizei adjusted_width = static_cast<GLsizei>(width * scale_factor);
+
+			return UpdateRenderContext(adjusted_x, y, adjusted_width, height, a5, a6, a7, a8, a9, a10);
+		}
+	}
+
+	return UpdateRenderContext(x, y, width, height, a5, a6, a7, a8, a9, a10);
+}
+
+// Used right after 'UpdateRenderContext', do the same adjustements
+static int __cdecl ConfigureScissor_Hook(int x, int y, int width, int height)
+{
+	if (isInCredits && x != 0)
+	{
+		float target_width = currentHeight * ASPECT_RATIO_4_3;
+
+		if (currentAspectRatio > ASPECT_RATIO_4_3)
+		{
+			float scale_factor = target_width / currentWidth;
+			float horizontal_offset = (currentWidth - target_width) / 2.0f;
+
+			GLint adjusted_x = static_cast<GLint>((x * scale_factor) + horizontal_offset);
+			GLsizei adjusted_width = static_cast<GLsizei>(width * scale_factor);
+
+			return ConfigureScissor(adjusted_x, y, adjusted_width, height);
+		}
+	}
+
+	return ConfigureScissor(x, y, width, height);
 }
 
 // Load the menu files from 'pak6_VorpalFix.pk3' when required
@@ -1519,8 +1606,8 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 // Scale the font
 static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_position, float font_y_position, int a4, int a5, float a6, float a7, float a8, float font_scale_width, float font_scale_height)
 {
-	// Don't mess with the console
-	if (font_x_position <= 3.0)
+	// Don't mess with the console or with the credits
+	if (font_x_position <= 3.0 || isInCredits)
 	{
 		return GetGlyphInfo(this_ptr, font_x_position, font_y_position, a4, a5, a6, a7, a8, font_scale_width, font_scale_height);
 	}
@@ -1542,12 +1629,6 @@ static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_po
 		float adjusted_font_y_position = font_y_position * height_scale_factor;
 		float adjusted_font_scale_height = font_scale_height * height_scale_factor;
 
-		// Special case for credits
-		if (a8 == -8.0)
-		{
-			//adjusted_font_x_position *= 0.8f;
-		}
-
 		// Adjust the position of the text for the dialog box
 		if (isDialog)
 		{
@@ -1568,8 +1649,6 @@ static DWORD* __cdecl SetAliceMirrorViewportParams_Hook(DWORD* a1, float param_x
 	DWORD* renderEntity = SetAliceMirrorViewportParams(a1, param_x, param_y, param_width, param_height, param_fov);
 
 	int width = renderEntity[2];
-	int height = renderEntity[3];
-
 	if (currentAspectRatio > ASPECT_RATIO_4_3)
 	{
 		float aspect_ratio_adjustment = ASPECT_RATIO_4_3 / currentAspectRatio;
@@ -1589,7 +1668,7 @@ static void __cdecl SetUIBorder_Hook()
 {
 	if (isDialog) return;
 
-	int border = GameHelper::UI_GetStaticMap(18, "border1_left");
+	int border = GameHelper::UI_GetStaticMap(18, "border1_left.tga");
 	RE_StretchPic_Hook(LEFT_BORDER_X_ID, 0, 0, 0, 0.0, 0.0, 1.0, 1.0, *(DWORD*)(border + 4));
 	RE_StretchPic_Hook(RIGHT_BORDER_X_ID, 0, 0, 0, 1.0, 0.0, 0.0, 1.0, *(DWORD*)(border + 4));
 }
@@ -1602,6 +1681,7 @@ static void ApplyFixSoundRandomization()
 {
 	if (!FixSoundRandomization) return;
 
+	// Instructions from the 2000 version, ported to the remaster
 	unsigned char portedInstructions[0x3C0] = {
 		// sub_423770
 		0x8B, 0x44, 0x24, 0x0C, 0x8B, 0x4C, 0x24, 0x10, 0x83, 0xEC, 0x28, 0xC7, 0x00, 0xFF, 0xFF, 0xFF,
@@ -1746,11 +1826,16 @@ static void ApplyFixStretchedGUI()
 	HookHelper::ApplyHook((void*)0x4C0A10, &GetGlyphInfo_Hook, (LPVOID*)&GetGlyphInfo); // Font Scaling
 	HookHelper::ApplyHook((void*)0x4C5D30, &SetAliceMirrorViewportParams_Hook, (LPVOID*)&SetAliceMirrorViewportParams); // Scale Alice's 3D model in the settings menu
 	HookHelper::ApplyHook((void*)0x452CF0, &ShowDialogBoxText_Hook, (LPVOID*)&ShowDialogBoxText);
-	MemoryHelper::MakeNOP(0x4D2AB1, 7, true); // dark rectangle when reassigning a control
+	MemoryHelper::MakeNOP(0x4D2AB1, 7, true); // Dark rectangle when reassigning a control
 
 	// Save screenshot
 	HookHelper::ApplyHook((void*)0x46D280, &TakeSaveScreenshot_Hook, (LPVOID*)&TakeSaveScreenshot);
 	HookHelper::ApplyHookAPI(L"opengl32", "glReadPixels", &glReadPixels_Hook, (LPVOID*)&ori_glReadPixels);
+
+	// AutoScroll credits scaling
+	HookHelper::ApplyHook((void*)0x4907F0, &UpdateRenderContext_Hook, (LPVOID*)&UpdateRenderContext);
+	HookHelper::ApplyHook((void*)0x4908D0, &ConfigureScissor_Hook, (LPVOID*)&ConfigureScissor);
+	HookHelper::ApplyHook((void*)0x44C280, &ForceMenu_Hook, (LPVOID*)&ForceMenu); // Indicate when the credits start after the final boss
 }
 
 static void ApplyFixDPIScaling()
@@ -1807,9 +1892,9 @@ static void ApplyFixDPIScaling()
 
 static void ApplyFixMenuTransitionTiming()
 {
-	if (!FixMenuTransitionTiming) return;
-
 	HookHelper::ApplyHook((void*)0x44C1B0, &PushMenu_Hook, (LPVOID*)&PushMenu);
+
+	if (!FixMenuTransitionTiming) return;
 
 	// Increase the time allowed to skip the intro so that the game can load properly
 	MemoryHelper::WriteMemory<int>(0x4082FC, 0x3200, true);
@@ -1860,12 +1945,6 @@ static void ApplyUseConsoleTitleScreen()
 {
 	if (!UseConsoleTitleScreen) return;
 
-	// Already hooked if 'FixMenuTransitionTiming' is used
-	if (!FixMenuTransitionTiming)
-	{
-		HookHelper::ApplyHook((void*)0x44C1B0, &PushMenu_Hook, (LPVOID*)&PushMenu);
-	}
-
 	HookHelper::ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, (LPVOID*)&LoadUI);
 	HookHelper::ApplyHook((void*)0x44C4F0, &TriggerMainMenu_Hook, (LPVOID*)&TriggerMainMenu);
 	HookHelper::ApplyHook((void*)0x449DF0, &IsGameStarted_Hook, (LPVOID*)&IsGameStarted);
@@ -1875,6 +1954,7 @@ static void ApplyUseOriginalIntroVideos()
 {
 	if (!UseOriginalIntroVideos) return;
 
+	// Instructions from the 2000 version, ported to the remaster
 	unsigned char portedIntroData[0x270] = {
 		0x8B, 0x0D, 0x20, 0xCA, 0x7C, 0x00, 0x83, 0xEC, 0x40, 0xB8, 0x01, 0x00, 0x00, 0x00, 0x56, 0x33,
 		0xF6, 0x41, 0x83, 0xF9, 0x65, 0x0F, 0x87, 0xE8, 0x00, 0x00, 0x00, 0x33, 0xD2, 0x8A, 0x91, 0x64,
