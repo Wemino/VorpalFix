@@ -1473,8 +1473,8 @@ static int __cdecl UpdateRenderContext_Hook(int x, int y, int width, int height,
 			float scale_factor = target_width / currentWidth;
 			float horizontal_offset = (currentWidth - target_width) / 2.0f;
 
-			GLint adjusted_x = static_cast<GLint>((x * scale_factor) + horizontal_offset);
-			GLsizei adjusted_width = static_cast<GLsizei>(width * scale_factor);
+			int adjusted_x = (x * scale_factor) + horizontal_offset;
+			int adjusted_width = width * scale_factor;
 
 			return UpdateRenderContext(adjusted_x, y, adjusted_width, height, a5, a6, a7, a8, a9, a10);
 		}
@@ -1495,8 +1495,8 @@ static int __cdecl ConfigureScissor_Hook(int x, int y, int width, int height)
 			float scale_factor = target_width / currentWidth;
 			float horizontal_offset = (currentWidth - target_width) / 2.0f;
 
-			GLint adjusted_x = static_cast<GLint>((x * scale_factor) + horizontal_offset);
-			GLsizei adjusted_width = static_cast<GLsizei>(width * scale_factor);
+			int adjusted_x = (x * scale_factor) + horizontal_offset;
+			int adjusted_width = width * scale_factor;
 
 			return ConfigureScissor(adjusted_x, y, adjusted_width, height);
 		}
