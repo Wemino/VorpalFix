@@ -156,8 +156,8 @@ int(__cdecl* GLW_CreatePFD)(void*, unsigned __int8, char, unsigned __int8, int) 
 int(__cdecl* QGL_Init)(LPCSTR) = nullptr; // 0x47ABE0
 int(__cdecl* RE_StretchPic)(float, float, float, float, float, float, float, float, int) = nullptr; // 0x48FC00
 int(__cdecl* RE_StretchRaw)(int, int, int, int, int, int, int) = nullptr; // 0x490130
-int(__cdecl* UpdateRenderContext)(int, int, int, int, float, float, float, float, float, float) = nullptr; // 0x4907F0
-int(__cdecl* ConfigureScissor)(int, int, int, int) = nullptr; // 0x4908D0
+void(__cdecl* UpdateRenderContext)(int, int, int, int, float, float, float, float, float, float) = nullptr; // 0x4907F0
+void(__cdecl* ConfigureScissor)(int, int, int, int) = nullptr; // 0x4908D0
 DWORD(__thiscall* UISetCvars)(DWORD*, char*) = nullptr; // 0x4B9FD0
 BYTE(__thiscall* LoadUI)(DWORD*, char*) = nullptr; // 0x4C1AC0
 int(__thiscall* GetGlyphInfo)(int, float, float, int, int, float, float, float, float, float) = nullptr; // 0x4C0A10
@@ -506,9 +506,7 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		skipAutoResolution = true;
 
 		// Get config file path
-		const char* configFile = (MemoryHelper::ReadMemory<int>(CURRENT_LANG, false) == 2)
-			? "config_pc_fra.cfg"
-			: "config.cfg";
+		const char* configFile = (MemoryHelper::ReadMemory<int>(CURRENT_LANG, false) == 2) ? "config_pc_fra.cfg" : "config.cfg";
 
 		std::string directoryPath = GetSavePath_Hook();
 		std::filesystem::path configFilePath = std::filesystem::path(directoryPath) / configFile;
@@ -575,7 +573,7 @@ static int __cdecl FS_FOpenFileRead_Hook(char* Source, int* a2, int a3, int a4)
 	return FS_FOpenFileRead(Source, a2, a3, a4);
 }
 
-// Calculate the free space on the disk used to store the save data
+// Reimplementation of 'sub_41D1E0' to fix free space reporting and ensure accurate target disk
 static int __cdecl CheckDiskFreeSpace_Hook()
 {
 	unsigned __int64 freeBytesAvailable = 0;
@@ -954,10 +952,10 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 		std::string searchPath = "";
 		switch (lang)
 		{
-		case 1: searchPath = "base/loc/DEU/"; break;
-		case 2: searchPath = "base/loc/FRA/"; break;
-		case 3: searchPath = "base/loc/ESN/"; break;
-		default: searchPath = "base/loc/INT/"; break;
+			case 1: searchPath = "base/loc/DEU/"; break;
+			case 2: searchPath = "base/loc/FRA/"; break;
+			case 3: searchPath = "base/loc/ESN/"; break;
+			default: searchPath = "base/loc/INT/"; break;
 		}
 
 		// Get *.pk3 inside "base/loc/<lang>/"
@@ -1015,21 +1013,21 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 		int dpadId = -1;
 		switch (xinput_state & 0x0F)
 		{
-		case 0x01: // D-Pad Up
-			dpadId = 1;
-			break;
-		case 0x02: // D-Pad Down
-			dpadId = 2;
-			break;
-		case 0x04: // D-Pad Left
-			dpadId = 3;
-			break;
-		case 0x08: // D-Pad Right
-			dpadId = 4;
-			break;
-		default:
-			dpadId = -1; // No matching D-Pad button pressed
-			break;
+			case 0x01: // D-Pad Up
+				dpadId = 1;
+				break;
+			case 0x02: // D-Pad Down
+				dpadId = 2;
+				break;
+			case 0x04: // D-Pad Left
+				dpadId = 3;
+				break;
+			case 0x08: // D-Pad Right
+				dpadId = 4;
+				break;
+			default:
+				dpadId = -1; // No matching D-Pad button pressed
+				break;
 		}
 
 		int currentWeaponId = MemoryHelper::ReadMemory<int>(CURRENT_WEAPON_ID, false);
@@ -1039,18 +1037,18 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 
 			switch (dpadId)
 			{
-			case 1:
-				lastWeaponSet = &lastWeaponIdUp;
-				break;
-			case 2:
-				lastWeaponSet = &lastWeaponIdDown;
-				break;
-			case 3:
-				lastWeaponSet = &lastWeaponIdLeft;
-				break;
-			case 4:
-				lastWeaponSet = &lastWeaponIdRight;
-				break;
+				case 1:
+					lastWeaponSet = &lastWeaponIdUp;
+					break;
+				case 2:
+					lastWeaponSet = &lastWeaponIdDown;
+					break;
+				case 3:
+					lastWeaponSet = &lastWeaponIdLeft;
+					break;
+				case 4:
+					lastWeaponSet = &lastWeaponIdRight;
+					break;
 			}
 
 			char* currentWeaponName = GameHelper::GetWeaponName(currentWeaponId);
@@ -1076,18 +1074,18 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 					// Bind the new command
 					switch (dpadId)
 					{
-					case 1:
-						Bind(GameHelper::GetKeyId("JOY5"), weaponCommand);
-						break;
-					case 2:
-						Bind(GameHelper::GetKeyId("JOY7"), weaponCommand);
-						break;
-					case 3:
-						Bind(GameHelper::GetKeyId("JOY8"), weaponCommand);
-						break;
-					case 4:
-						Bind(GameHelper::GetKeyId("JOY6"), weaponCommand);
-						break;
+						case 1:
+							Bind(GameHelper::GetKeyId("JOY5"), weaponCommand);
+							break;
+						case 2:
+							Bind(GameHelper::GetKeyId("JOY7"), weaponCommand);
+							break;
+						case 3:
+							Bind(GameHelper::GetKeyId("JOY8"), weaponCommand);
+							break;
+						case 4:
+							Bind(GameHelper::GetKeyId("JOY6"), weaponCommand);
+							break;
 					}
 				}
 			}
@@ -1427,7 +1425,7 @@ static int __cdecl RE_StretchRaw_Hook(int x_position, int y_position, int resolu
 }
 
 // Adjust the scaling of the 'AutoScroll' control in credits
-static int __cdecl UpdateRenderContext_Hook(int x, int y, int width, int height, float a5, float a6, float a7, float a8, float a9, float a10)
+static void __cdecl UpdateRenderContext_Hook(int x, int y, int width, int height, float a5, float a6, float a7, float a8, float a9, float a10)
 {
 	if (isInCredits && x != 0)
 	{
@@ -1441,15 +1439,17 @@ static int __cdecl UpdateRenderContext_Hook(int x, int y, int width, int height,
 			int adjusted_x = (x * scale_factor) + horizontal_offset;
 			int adjusted_width = width * scale_factor;
 
-			return UpdateRenderContext(adjusted_x, y, adjusted_width, height, a5, a6, a7, a8, a9, a10);
+			UpdateRenderContext(adjusted_x, y, adjusted_width, height, a5, a6, a7, a8, a9, a10);
 		}
 	}
-
-	return UpdateRenderContext(x, y, width, height, a5, a6, a7, a8, a9, a10);
+	else
+	{
+		UpdateRenderContext(x, y, width, height, a5, a6, a7, a8, a9, a10);
+	}
 }
 
 // Used right after 'UpdateRenderContext', do the same adjustements
-static int __cdecl ConfigureScissor_Hook(int x, int y, int width, int height)
+static void __cdecl ConfigureScissor_Hook(int x, int y, int width, int height)
 {
 	if (isInCredits && x != 0)
 	{
@@ -1463,11 +1463,13 @@ static int __cdecl ConfigureScissor_Hook(int x, int y, int width, int height)
 			int adjusted_x = (x * scale_factor) + horizontal_offset;
 			int adjusted_width = width * scale_factor;
 
-			return ConfigureScissor(adjusted_x, y, adjusted_width, height);
+			ConfigureScissor(adjusted_x, y, adjusted_width, height);
 		}
 	}
-
-	return ConfigureScissor(x, y, width, height);
+	else
+	{
+		ConfigureScissor(x, y, width, height);
+	}
 }
 
 // Load the menu files from 'pak6_VorpalFix.pk3' when required
@@ -1569,12 +1571,12 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 }
 
 // Scale the font
-static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_position, float font_y_position, int a4, int a5, float a6, float a7, float a8, float font_scale_width, float font_scale_height)
+static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_position, float font_y_position, int a4, int a5, float a6, float a7, float font_spacing, float font_scale_width, float font_scale_height)
 {
 	// Don't mess with the console or with the credits
-	if (font_x_position <= 3.0 || isInCredits)
+	if (font_x_position <= 3.0 || font_spacing == -8.0)
 	{
-		return GetGlyphInfo(this_ptr, font_x_position, font_y_position, a4, a5, a6, a7, a8, font_scale_width, font_scale_height);
+		return GetGlyphInfo(this_ptr, font_x_position, font_y_position, a4, a5, a6, a7, font_spacing, font_scale_width, font_scale_height);
 	}
 
 	if (currentAspectRatio > ASPECT_RATIO_4_3)
@@ -1600,11 +1602,11 @@ static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_po
 			adjusted_font_x_position = (font_x_position * width_scale_factor) + horizontal_offset * 0.6f;
 		}
 
-		return GetGlyphInfo(this_ptr, adjusted_font_x_position, adjusted_font_y_position, a4, a5, a6, a7, a8, adjusted_font_scale_width, adjusted_font_scale_height);
+		return GetGlyphInfo(this_ptr, adjusted_font_x_position, adjusted_font_y_position, a4, a5, a6, a7, font_spacing, adjusted_font_scale_width, adjusted_font_scale_height);
 	}
 	else
 	{
-		return GetGlyphInfo(this_ptr, font_x_position, font_y_position, a4, a5, a6, a7, a8, font_scale_width, font_scale_height);
+		return GetGlyphInfo(this_ptr, font_x_position, font_y_position, a4, a5, a6, a7, font_spacing, font_scale_width, font_scale_height);
 	}
 }
 
@@ -1647,7 +1649,8 @@ static void ApplyFixSoundRandomization()
 	if (!FixSoundRandomization) return;
 
 	// Instructions from the 2000 version, ported to the remaster
-	unsigned char portedInstructions[0x3C0] = {
+	unsigned char portedInstructions[0x3C0] = 
+	{
 		// sub_423770
 		0x8B, 0x44, 0x24, 0x0C, 0x8B, 0x4C, 0x24, 0x10, 0x83, 0xEC, 0x28, 0xC7, 0x00, 0xFF, 0xFF, 0xFF,
 		0xFF, 0x8B, 0x44, 0x24, 0x2C, 0x53, 0x55, 0x56, 0x57, 0x85, 0xC0, 0xC7, 0x01, 0xFF, 0xFF, 0xFF,
@@ -1930,7 +1933,8 @@ static void ApplyUseOriginalIntroVideos()
 	if (!UseOriginalIntroVideos) return;
 
 	// Instructions from the 2000 version, ported to the remaster
-	unsigned char portedIntroData[0x270] = {
+	unsigned char portedIntroData[0x270] = 
+	{
 		0x8B, 0x0D, 0x20, 0xCA, 0x7C, 0x00, 0x83, 0xEC, 0x40, 0xB8, 0x01, 0x00, 0x00, 0x00, 0x56, 0x33,
 		0xF6, 0x41, 0x83, 0xF9, 0x65, 0x0F, 0x87, 0xE8, 0x00, 0x00, 0x00, 0x33, 0xD2, 0x8A, 0x91, 0x64,
 		0x3D, 0x51, 0x00, 0xFF, 0x24, 0x95, 0x40, 0x3D, 0x51, 0x00, 0xBE, 0x88, 0x13, 0x00, 0x00, 0xE9,
