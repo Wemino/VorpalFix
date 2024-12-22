@@ -1769,10 +1769,20 @@ static void ApplyFixStretchedHUD()
 {
 	HookHelper::ApplyHook((void*)0x446050, &RenderHUD_Hook, (LPVOID*)&RenderHUD);
 
-	// hud_item_foldout
-	MemoryHelper::WriteMemory<float>(0x5218A8, 258.6f, true);
-	// hud_weapon_foldout
-	MemoryHelper::WriteMemory<float>(0x5218F8, -258.6f, true);
+	// Necessary for 'ConsolePortHUD', positioning similar to the console version
+	MemoryHelper::WriteMemory<float>(0x5218A8, 263.0f, true); // hud_item_foldout
+	MemoryHelper::WriteMemory<float>(0x5218F8, -263.0f, true); // hud_weapon_foldout
+
+	// Improve HUD positioning
+	if (FixStretchedHUD)
+	{
+		// Show more of the switching animation
+		MemoryHelper::WriteMemory<float>(0x5218A8, 258.6f, true); // hud_item_foldout
+		MemoryHelper::WriteMemory<float>(0x5218F8, -258.6f, true); // hud_weapon_foldout
+		// Show more of both bars
+		MemoryHelper::WriteMemory<float>(0x521878, 311.85f, true); // mana
+		MemoryHelper::WriteMemory<float>(0x521964, -311.85f, true); // health
+	}
 }
 
 static void ApplyFixStretchedFMV()
