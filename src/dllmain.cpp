@@ -810,60 +810,25 @@ static int __cdecl RenderHUD_Hook(float x_position, float y_position, float reso
 	{
 		if (FixStretchedHUD)
 		{
-			float scaleX = ASPECT_RATIO_4_3 / currentAspectRatio;
+			// Step 1: Unstretch HUD
 			float hud_object_x_position = (x_position * 640.0f) / resolution_width;
+			float scaleX = ASPECT_RATIO_4_3 / currentAspectRatio;
+			resolution_width *= scaleX; // Adjust width to maintain aspect ratio
 
-			if (x_position > 0)
+			// Step 2: 4:3 Position
+			x_position = currentWidth / 640.0f * hud_object_x_position;
+			x_position = (x_position - currentWidth / 2.0f) * scaleX + currentWidth / 2.0f;
+
+			// Step 3: Center the HUD horizontally by adjusting for the width difference between 4:3 and the current aspect ratio
+			float widthDifference = ((currentWidth - resolution_width) / 2.0f);
+
+			if (x_position > 0) // Elements on the right side
 			{
-				float center = resolution_width / 2.0f;
-				float widthDifference = resolution_width - (resolution_width * scaleX);
-				x_position = (x_position - center) * scaleX + center + (widthDifference / 2.0f);
-
-				// Fine tuning
-				if (resolution_width != 1280 || resolution_height != 800)
-				{
-					if (resolution_width <= 1920)
-					{
-						x_position -= 1.0f;
-					}
-					else if (resolution_width < 3840)
-					{
-						x_position -= 2.0f;
-					}
-					else
-					{
-						x_position -= 3.0f;
-					}
-				}
+				x_position += widthDifference;
 			}
-
-			// Adjust width scaling for the HUD elements on the left
-			resolution_width *= scaleX;
-
-			if (x_position < 0)
+			else if (x_position < 0) // Elements on the left side
 			{
-				x_position = resolution_width / 640.0f * hud_object_x_position;
-
-				// Fine tuning
-				if (resolution_width != 1440 || resolution_height != 900)
-				{
-					if (resolution_width == 1280 && resolution_height == 800)
-					{
-						x_position += 2.0f;
-					}
-					else if (resolution_width < 1920)
-					{
-						x_position += 1.0f;
-					}
-					else if (resolution_width < 3840)
-					{
-						x_position += 2.0f;
-					}
-					else
-					{
-						x_position += 3.0f;
-					}
-				}
+				x_position -= widthDifference;
 			}
 		}
 
