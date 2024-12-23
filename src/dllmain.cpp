@@ -703,6 +703,7 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_
 		if (maxAnisotropy != static_cast<int>(MaxAnisotropy))
 		{
 			MaxAnisotropy = static_cast<float>(maxAnisotropy);
+			isAnisotropyRetrieved = false;
 			GameHelper::CallCmd("vid_restart\n", 0);
 		}
 
@@ -834,12 +835,12 @@ static int __cdecl RenderHUD_Hook(float x_position, float y_position, float reso
 		{
 			if (x_position < 0)
 			{
-				x_position += currentWidth / 17.5f;
+				x_position += currentWidth / 16.5f;
 			}
 
 			if (x_position > 0)
 			{
-				x_position -= currentWidth / 17.5f;
+				x_position -= currentWidth / 16.5f;
 			}
 
 			y_position -= currentHeight / 10.0f;
@@ -907,6 +908,13 @@ static int __cdecl ForceMenu_Hook(const char* menu_name)
 	else
 	{
 		isInCredits = false;
+	}
+
+	// Check if the start screen is skipped
+	int startupState = MemoryHelper::ReadMemory<int>(STARTUP_STATE_ADDR, false);
+	if (startupState == 1)
+	{
+		UseConsoleTitleScreen = false;
 	}
 
 	return ForceMenu(menu_name);
