@@ -1,5 +1,8 @@
 # VorpalFix
-![Logo](assets/VorpalFix_Logo.png)
+
+<p align="center">
+  <img src="assets/VorpalFix_Logo.png">
+</p>
 
 A fix that addresses a variety of technical issues and adds quality-of-life improvements to the 2011 remaster of American McGee's Alice.
 
