@@ -48,6 +48,7 @@ int VF_R_EXT_MAX_ANISOTROPY_PTR;
 int VF_COM_MAXFPS_PTR;
 
 bool isScreenRateFps = false;
+bool isVFMenuUsed = false;
 
 // =============================
 // Variables 
@@ -745,10 +746,11 @@ static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
 	}
 
 	// Check if 'pak7_VorpalFix_menu.pk3' is used
-	if (StringHelper::stricmp(Buffer, "ui/control/vorpalfix_options.tga"))
+	if (!isVFMenuUsed && StringHelper::stricmp(Buffer, "ui/control/vorpalfix_options.tga"))
 	{
 		HookHelper::ApplyHook((void*)0x46E0D0, &SetupOpenGLParameters_Hook, (LPVOID*)&SetupOpenGLParameters);
 		HookHelper::ApplyHook((void*)0x4B9FD0, &UISetCvars_Hook, (LPVOID*)&UISetCvars);
+		isVFMenuUsed = true;
 	}
 
 	// Disable this hook, nothing else to check
