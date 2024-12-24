@@ -26,10 +26,27 @@ const int DISPLAY_MODE_NUM = 0x7D40C8;
 const int DISPLAY_MODE_PTR_ADDR = 0x1C463E8;
 const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
 const int DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
+const int COM_MAXFPS_PTR_ADDR = 0x12EF928;
 const int CODE_CAVE_SOUND = 0x513490;
 const int CODE_CAVE_INTRO = 0x513B90;
 const int CODE_CAVE_BLINK = 0x513E08;
 const int CODE_CAVE_WIDTH = 0x513E40;
+
+// =============================
+// VorpalFix Menu
+// =============================
+int VF_LANGUAGE_PTR;
+int VF_REMASTERED_MODELS_PTR;
+int VF_UI_CONSOLE_HUD_PTR;
+int VF_UI_PS3_PTR;
+int VF_UI_LETTERBOX_PTR;
+int VF_R_EXT_MAX_ANISOTROPY_PTR;
+int VF_COM_MAXFPS_PTR;
+
+bool isStretchedHUDHooked = false;
+bool isGameAPIPacketHooked = false;
+bool isAnisotropyHooked = false;
+bool isScreenRateFps = false;
 
 // =============================
 // Variables 
@@ -166,6 +183,7 @@ static void ReadConfig()
 	if (CustomFPSLimit == -1)
 	{
 		CustomFPSLimit = SystemHelper::GetCurrentDisplayFrequency();
+		isScreenRateFps = true;
 	}
 
 	// UseConsoleTitleScreen rely on FixStretchedGUI
@@ -878,7 +896,7 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 }
 
 /****************************************************
- * Function: UpdateFOV
+ * Function: ProcessAPIPacket
  *
  * Description:
  *    Updates the Field of View (FOV) from the snapshot
@@ -886,19 +904,25 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
  *    changed, it is updated accordingly
  *
  * Used For:
- *    AutoFOV & FOV
+ *    AutoFOV & FOV & DisableLetterbox
  ****************************************************/
 
 typedef void(__cdecl* sub_420390)(DWORD*, int, int*);
 sub_420390 MSG_DoStuff = nullptr;
 
-static void __cdecl UpdateFOV(DWORD* a1, int a2, int* a3)
+static void __cdecl ProcessAPIPacket(DWORD* a1, int a2, int* a3)
 {
 	float* fovPointer = (float*)((DWORD)a2 - 0x50);
 
 	if (*fovPointer != FOV)
 	{
 		*fovPointer = FOV;
+	}
+
+	if (DisableLetterbox)
+	{
+		int* letterboxPointer = (int*)((DWORD)a2 - 0x35C);
+		*letterboxPointer = 0;
 	}
 
 	MSG_DoStuff(a1, a2, a3);
@@ -991,9 +1015,7 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 
 				if (screenWidth == screenWidthMode && screenHeight == screenHeightMode)
 				{
-					static std::string r_mode;
-					r_mode = std::to_string(i);
-					value = r_mode.c_str();
+					value = StringHelper::IntegerToCString(i);
 					break;
 				}
 			}
@@ -1002,48 +1024,11 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 
 	if (CustomFPSLimit != 60 && strcmp(var_name, "com_maxfps") == 0)
 	{
-		static std::string fpsLimitStr;
-		fpsLimitStr = std::to_string(CustomFPSLimit);
-		value = fpsLimitStr.c_str();
+		value = StringHelper::IntegerToCString(CustomFPSLimit);
 		flag = 0x10;
 	}
 
 	return Cvar_Set(var_name, value, flag);
-}
-
-/****************************************************
- * Function: LoadGameDLL_Hook
- *
- * Description:
- *    Used to patch "fgamex86.dll" immediately after 
- *    it is loaded into memory
- *
- * Used For:
- *    DisableLetterbox
- ****************************************************/
-
-typedef int(__cdecl* sub_42CFF0)();
-sub_42CFF0 LoadGameDLL = nullptr;
-
-static int __cdecl LoadGameDLL_Hook()
-{
-	// Load the game's DLL
-	int result = LoadGameDLL();
-
-	// Get handle to "fgamex86.dll" if loaded
-	HMODULE gameApiDll = GetModuleHandle(L"fgamex86.dll");
-
-	// If DLL is loaded, get its base address and do the patching
-	if (gameApiDll) {
-		DWORD gameApiBaseAddress = (DWORD)gameApiDll;
-
-		if (DisableLetterbox)
-		{
-			MemoryHelper::WriteMemory<int>(gameApiBaseAddress + 0x16CAA3, 0, true);
-		}
-	}
-
-	return result;
 }
 
 /****************************************************
@@ -1064,8 +1049,7 @@ static HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 {
 	if (dwStyle == 0x10C80000)
 	{
-		int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-		int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+		auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
 
 		dwStyle = WS_VISIBLE + WS_POPUP;
 
@@ -1360,6 +1344,146 @@ static int __stdcall glTexParameterf_Hook(int target, int pname, float param)
 }
 
 /****************************************************
+ * Function: UISetCvars_Hook
+ *
+ * Description:
+ *    Hook of the function used by the "ui_setcvars" 
+ *    command
+ *
+ * Used For:
+ *    pak7_VorpalFix_menu.pk3
+ ****************************************************/
+
+typedef DWORD(__thiscall* sub_4B9FD0)(DWORD*, char*);
+sub_4B9FD0 UISetCvars = nullptr;
+
+static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_name)
+{
+	// Apply the changes
+	if (strcmp(group_name, "group_vorpalfix") == 0)
+	{
+		// LanguageId - Need a restart
+		int languageId = MemoryHelper::ReadMemory<int>(VF_LANGUAGE_PTR + 0x20, false);
+		IniHelper::iniReader["General"]["LanguageId"] = StringHelper::IntegerToCString(languageId);
+
+		// DisableRemasteredModels - Need a restart
+		bool disableRemasteredModels = MemoryHelper::ReadMemory<int>(VF_REMASTERED_MODELS_PTR + 0x20, false);
+		IniHelper::iniReader["General"]["DisableRemasteredModels"] = StringHelper::IntegerToCString(!disableRemasteredModels);
+
+		// ConsolePortHUD
+		ConsolePortHUD = MemoryHelper::ReadMemory<int>(VF_UI_CONSOLE_HUD_PTR + 0x20, false);
+		IniHelper::iniReader["Display"]["ConsolePortHUD"] = StringHelper::IntegerToCString(ConsolePortHUD);
+
+		// Hook SetHUDPosition_Hook if needed
+		if (!isStretchedHUDHooked && ConsolePortHUD)
+		{
+			HookHelper::ApplyHook((void*)0x446050, &SetHUDPosition_Hook, reinterpret_cast<LPVOID*>(&SetHUDPosition));
+
+			// hud_item_foldout
+			MemoryHelper::WriteMemory<float>(0x5218A8, 258.5f, true);
+			// hud_weapon_foldout
+			MemoryHelper::WriteMemory<float>(0x5218F8, -258.5f, true);
+
+			isStretchedHUDHooked = true;
+		}
+
+		// UsePS3ControllerIcons - Need a restart
+		int usePS3ControllerIcons = MemoryHelper::ReadMemory<int>(VF_UI_PS3_PTR + 0x20, false);
+		IniHelper::iniReader["Display"]["UsePS3ControllerIcons"] = StringHelper::IntegerToCString(usePS3ControllerIcons);
+
+		// DisableLetterbox
+		bool isLetterboxEnabled = MemoryHelper::ReadMemory<int>(VF_UI_LETTERBOX_PTR + 0x20, false);
+		IniHelper::iniReader["Display"]["DisableLetterbox"] = StringHelper::IntegerToCString(!isLetterboxEnabled);
+		DisableLetterbox = !isLetterboxEnabled;
+
+		// Hook LoadGameDLL_Hook if needed
+		if (!isGameAPIPacketHooked && DisableLetterbox)
+		{
+			HookHelper::ApplyHook((void*)0x420390, &ProcessAPIPacket, reinterpret_cast<LPVOID*>(&MSG_DoStuff));
+			isGameAPIPacketHooked = true;
+		}
+
+		// MaxAnisotropy
+		int maxAnisotropy = MemoryHelper::ReadMemory<int>(VF_R_EXT_MAX_ANISOTROPY_PTR + 0x20, false);
+		IniHelper::iniReader["Graphics"]["MaxAnisotropy"] = StringHelper::IntegerToCString(maxAnisotropy);
+		MaxAnisotropy = static_cast<float>(maxAnisotropy);
+
+		// Hook glTexParameterf_Hook if needed
+		if (!isAnisotropyHooked && MaxAnisotropy != 0)
+		{
+			HMODULE openglLibrary = LoadLibraryA("opengl32");
+
+			if (openglLibrary)
+			{
+				FARPROC glTexParameterf_ptr = GetProcAddress(openglLibrary, "glTexParameterf");
+				HookHelper::ApplyHook((void*)glTexParameterf_ptr, &glTexParameterf_Hook, reinterpret_cast<LPVOID*>(&original_glTexParameterf));
+			}
+
+			isAnisotropyHooked = true;
+		}
+
+		// CustomFPSLimit
+		CustomFPSLimit = MemoryHelper::ReadMemory<int>(VF_COM_MAXFPS_PTR + 0x20, false);
+		IniHelper::iniReader["Graphics"]["CustomFPSLimit"] = StringHelper::IntegerToCString(CustomFPSLimit);
+
+		// Set to monitor's refresh rate
+		if (CustomFPSLimit == -1)
+		{
+			CustomFPSLimit = SystemHelper::GetCurrentDisplayFrequency();
+		}
+
+		// Write the new value
+		int com_maxfps_ptr = MemoryHelper::ReadMemory<int>(COM_MAXFPS_PTR_ADDR, false);
+		MemoryHelper::WriteMemory<int>(com_maxfps_ptr + 0x20, CustomFPSLimit, false);
+
+		// Fix the blinking eyes speed
+		int blinkRate = 20;
+		MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x2, 100 * CustomFPSLimit / blinkRate, true);
+		MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x1A, 100 * CustomFPSLimit / blinkRate, true);
+		MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x22, 4 * CustomFPSLimit / 60, true);
+
+		IniHelper::Save();
+	}
+
+	return UISetCvars(this_ptr, group_name);
+}
+
+/****************************************************
+ * Function: SetupOpenGLParameters_Hook
+ *
+ * Description:
+ *    Hook of the function used to initialize the
+ *    cvar's used for OpenGL
+ *
+ * Used For:
+ *    pak7_VorpalFix_menu.pk3
+ ****************************************************/
+
+typedef int(__cdecl* sub_46E0D0)();
+sub_46E0D0 SetupOpenGLParameters = nullptr;
+
+static int __cdecl SetupOpenGLParameters_Hook()
+{
+	// Initialize our Cvar's
+	VF_LANGUAGE_PTR = Cvar_Set("vf_language", StringHelper::IntegerToCString(LanguageId), 0);
+	VF_REMASTERED_MODELS_PTR = Cvar_Set("vf_remastered_models", StringHelper::BoolToCString(!DisableRemasteredModels), 0);
+	VF_UI_CONSOLE_HUD_PTR = Cvar_Set("vf_ui_console_hud", StringHelper::BoolToCString(ConsolePortHUD), 0);
+	VF_UI_PS3_PTR = Cvar_Set("vf_ui_ps3", StringHelper::BoolToCString(UsePS3ControllerIcons), 0);
+	VF_UI_LETTERBOX_PTR = Cvar_Set("vf_ui_letterbox", StringHelper::BoolToCString(!DisableLetterbox), 0);
+	VF_R_EXT_MAX_ANISOTROPY_PTR = Cvar_Set("vf_r_ext_max_anisotropy", StringHelper::FloatToCString(MaxAnisotropy), 0);
+
+	if (isScreenRateFps)
+	{
+		VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", "-1", 0);
+	}
+	else
+	{
+		VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", StringHelper::IntegerToCString(CustomFPSLimit), 0);
+	}
+	return SetupOpenGLParameters();
+}
+
+/****************************************************
  * Function: LoadLocalizationFile_Hook
  *
  * Description:
@@ -1413,6 +1537,7 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 	// If we still have files to load
 	if (localizationFilesToLoad > 0)
 	{
+		int currentIndex = pk3LocFiles.size() - localizationFilesToLoad;
 		localizationFilesToLoad--;
 
 		if (localizationFilesToLoad == 0)
@@ -1423,7 +1548,7 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 		}
 
 		// Return the file path
-		return pk3LocFiles[localizationFilesToLoad].c_str();
+		return pk3LocFiles[currentIndex].c_str();
 	}
 
 	return LoadLocalizationFile();
@@ -1434,7 +1559,9 @@ static const char* __cdecl LoadLocalizationFile_Hook()
  *
  * Description:
  *    Hook of the function used by the "bind" command
- *
+ * 
+ * Used For:
+ *    EnableDevConsole
  ****************************************************/
 
 typedef int(__cdecl* sub_407870)(int, char*);
@@ -1599,6 +1726,8 @@ static void ApplyFixStretchedHUD()
 	MemoryHelper::WriteMemory<float>(0x5218A8, 258.5f, true);
 	// hud_weapon_foldout
 	MemoryHelper::WriteMemory<float>(0x5218F8, -258.5f, true);
+
+	isStretchedHUDHooked = true;
 }
 
 static void ApplyFixStretchedFMV()
@@ -1832,13 +1961,6 @@ static void ApplyHideConsoleAtLaunch()
 	MemoryHelper::WriteMemory<char>(0x46C28F, 0x00, true);
 }
 
-static void ApplyDisableLetterbox()
-{
-	if (!DisableLetterbox) return;
-
-	HookHelper::ApplyHook((void*)0x42CFF0, &LoadGameDLL_Hook, reinterpret_cast<LPVOID*>(&LoadGameDLL));
-}
-
 static void ApplyForceBorderlessFullscreen()
 {
 	if (!ForceBorderlessFullscreen) return;
@@ -1871,13 +1993,17 @@ static void ApplyAnisotropicTextureFiltering()
 		FARPROC glTexParameterf_ptr = GetProcAddress(openglLibrary, "glTexParameterf");
 		HookHelper::ApplyHook((void*)glTexParameterf_ptr, &glTexParameterf_Hook, reinterpret_cast<LPVOID*>(&original_glTexParameterf));
 	}
+
+	isAnisotropyHooked = true;
 }
 
-static void ApplyCustomFOV()
+static void ApplyProcessAPIPacket()
 {
-	if (!AutoFOV && FOV == 90.0) return;
+	if (!AutoFOV && FOV == 90.0 && !DisableLetterbox) return;
 
-	HookHelper::ApplyHook((void*)0x420390, &UpdateFOV, reinterpret_cast<LPVOID*>(&MSG_DoStuff));
+	HookHelper::ApplyHook((void*)0x420390, &ProcessAPIPacket, reinterpret_cast<LPVOID*>(&MSG_DoStuff));
+
+	isGameAPIPacketHooked = true;
 }
 
 static void ApplyCvarTweaks()
@@ -1892,6 +2018,12 @@ static void ApplyResolutionChangeHook()
 	if (!AutoFOV && !FixStretchedGUI && !FixSaveScreenshotBufferOverflow) return;
 
 	HookHelper::ApplyHook((void*)0x46FC70, &GLW_CreatePFD_Hook, reinterpret_cast<LPVOID*>(&GLW_CreatePFD));
+}
+
+static void InitializeMenuCvar()
+{
+	HookHelper::ApplyHook((void*)0x46E0D0, &SetupOpenGLParameters_Hook, reinterpret_cast<LPVOID*>(&SetupOpenGLParameters));
+	HookHelper::ApplyHook((void*)0x4B9FD0, &UISetCvars_Hook, reinterpret_cast<LPVOID*>(&UISetCvars));
 }
 
 #pragma endregion Apply Patches
@@ -1925,16 +2057,16 @@ static void Init()
 	// Display
 	ApplyEnableControllerIcons();
 	ApplyHideConsoleAtLaunch();
-	ApplyDisableLetterbox();
 	ApplyForceBorderlessFullscreen();
 	ApplyCustomResolution();
 	ApplyEnableAltF4Close();
 	// Graphics
 	ApplyAnisotropicTextureFiltering();
-	ApplyCustomFOV();
+	ApplyProcessAPIPacket();
 	// Misc
 	ApplyCvarTweaks();
 	ApplyResolutionChangeHook();
+	InitializeMenuCvar();
 }
 
 static BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
