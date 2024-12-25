@@ -397,7 +397,7 @@ static int __cdecl Bind_Hook(int keyId, char* cmd_name)
 			keyId = GameHelper::GetKeyId("F2");
 		}
 
-		char cmpInstruction[] = { 0x81, 0xFF };
+		uint8_t cmpInstruction[] = { 0x81, 0xFF };
 
 		// cmp toggleConsoleKeyId instead of hardcoded cmp 96 and cmp 126 (` and ~)
 		MemoryHelper::WriteMemoryRaw(0x40823A, cmpInstruction, sizeof(cmpInstruction), true);
@@ -978,7 +978,7 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 		if (localizationFilesToLoad > 0)
 		{
 			// Fix stack pointer after the CALL
-			char opCodeArray[] = { 0x83, 0xEC, 0x0C };
+			uint8_t opCodeArray[] = { 0x83, 0xEC, 0x0C };
 			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
 
 			// Loop back to 4615F0 for every files
@@ -999,7 +999,7 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 		if (localizationFilesToLoad == 0)
 		{
 			// No more files, restore original instructions
-			char opCodeArray[] = { 0x33, 0xFF, 0x39, 0x7C, 0x24, 0x0C, 0x7E, 0x3F };
+			uint8_t opCodeArray[] = { 0x33, 0xFF, 0x39, 0x7C, 0x24, 0x0C, 0x7E, 0x3F };
 			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
 		}
 
@@ -1659,7 +1659,7 @@ static void ApplyFixSoundRandomization()
 	if (!FixSoundRandomization) return;
 
 	// Instructions from the 2000 version, ported to the remaster
-	unsigned char portedInstructions[0x3C0] = 
+	uint8_t portedInstructions[0x3C0] =
 	{
 		// sub_423770
 		0x8B, 0x44, 0x24, 0x0C, 0x8B, 0x4C, 0x24, 0x10, 0x83, 0xEC, 0x28, 0xC7, 0x00, 0xFF, 0xFF, 0xFF,
@@ -1752,8 +1752,8 @@ static void ApplyFixBlinkingAnimationSpeed()
 	// First JMP Redirect
 	MemoryHelper::MakeJMP(0x4C6367, CODE_CAVE_BLINK, true);
 
-	char cmpInstruction[] = { 0x81, 0xF9 };
-	char addInstruction[] = { 0x8B, 0xF0 };
+	uint8_t cmpInstruction[] = { 0x81, 0xF9 };
+	uint8_t addInstruction[] = { 0x8B, 0xF0 };
 
 	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK, cmpInstruction, sizeof(cmpInstruction), true);
 	MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x2, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
@@ -1765,7 +1765,7 @@ static void ApplyFixBlinkingAnimationSpeed()
 	// Second JMP Redirect
 	MemoryHelper::MakeJMP(0x4C638D, CODE_CAVE_BLINK + 0x18, true);
 
-	char imulInstruction[] = { 0x69, 0xC0 };
+	uint8_t imulInstruction[] = { 0x69, 0xC0 };
 
 	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK + 0x18, imulInstruction, sizeof(imulInstruction), true);
 	MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x1A, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
@@ -1943,7 +1943,7 @@ static void ApplyUseOriginalIntroVideos()
 	if (!UseOriginalIntroVideos) return;
 
 	// Instructions from the 2000 version, ported to the remaster
-	unsigned char portedIntroData[0x270] = 
+	uint8_t portedIntroData[0x270] =
 	{
 		0x8B, 0x0D, 0x20, 0xCA, 0x7C, 0x00, 0x83, 0xEC, 0x40, 0xB8, 0x01, 0x00, 0x00, 0x00, 0x56, 0x33,
 		0xF6, 0x41, 0x83, 0xF9, 0x65, 0x0F, 0x87, 0xE8, 0x00, 0x00, 0x00, 0x33, 0xD2, 0x8A, 0x91, 0x64,
