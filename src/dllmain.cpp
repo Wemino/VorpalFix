@@ -716,13 +716,13 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_
 		DisableLetterbox = !isLetterboxEnabled;
 
 		// MaxAnisotropy
-		int maxAnisotropy = MemoryHelper::ReadMemory<int>(VF_R_EXT_MAX_ANISOTROPY_PTR + 0x20, false);
-		IniHelper::iniReader["Graphics"]["MaxAnisotropy"] = StringHelper::IntegerToCString(maxAnisotropy);
+		float maxAnisotropy = MemoryHelper::ReadMemory<float>(VF_R_EXT_MAX_ANISOTROPY_PTR + 0x1C, false);
+		IniHelper::iniReader["Graphics"]["MaxAnisotropy"] = StringHelper::FloatToCString(maxAnisotropy);
 
 		// Execute vid_restart to refresh the textures
-		if (maxAnisotropy != static_cast<int>(MaxAnisotropy))
+		if (maxAnisotropy != MaxAnisotropy)
 		{
-			MaxAnisotropy = static_cast<float>(maxAnisotropy);
+			MaxAnisotropy = maxAnisotropy;
 			isAnisotropyRetrieved = false;
 			GameHelper::CallCmd("vid_restart\n", 0);
 		}
