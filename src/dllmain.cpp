@@ -837,12 +837,12 @@ static int __cdecl RenderHUD_Hook(float x_position, float y_position, float reso
 		{
 			if (x_position < 0)
 			{
-				x_position += currentWidth / 16.5f;
+				x_position += currentWidth / 17.0f;
 			}
 
 			if (x_position > 0)
 			{
-				x_position -= currentWidth / 16.5f;
+				x_position -= currentWidth / 17.0f;
 			}
 
 			y_position -= currentHeight / 10.0f;
