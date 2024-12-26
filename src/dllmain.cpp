@@ -920,6 +920,7 @@ static int __cdecl PushMenu_Hook(const char* menu_name)
 // Hook of the "forcemenu" command
 static int __cdecl ForceMenu_Hook(const char* menu_name)
 {
+	// Indicate when the credits start after the final boss
 	if (FixStretchedGUI && strcmp(menu_name, "credits") == 0)
 	{
 		isInCredits = true;
@@ -1834,7 +1835,6 @@ static void ApplyFixStretchedGUI()
 	// AutoScroll credits scaling
 	HookHelper::ApplyHook((void*)0x4907F0, &UpdateRenderContext_Hook, (LPVOID*)&UpdateRenderContext);
 	HookHelper::ApplyHook((void*)0x4908D0, &ConfigureScissor_Hook, (LPVOID*)&ConfigureScissor);
-	HookHelper::ApplyHook((void*)0x44C280, &ForceMenu_Hook, (LPVOID*)&ForceMenu); // Indicate when the credits start after the final boss
 }
 
 static void ApplyFixDPIScaling()
@@ -2092,6 +2092,7 @@ static void ApplyResolutionChangeHook()
 static void InitializeGameLoadingChecks()
 {
 	HookHelper::ApplyHook((void*)0x4256E0, &Str_To_Lower_Hook, (LPVOID*)&Str_To_Lower);
+	HookHelper::ApplyHook((void*)0x44C280, &ForceMenu_Hook, (LPVOID*)&ForceMenu);
 }
 
 #pragma endregion Apply Patches
