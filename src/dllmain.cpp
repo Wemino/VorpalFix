@@ -131,6 +131,7 @@ const int BLINK_SPEED_RATE = 20;
 // Original Function Pointers
 // =============================
 int(__cdecl* Bind)(int, char*) = nullptr; // 0x407870
+int(__cdecl* HandleKeyboardInput)(int, int, int) = nullptr; // 0x4081B0
 char* (__cdecl* GetSavePath)() = nullptr; // 0x417400
 int(__cdecl* CallCmd)(char*, char) = nullptr; // 0x4158F0
 int(__cdecl* Cvar_Set)(const char*, const char*, int) = nullptr; // 0x419910
@@ -406,6 +407,22 @@ static int __cdecl Bind_Hook(int keyId, char* cmd_name)
 	}
 
 	return Bind(keyId, cmd_name);
+}
+
+// Handle specific keys to get past the title screen
+static int __cdecl HandleKeyboardInput_Hook(int keyId, int a2, int a3)
+{
+	// Got past the title screen, no longer need to use this hook
+	if (!UseConsoleTitleScreen || isMainMenuShown)
+	{
+		MH_DisableHook((void*)0x4081B0);
+		return HandleKeyboardInput(keyId, a2, a3);
+	}
+
+	// Set keyId to 'Escape' (27) to skip the title screen
+	keyId = 27;
+
+	return HandleKeyboardInput(keyId, a2, a3);
 }
 
 // Hook of the command function
@@ -1305,9 +1322,6 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 			// Resize the cursor if hidden for the title screen
 			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
 			isMainMenuShown = true;
-
-			// Hack: Change back to 'Escape' to enter the main menu instead of 'Enter'
-			MemoryHelper::WriteMemory<char>(0x4082C3, 0x1B, true);
 		}
 
 		// Scale the legalplate
@@ -1519,9 +1533,6 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 		{
 			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/title.urc") + 1);
 			sprintf(ui_path, "%s/title.urc", langPrefix);
-
-			// Hack: Use 'Enter' instead of 'Escape' for TriggerMainMenu()
-			MemoryHelper::WriteMemory<char>(0x4082C3, 0x0D, true);
 		}
 		else
 		{
@@ -1933,6 +1944,7 @@ static void ApplyUseConsoleTitleScreen()
 {
 	if (!UseConsoleTitleScreen) return;
 
+	HookHelper::ApplyHook((void*)0x4081B0, &HandleKeyboardInput_Hook, (LPVOID*)&HandleKeyboardInput);
 	HookHelper::ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, (LPVOID*)&LoadUI);
 	HookHelper::ApplyHook((void*)0x44C4F0, &TriggerMainMenu_Hook, (LPVOID*)&TriggerMainMenu);
 	HookHelper::ApplyHook((void*)0x449DF0, &IsGameStarted_Hook, (LPVOID*)&IsGameStarted);
