@@ -184,12 +184,25 @@ namespace GameHelper
 	typedef int(__cdecl* sub_44A300)(unsigned int, const char*);
 	sub_44A300 UI_GetStaticMap = (sub_44A300)0x44A300;
 
-	typedef char*(__cdecl* sub_441D60)(int);
+	typedef char* (__cdecl* sub_441D60)(int);
 	sub_441D60 GetWeaponName = (sub_441D60)0x441D60;
 
 	// XInputGetState
 	typedef int(__cdecl* sub_463130)();
 	sub_463130 IsControllerConnected = (sub_463130)0x463130;
+
+	typedef int(__cdecl* sub_407870)(int, char*);
+	sub_407870 Bind = (sub_407870)0x407870;
+
+	void AssignCmdKeyId(int keyId, char* cmd)
+	{
+		char* KeyCommandName = *(char**)(0x14EA2A8 + 0xC * keyId);
+
+		if (strcmp(KeyCommandName, cmd) != 0)
+		{
+			Bind(keyId, cmd);
+		}
+	}
 
 	int FindShaderIndex(const char* texturePath)
 	{

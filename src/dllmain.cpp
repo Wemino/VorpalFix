@@ -791,16 +791,16 @@ static void __cdecl LoadSoundtrackFile_Hook()
 	// Make sure that the controller keys are correctly binded
 	if (CustomControllerBindings)
 	{
-		Bind(GameHelper::GetKeyId("JOY1"), "cheshire");
-		Bind(GameHelper::GetKeyId("JOY4"), "togglemenu");
-		Bind(GameHelper::GetKeyId("JOY9"), "+attackleft");
-		Bind(GameHelper::GetKeyId("JOY10"), "+attackright");
-		Bind(GameHelper::GetKeyId("JOY11"), "prevweapon");
-		Bind(GameHelper::GetKeyId("JOY12"), "nextweapon");
-		Bind(GameHelper::GetKeyId("JOY13"), "+attackleft");
-		Bind(GameHelper::GetKeyId("JOY14"), "+UseAndDown");
-		Bind(GameHelper::GetKeyId("JOY15"), "+moveup");
-		Bind(GameHelper::GetKeyId("JOY16"), "+attackright");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY1"), "cheshire");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY4"), "togglemenu");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY9"), "+attackleft");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY10"), "+attackright");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY11"), "prevweapon");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY12"), "nextweapon");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY13"), "+attackleft");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY14"), "+UseAndDown");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY15"), "+moveup");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY16"), "+attackright");
 	}
 
 	// Nothing else to do here
