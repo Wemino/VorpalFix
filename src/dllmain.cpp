@@ -1105,16 +1105,20 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 					switch (dpadId)
 					{
 						case 1:
-							Bind(GameHelper::GetKeyId("JOY5"), weaponCommand);
+							//Bind(GameHelper::GetKeyId("JOY5"), weaponCommand);
+							GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY5"), weaponCommand);
 							break;
 						case 2:
-							Bind(GameHelper::GetKeyId("JOY7"), weaponCommand);
+							//Bind(GameHelper::GetKeyId("JOY7"), weaponCommand);
+							GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY7"), weaponCommand);
 							break;
 						case 3:
-							Bind(GameHelper::GetKeyId("JOY8"), weaponCommand);
+							//Bind(GameHelper::GetKeyId("JOY8"), weaponCommand);
+							GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY8"), weaponCommand);
 							break;
 						case 4:
-							Bind(GameHelper::GetKeyId("JOY6"), weaponCommand);
+							//Bind(GameHelper::GetKeyId("JOY6"), weaponCommand);
+							GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY6"), weaponCommand);
 							break;
 					}
 				}
