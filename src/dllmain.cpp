@@ -185,6 +185,7 @@ bool FixStretchedGUI = false;
 bool FixDPIScaling = false;
 bool FixFullscreenSetting = false;
 bool FixParticleDistanceRatio = false;
+bool FixMenuAnimationSpeed = false;
 bool FixMenuTransitionTiming = false;
 bool FixResolutionModeOOB = false;
 bool FixLocalizationFiles = false;
@@ -241,6 +242,7 @@ static void ReadConfig()
 	FixDPIScaling = IniHelper::ReadInteger("Fixes", "FixDPIScaling", 1) == 1;
 	FixFullscreenSetting = IniHelper::ReadInteger("Fixes", "FixFullscreenSetting", 1) == 1;
 	FixParticleDistanceRatio = IniHelper::ReadInteger("Fixes", "FixParticleDistanceRatio", 1) == 1;
+	FixMenuAnimationSpeed = IniHelper::ReadInteger("Fixes", "FixMenuAnimationSpeed", 1) == 1;
 	FixMenuTransitionTiming = IniHelper::ReadInteger("Fixes", "FixMenuTransitionTiming", 1) == 1;
 	FixResolutionModeOOB = IniHelper::ReadInteger("Fixes", "FixResolutionModeOOB", 1) == 1;
 	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
@@ -1889,8 +1891,20 @@ static void ApplyFixDPIScaling()
 	}
 }
 
+static void ApplyFixMenuAnimationSpeed()
+{
+	if (!FixMenuAnimationSpeed) return;
+
+	// Read 640x480 instead of the current resolution
+	MemoryHelper::WriteMemory<int>(0x4B5B56, 0x561358, true);
+	MemoryHelper::WriteMemory<int>(0x4B5BC4, 0x561354, true);
+	MemoryHelper::WriteMemory<int>(0x4B5D20, 0x561358, true);
+	MemoryHelper::WriteMemory<int>(0x4B5E41, 0x561354, true);
+}
+
 static void ApplyFixMenuTransitionTiming()
 {
+	// Used for more than just this fix
 	HookHelper::ApplyHook((void*)0x44C1B0, &PushMenu_Hook, (LPVOID*)&PushMenu);
 
 	if (!FixMenuTransitionTiming) return;
@@ -2110,6 +2124,7 @@ static void Init()
 	ApplyFixStretchedFMV();
 	ApplyFixStretchedGUI();
 	ApplyFixDPIScaling();
+	ApplyFixMenuAnimationSpeed();
 	ApplyFixMenuTransitionTiming();
 	ApplyFixLocalizationFiles();
 	ApplyFixProton();
