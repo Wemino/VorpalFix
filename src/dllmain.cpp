@@ -134,12 +134,12 @@ const int BLINK_SPEED_RATE = 20;
 // =============================
 int(__cdecl* Bind)(int, char*) = nullptr; // 0x407870
 int(__cdecl* HandleKeyboardInput)(int, int, int) = nullptr; // 0x4081B0
+void(__cdecl* CL_ParsePacketEntities)(int, int, int) = nullptr; // 0x40C1B0
 char* (__cdecl* GetSavePath)() = nullptr; // 0x417400
 int(__cdecl* CallCmd)(char*, char) = nullptr; // 0x4158F0
 int(__cdecl* Cvar_Set)(const char*, const char*, int) = nullptr; // 0x419910
 int(__cdecl* FS_FOpenFileRead)(char*, int*, int, int) = nullptr; // 0x41A590
 int(__cdecl* CheckDiskFreeSpace)() = nullptr; // 0x41D1E0
-void(__cdecl* ParseEntityUpdates)(DWORD*, int, int*) = nullptr; // 0x420390
 float(__cdecl* UpdateHeadOrientation)(DWORD*, float*) = nullptr; // 0x423740
 BYTE(__cdecl* Str_To_Lower)(char*) = nullptr; // 0x4256E0
 void(__cdecl* LoadSoundtrackFile)() = nullptr; // 0x429600
@@ -435,6 +435,32 @@ static int __cdecl HandleKeyboardInput_Hook(int keyId, int a2, int a3)
 	return HandleKeyboardInput(keyId, a2, a3);
 }
 
+// Process the snapshot returned from the server (fgamex86.dll) and modify specific properties
+static void __cdecl CL_ParsePacketEntities_Hook(int msg, int oldframe, int newframe)
+{
+	float* fovPtr = (float*)((DWORD)newframe + 0x418);
+
+	if (*fovPtr != FOV)
+	{
+		*fovPtr = FOV;
+	}
+
+	if (DisableLetterbox)
+	{
+		int* isCinematicPtr = (int*)((DWORD)newframe + 0x104);
+		int* letterboxPtr = (int*)((DWORD)newframe + 0x10C);
+
+		*letterboxPtr = 0;
+
+		// Zoom a bit during cutscenes
+		if (AutoFOV && *isCinematicPtr == 1)
+		{
+			*fovPtr = FOV / 1.18f;
+		}
+	}
+	CL_ParsePacketEntities(msg, oldframe, newframe);
+}
+
 // Hook of the command function
 static int __cdecl CallCmd_Hook(char* cmd, char a2)
 {
@@ -647,33 +673,6 @@ static int __cdecl CheckDiskFreeSpace_Hook()
 
 	// Return a default value if something goes wrong
 	return 2048;
-}
-
-// Process the snapshot returned from the server (fgamex86.dll) and modify specific properties
-static void __cdecl ProcessSnapshot(DWORD* a1, int a2, int* a3)
-{
-	float* fovPtr = (float*)((DWORD)a2 - 0x50);
-
-	if (*fovPtr != FOV)
-	{
-		*fovPtr = FOV;
-	}
-
-	if (DisableLetterbox)
-	{
-		int* letterboxPtr = (int*)((DWORD)a2 - 0x35C);
-		int* isCinematicPtr = (int*)((DWORD)a2 - 0x364);
-
-		*letterboxPtr = 0;
-
-		// Zoom a bit during cutscenes
-		if (AutoFOV && *isCinematicPtr == 1)
-		{
-			*fovPtr = FOV / 1.18f;
-		}
-	}
-
-	ParseEntityUpdates(a1, a2, a3);
 }
 
 // Make sure Alice is not looking at the top left of the screen when using a controller
@@ -2110,7 +2109,7 @@ static void ApplyAnisotropicTextureFiltering()
 
 static void ApplyProcessAPIPacket()
 {
-	HookHelper::ApplyHook((void*)0x420390, &ProcessSnapshot, (LPVOID*)&ParseEntityUpdates);
+	HookHelper::ApplyHook((void*)0x40C1B0, &CL_ParsePacketEntities_Hook, (LPVOID*)&CL_ParsePacketEntities);
 }
 
 static void ApplyCvarTweaks()
