@@ -175,9 +175,6 @@ namespace GameHelper
 	typedef int(__cdecl* sub_4158F0)(char*, char);
 	sub_4158F0 CallCmd = (sub_4158F0)0x4158F0;
 
-	typedef signed int(__cdecl* sub_46F850)();
-	sub_46F850 FetchDisplayResolutions = (sub_46F850)0x46F850;
-
 	typedef int(__cdecl* sub_4076F0)(char*);
 	sub_4076F0 GetKeyId = (sub_4076F0)0x4076F0;
 
@@ -455,5 +452,16 @@ namespace StringHelper
 		}
 
 		return *str1 == '\0' && *str2 == '\0';
+	}
+
+	char* ConstructPath(const char* prefix, const char* suffix) 
+	{
+		size_t len = strlen(prefix) + strlen(suffix) + 1;
+		char* path = (char*)malloc(len);
+		if (path) 
+		{
+			snprintf(path, len, "%s%s", prefix, suffix);
+		}
+		return path;
 	}
 };

@@ -25,6 +25,7 @@ const int CODE_CAVE_WIDTH = 0x513E40;
 const int STARTUP_STATE_ADDR = 0x7CCA20;
 const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
 const int CURRENT_LANG = 0x7CF868;
+const int DISPLAY_MODE_IDX = 0x7D40C4;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
 const int TOTAL_FRAME_TIME = 0x11C8AA0;
 const int UI_WAIT_TIMER = 0x12EF948;
@@ -154,6 +155,7 @@ MMRESULT(__cdecl* UpdateControllerState)() = nullptr; // 0x4635A0
 int(__stdcall* lpfnWndProc_MSG)(HWND, UINT, int, LPARAM) = nullptr; // 0x46C600
 int(__cdecl* TakeSaveScreenshot)(int, int, int) = nullptr; // 0x46D280
 int(__cdecl* SetupOpenGLParameters)() = nullptr; // 0x46E0D0
+void(__cdecl* FetchDisplayResolutions)() = nullptr; // 0x46F850
 int(__cdecl* GLW_CreatePFD)(void*, unsigned __int8, char, unsigned __int8, int) = nullptr; // 0x46FC70
 int(__cdecl* QGL_Init)(LPCSTR) = nullptr; // 0x47ABE0
 int(__cdecl* RE_StretchPic)(float, float, float, float, float, float, float, float, int) = nullptr; // 0x48FC00
@@ -177,6 +179,7 @@ void(WINAPI* ori_glReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, v
 bool FixSoundRandomization = false;
 bool FixHardDiskFull = false;
 bool FixSaveScreenshotBufferOverflow = false;
+bool FixDisplayModeBufferOverflow = false;
 bool FixPak5 = false;
 bool FixBlinkingAnimationSpeed = false;
 bool FixStretchedHUD = false;
@@ -234,6 +237,7 @@ static void ReadConfig()
 	FixSoundRandomization = IniHelper::ReadInteger("Fixes", "FixSoundRandomization", 1) == 1;
 	FixHardDiskFull = IniHelper::ReadInteger("Fixes", "FixHardDiskFull", 1) == 1;
 	FixSaveScreenshotBufferOverflow = IniHelper::ReadInteger("Fixes", "FixSaveScreenshotBufferOverflow", 1) == 1;
+	FixDisplayModeBufferOverflow = IniHelper::ReadInteger("Fixes", "FixDisplayModeBufferOverflow", 1) == 1;
 	FixPak5 = IniHelper::ReadInteger("Fixes", "FixPak5", 1) == 1;
 	FixBlinkingAnimationSpeed = IniHelper::ReadInteger("Fixes", "FixBlinkingAnimationSpeed", 1) == 1;
 	FixStretchedHUD = IniHelper::ReadInteger("Fixes", "FixStretchedHUD", 1) == 1;
@@ -304,20 +308,15 @@ static void ReadConfig()
 	{
 		static char formattedSavePath[MAX_PATH];
 
-		// Ensure the custom save path fits within the buffer
 		strncpy(formattedSavePath, CustomSavePath, MAX_PATH - 1);
 		formattedSavePath[MAX_PATH - 1] = '\0';
 
-		// Append a backslash if not already present
+		// Add trailing backslash if not already present
 		size_t len = strlen(formattedSavePath);
-		if (len > 0 && formattedSavePath[len - 1] != '\\')
+		if (len > 0 && formattedSavePath[len - 1] != '\\' && len < MAX_PATH - 1)
 		{
-			// Ensure there's enough space to add the backslash
-			if (len < MAX_PATH - 1)
-			{
-				formattedSavePath[len] = '\\';
-				formattedSavePath[len + 1] = '\0';
-			}
+			formattedSavePath[len] = '\\';
+			formattedSavePath[len + 1] = '\0';
 		}
 
 		CustomSavePath = formattedSavePath;
@@ -466,6 +465,16 @@ static char* __cdecl GetSavePath_Hook()
 	return GetSavePath();
 }
 
+// Caches display resolutions; bug: DISPLAY_MODE_IDX is never reset to 0
+static void __cdecl FetchDisplayResolutions_Hook()
+{
+	// If already executed, skip it
+	if (MemoryHelper::ReadMemory<int>(DISPLAY_MODE_IDX, false) == 0)
+	{
+		FetchDisplayResolutions();
+	}
+}
+
 // Intercepts and updates cvars
 static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int flag)
 {
@@ -531,8 +540,8 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		std::string directoryPath = GetSavePath_Hook();
 		std::filesystem::path configFilePath = std::filesystem::path(directoryPath) / configFile;
 
-		// Since this function is executed after, do it before
-		GameHelper::FetchDisplayResolutions();
+		// Execute this earlier to cache the resolution list
+		FetchDisplayResolutions_Hook();
 
 		auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
 		int resolutionNum = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_NUM, false);
@@ -546,7 +555,8 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 			// Check if "index" is within bounds and adjust if necessary
 			if (index >= resolutionNum)
 			{
-				value = "0";
+				// Set to the current resolution instead of crashing
+				AutoResolution = true;
 			}
 		}
 
@@ -1532,62 +1542,40 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 	// Use the proper title screen file
 	if (UseConsoleTitleScreen && ui_path != NULL && strcmp(ui_path, "ui/title.urc") == 0)
 	{
-		if (!isUsingControllerMenu)
-		{
-			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/title.urc") + 1);
-			sprintf(ui_path, "%s/title.urc", langPrefix);
-		}
-		else
-		{
-			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/title_console.urc") + 1);
-			sprintf(ui_path, "%s/title_console.urc", langPrefix);
-		}
+		ui_path = StringHelper::ConstructPath(langPrefix, isUsingControllerMenu ? "/title_console.urc" : "/title.urc");
 	}
 
 	// Override using the menus located inside 'pak6_VorpalFix.pk3'
-	if (isUsingControllerMenu)
+	if (isUsingControllerMenu) 
 	{
-		if (UsePS3ControllerIcons)
+		if (UsePS3ControllerIcons) 
 		{
-			char* newLangPrefix = (char*)malloc(strlen(langPrefix) + strlen("_ps3") + 1);
-			sprintf(newLangPrefix, "%s_ps3", langPrefix);
-			langPrefix = newLangPrefix;
+			langPrefix = StringHelper::ConstructPath(langPrefix, "_ps3");
 		}
 
-		if (ui_path != NULL && strcmp(ui_path, "ui/controls.urc") == 0)
+		if (ui_path && strcmp(ui_path, "ui/controls.urc") == 0) 
 		{
-			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/controls2.urc") + 1);
-			sprintf(ui_path, "%s/controls2.urc", langPrefix);
+			ui_path = StringHelper::ConstructPath(langPrefix, "/controls2.urc");
 		}
-
-		if (ui_path != NULL && strcmp(ui_path, "ui/credits.urc") == 0)
+		else if (ui_path && strcmp(ui_path, "ui/credits.urc") == 0) 
 		{
-			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/credits2.urc") + 1);
-			sprintf(ui_path, "%s/credits2.urc", langPrefix);
+			ui_path = StringHelper::ConstructPath(langPrefix, "/credits2.urc");
 		}
-
-		if (ui_path != NULL && strcmp(ui_path, "ui/loadsave.urc") == 0)
+		else if (ui_path && strcmp(ui_path, "ui/loadsave.urc") == 0) 
 		{
-			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/loadsave2.urc") + 1);
-			sprintf(ui_path, "%s/loadsave2.urc", langPrefix);
+			ui_path = StringHelper::ConstructPath(langPrefix, "/loadsave2.urc");
 		}
-
-		if (ui_path != NULL && strcmp(ui_path, "ui/main.urc") == 0)
+		else if (ui_path && strcmp(ui_path, "ui/main.urc") == 0) 
 		{
-			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/main2.urc") + 1);
-			sprintf(ui_path, "%s/main2.urc", langPrefix);
+			ui_path = StringHelper::ConstructPath(langPrefix, "/main2.urc");
 		}
-
-		if (ui_path != NULL && strcmp(ui_path, "ui/newgame.urc") == 0)
+		else if (ui_path && strcmp(ui_path, "ui/newgame.urc") == 0) 
 		{
-			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/newgame2.urc") + 1);
-			sprintf(ui_path, "%s/newgame2.urc", langPrefix);
+			ui_path = StringHelper::ConstructPath(langPrefix, "/newgame2.urc");
 		}
-
-		if (ui_path != NULL && strcmp(ui_path, "ui/quit.urc") == 0)
+		else if (ui_path && strcmp(ui_path, "ui/quit.urc") == 0) 
 		{
-			ui_path = (char*)malloc(strlen(langPrefix) + strlen("/quit2.urc") + 1);
-			sprintf(ui_path, "%s/quit2.urc", langPrefix);
+			ui_path = StringHelper::ConstructPath(langPrefix, "/quit2.urc");
 		}
 	}
 
@@ -1757,6 +1745,13 @@ static void ApplyFixHardDiskFull()
 	if (!FixHardDiskFull) return;
 
 	HookHelper::ApplyHook((void*)0x41D1E0, &CheckDiskFreeSpace_Hook, (LPVOID*)&CheckDiskFreeSpace);
+}
+
+static void ApplyFixDisplayModeBufferOverflow()
+{
+	if (!FixDisplayModeBufferOverflow) return;
+
+	HookHelper::ApplyHook((void*)0x46F850, &FetchDisplayResolutions_Hook, (LPVOID*)&FetchDisplayResolutions);
 }
 
 static void ApplyFixBlinkingAnimationSpeed()
@@ -2119,6 +2114,7 @@ static void Init()
 	// Fixes
 	ApplyFixSoundRandomization();
 	ApplyFixHardDiskFull();
+	ApplyFixDisplayModeBufferOverflow();
 	ApplyFixBlinkingAnimationSpeed();
 	ApplyFixStretchedHUD();
 	ApplyFixStretchedFMV();
