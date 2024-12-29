@@ -172,9 +172,6 @@ namespace GameHelper
 	typedef int(__cdecl* sub_418D90)(const char*, const char*, int);
 	sub_418D90 UpdateCvar = (sub_418D90)0x418D90;
 
-	typedef int(__cdecl* sub_4158F0)(char*, char);
-	sub_4158F0 CallCmd = (sub_4158F0)0x4158F0;
-
 	typedef int(__cdecl* sub_4076F0)(char*);
 	sub_4076F0 GetKeyId = (sub_4076F0)0x4076F0;
 

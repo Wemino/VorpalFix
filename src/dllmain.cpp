@@ -477,6 +477,12 @@ static char* __cdecl GetSavePath_Hook()
 // Caches display resolutions; bug: DISPLAY_MODE_IDX is never reset to 0
 static void __cdecl FetchDisplayResolutions_Hook()
 {
+	if (!FixDisplayModeBufferOverflow)
+	{
+		FetchDisplayResolutions();
+		return;
+	}
+
 	// If already executed, skip it
 	if (MemoryHelper::ReadMemory<int>(DISPLAY_MODE_IDX, false) == 0)
 	{
@@ -743,7 +749,7 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_
 		{
 			MaxAnisotropy = maxAnisotropy;
 			isAnisotropyRetrieved = false;
-			GameHelper::CallCmd("vid_restart\n", 0);
+			CallCmd("vid_restart\n", 0);
 		}
 
 		// CustomFPSLimit
@@ -806,7 +812,7 @@ static void __cdecl LoadSoundtrackFile_Hook()
 	// Restart the engine to show the menu correctly
 	if (FixProton)
 	{
-		GameHelper::CallCmd("vid_restart\n", 0);
+		CallCmd("vid_restart\n", 0);
 	}
 
 	// Make sure that the controller keys are correctly binded
@@ -1153,7 +1159,7 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 		// Don't accidentally spam the command every frames
 		if ((totalFrameTime - lastQuickSaveFrame) >= 50)
 		{
-			GameHelper::CallCmd("loadgame quicksave\n", 0);
+			CallCmd("loadgame quicksave\n", 0);
 			lastQuickSaveFrame = totalFrameTime;
 		}
 	}
@@ -1166,7 +1172,7 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 		// Don't accidentally spam the command every frames
 		if ((totalFrameTime - lastQuickSaveFrame) >= 50)
 		{
-			GameHelper::CallCmd("savegame quicksave\n", 0);
+			CallCmd("savegame quicksave\n", 0);
 			lastQuickSaveFrame = totalFrameTime;
 		}
 	}
@@ -1758,8 +1764,7 @@ static void ApplyFixHardDiskFull()
 
 static void ApplyFixDisplayModeBufferOverflow()
 {
-	if (!FixDisplayModeBufferOverflow) return;
-
+	// Used for resolution mode checking
 	HookHelper::ApplyHook((void*)0x46F850, &FetchDisplayResolutions_Hook, (LPVOID*)&FetchDisplayResolutions);
 }
 
@@ -1917,13 +1922,6 @@ static void ApplyFixMenuTransitionTiming()
 	MemoryHelper::WriteMemory<int>(0x4082FC, 0x3200, true);
 }
 
-static void ApplyFixCutsceneJumpSound()
-{
-	if (!FixCutsceneJumpSound) return;
-
-	HookHelper::ApplyHook((void*)0x4158F0, &CallCmd_Hook, (LPVOID*)&CallCmd);
-}
-
 static void ApplyFixLocalizationFiles()
 {
 	if (!FixLocalizationFiles) return;
@@ -1950,12 +1948,6 @@ static void ApplyCustomControllerBindings()
 	if (!CustomControllerBindings) return;
 
 	HookHelper::ApplyHook((void*)0x4635A0, &UpdateControllerState_Hook, (LPVOID*)&UpdateControllerState);
-
-	// If not already hooked
-	if (!FixCutsceneJumpSound)
-	{
-		HookHelper::ApplyHook((void*)0x4158F0, &CallCmd_Hook, (LPVOID*)&CallCmd);
-	}
 }
 
 static void ApplyPreventAlice2OnExit()
@@ -2123,6 +2115,7 @@ static void InitializeGameLoadingChecks()
 {
 	HookHelper::ApplyHook((void*)0x4256E0, &Str_To_Lower_Hook, (LPVOID*)&Str_To_Lower);
 	HookHelper::ApplyHook((void*)0x44C280, &ForceMenu_Hook, (LPVOID*)&ForceMenu);
+	HookHelper::ApplyHook((void*)0x4158F0, &CallCmd_Hook, (LPVOID*)&CallCmd);
 }
 
 #pragma endregion Apply Patches
@@ -2143,7 +2136,6 @@ static void Init()
 	ApplyFixDPIScaling();
 	ApplyFixMenuAnimationSpeed();
 	ApplyFixMenuTransitionTiming();
-	ApplyFixCutsceneJumpSound();
 	ApplyFixLocalizationFiles();
 	ApplyFixProton();
 	// General
