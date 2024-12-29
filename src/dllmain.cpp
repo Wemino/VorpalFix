@@ -29,6 +29,7 @@ const int DISPLAY_MODE_IDX = 0x7D40C4;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
 const int TOTAL_FRAME_TIME = 0x11C8AA0;
 const int UI_WAIT_TIMER = 0x12EF948;
+const int IS_CINEMATIC = 0x12F3CE8;
 const int CURRENT_WEAPON_ID = 0x12F3D60;
 const int IS_IN_MENU = 0x14EB498;
 const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
@@ -190,6 +191,7 @@ bool FixFullscreenSetting = false;
 bool FixParticleDistanceRatio = false;
 bool FixMenuAnimationSpeed = false;
 bool FixMenuTransitionTiming = false;
+bool FixCutsceneJumpSound = false;
 bool FixResolutionModeOOB = false;
 bool FixLocalizationFiles = false;
 bool FixProton = false;
@@ -249,6 +251,7 @@ static void ReadConfig()
 	FixMenuAnimationSpeed = IniHelper::ReadInteger("Fixes", "FixMenuAnimationSpeed", 1) == 1;
 	FixMenuTransitionTiming = IniHelper::ReadInteger("Fixes", "FixMenuTransitionTiming", 1) == 1;
 	FixResolutionModeOOB = IniHelper::ReadInteger("Fixes", "FixResolutionModeOOB", 1) == 1;
+	FixCutsceneJumpSound = IniHelper::ReadInteger("Fixes", "FixCutsceneJumpSound", 1) == 1;
 	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
 	FixProton = IniHelper::ReadInteger("Fixes", "FixProton", 0) == 1;
 
@@ -430,7 +433,7 @@ static int __cdecl HandleKeyboardInput_Hook(int keyId, int a2, int a3)
 static int __cdecl CallCmd_Hook(char* cmd, char a2)
 {
 	// If holding the left stick to assign a weapon
-	if (isHoldingLeftStick)
+	if (CustomControllerBindings && isHoldingLeftStick)
 	{
 		if (cmd == nullptr)
 		{
@@ -449,6 +452,12 @@ static int __cdecl CallCmd_Hook(char* cmd, char a2)
 				return 0; // Return 0 if the command matches, skip the weapon switch command that has been replaced
 			}
 		}
+	}
+
+	// Don't play 'jump.wav' during a cutscene
+	if (FixCutsceneJumpSound && MemoryHelper::ReadMemory<int>(IS_CINEMATIC, false) == 1 && strstr(cmd, "+moveup"))
+	{
+		return 0;
 	}
 
 	return CallCmd(cmd, a2);
@@ -1330,7 +1339,7 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 		}
 
 		// Once we get to the main menu
-		if (!isMainMenuShown && strstr(ShaderName, "main") != NULL)
+		if (!isMainMenuShown && strstr(ShaderName, "main"))
 		{
 			// Resize the cursor if hidden for the title screen
 			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
@@ -1338,7 +1347,7 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 		}
 
 		// Scale the legalplate
-		if (!isMainMenuShown && strstr(ShaderName, "legalplate") != NULL)
+		if (!isMainMenuShown && strstr(ShaderName, "legalplate"))
 		{
 			if (currentWidth > 1280)
 			{
@@ -1908,6 +1917,13 @@ static void ApplyFixMenuTransitionTiming()
 	MemoryHelper::WriteMemory<int>(0x4082FC, 0x3200, true);
 }
 
+static void ApplyFixCutsceneJumpSound()
+{
+	if (!FixCutsceneJumpSound) return;
+
+	HookHelper::ApplyHook((void*)0x4158F0, &CallCmd_Hook, (LPVOID*)&CallCmd);
+}
+
 static void ApplyFixLocalizationFiles()
 {
 	if (!FixLocalizationFiles) return;
@@ -1934,7 +1950,12 @@ static void ApplyCustomControllerBindings()
 	if (!CustomControllerBindings) return;
 
 	HookHelper::ApplyHook((void*)0x4635A0, &UpdateControllerState_Hook, (LPVOID*)&UpdateControllerState);
-	HookHelper::ApplyHook((void*)0x4158F0, &CallCmd_Hook, (LPVOID*)&CallCmd);
+
+	// If not already hooked
+	if (!FixCutsceneJumpSound)
+	{
+		HookHelper::ApplyHook((void*)0x4158F0, &CallCmd_Hook, (LPVOID*)&CallCmd);
+	}
 }
 
 static void ApplyPreventAlice2OnExit()
@@ -2122,6 +2143,7 @@ static void Init()
 	ApplyFixDPIScaling();
 	ApplyFixMenuAnimationSpeed();
 	ApplyFixMenuTransitionTiming();
+	ApplyFixCutsceneJumpSound();
 	ApplyFixLocalizationFiles();
 	ApplyFixProton();
 	// General
