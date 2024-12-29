@@ -200,6 +200,7 @@ bool FixProton = false;
 bool CustomControllerBindings = false;
 bool LaunchWithoutAlice2 = false;
 bool PreventAlice2OnExit = false;
+bool DisableWinsockInitialization = false;
 char* Alice2Path = nullptr;
 int LanguageId = 0;
 bool UseConsoleTitleScreen = false;
@@ -259,6 +260,7 @@ static void ReadConfig()
 	LaunchWithoutAlice2 = IniHelper::ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
 	CustomControllerBindings = IniHelper::ReadInteger("General", "CustomControllerBindings", 1) == 1;
 	PreventAlice2OnExit = IniHelper::ReadInteger("General", "PreventAlice2OnExit", 0) == 1;
+	DisableWinsockInitialization = IniHelper::ReadInteger("General", "DisableWinsockInitialization", 1) == 1;
 	Alice2Path = IniHelper::ReadString("General", "Alice2Path", ALICE2_DEFAULT_PATH);
 	LanguageId = IniHelper::ReadInteger("General", "LanguageId", 0);
 	UseOriginalIntroVideos = IniHelper::ReadInteger("General", "UseOriginalIntroVideos", 0) == 1;
@@ -962,8 +964,7 @@ static int __cdecl ForceMenu_Hook(const char* menu_name)
 	}
 
 	// Check if the start screen is skipped
-	int startupState = MemoryHelper::ReadMemory<int>(STARTUP_STATE_ADDR, false);
-	if (startupState == 1)
+	if (MemoryHelper::ReadMemory<int>(STARTUP_STATE_ADDR, false) == 1)
 	{
 		UseConsoleTitleScreen = false;
 	}
@@ -1338,7 +1339,7 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 		if (!isCursorResized && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
 		{
 			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
-			GameHelper::ResizePopupMessage(currentWidth, currentHeight); // Does not scale well
+			GameHelper::ResizePopupMessage(currentWidth, currentHeight); // Does not scale well with this function
 			isCursorResized = true;
 		}
 
@@ -1961,6 +1962,13 @@ static void ApplyPreventAlice2OnExit()
 	MemoryHelper::WriteMemory<int>(0x559A08, 0, false);
 }
 
+static void ApplyDisableWinsockInitialization()
+{
+	if (!DisableWinsockInitialization) return;
+
+	MemoryHelper::MakeNOP(0x46562E, 5, true);
+}
+
 static void ApplyLanguageId()
 {
 	MemoryHelper::WriteMemory<int>(0x461A90, LanguageId, true);
@@ -2146,6 +2154,7 @@ static void Init()
 	ApplyLaunchWithoutAlice2();
 	ApplyCustomControllerBindings();
 	ApplyPreventAlice2OnExit();
+	ApplyDisableWinsockInitialization();
 	ApplyLanguageId();
 	ApplyUseConsoleTitleScreen();
 	ApplyUseOriginalIntroVideos();
