@@ -134,6 +134,7 @@ const int BLINK_SPEED_RATE = 20;
 // =============================
 int(__cdecl* Bind)(int, char*) = nullptr; // 0x407870
 int(__cdecl* HandleKeyboardInput)(int, int, int) = nullptr; // 0x4081B0
+void(__cdecl* CL_InitRef)() = nullptr; // 0x409FD0
 void(__cdecl* CL_ParsePacketEntities)(int, int, int) = nullptr; // 0x40C1B0
 char* (__cdecl* GetSavePath)() = nullptr; // 0x417400
 int(__cdecl* CallCmd)(char*, char) = nullptr; // 0x4158F0
@@ -435,6 +436,18 @@ static int __cdecl HandleKeyboardInput_Hook(int keyId, int a2, int a3)
 	return HandleKeyboardInput(keyId, a2, a3);
 }
 
+// Restart the engine to show the menu correctly on Linux
+static void __cdecl CL_InitRef_Hook()
+{
+	// Only needed once, make sure that we are not stuck in a loop
+	MH_DisableHook((void*)0x409FD0);
+
+	CL_InitRef();
+
+	// Workaround for Linux, must be called after CL_InitRef()
+	GameHelper::VidRestart();
+}
+
 // Process the snapshot returned from the server (fgamex86.dll) and modify specific properties
 static void __cdecl CL_ParsePacketEntities_Hook(int msg, int oldframe, int newframe)
 {
@@ -458,6 +471,7 @@ static void __cdecl CL_ParsePacketEntities_Hook(int msg, int oldframe, int newfr
 			*fovPtr = FOV / 1.18f;
 		}
 	}
+
 	CL_ParsePacketEntities(msg, oldframe, newframe);
 }
 
@@ -486,9 +500,10 @@ static int __cdecl CallCmd_Hook(char* cmd, char a2)
 		}
 	}
 
-	// Don't play 'jump.wav' during a cutscene
+	// If jumping during a cutscene
 	if (FixCutsceneJumpSound && MemoryHelper::ReadMemory<int>(IS_CINEMATIC, false) == 1 && strstr(cmd, "+moveup"))
 	{
+		// Don't play 'jump.wav' during a cutscene
 		return 0;
 	}
 
@@ -754,7 +769,7 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_
 		{
 			MaxAnisotropy = maxAnisotropy;
 			isAnisotropyRetrieved = false;
-			CallCmd("vid_restart\n", 0);
+			GameHelper::VidRestart();
 		}
 
 		// CustomFPSLimit
@@ -814,12 +829,6 @@ static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
 // Hook of the function used to load a sound file
 static void __cdecl LoadSoundtrackFile_Hook()
 {
-	// Restart the engine to show the menu correctly
-	if (FixProton)
-	{
-		CallCmd("vid_restart\n", 0);
-	}
-
 	// Make sure that the controller keys are correctly binded
 	if (CustomControllerBindings)
 	{
@@ -1935,9 +1944,9 @@ static void ApplyFixLocalizationFiles()
 
 static void ApplyFixProton()
 {
-	if (!FixProton && !CustomControllerBindings) return;
+	if (!FixProton) return;
 
-	HookHelper::ApplyHook((void*)0x429600, &LoadSoundtrackFile_Hook, (LPVOID*)&LoadSoundtrackFile);
+	HookHelper::ApplyHook((void*)0x409FD0, &CL_InitRef_Hook, (LPVOID*)&CL_InitRef);
 }
 
 static void ApplyLaunchWithoutAlice2()
@@ -1952,6 +1961,7 @@ static void ApplyCustomControllerBindings()
 	if (!CustomControllerBindings) return;
 
 	HookHelper::ApplyHook((void*)0x4635A0, &UpdateControllerState_Hook, (LPVOID*)&UpdateControllerState);
+	HookHelper::ApplyHook((void*)0x429600, &LoadSoundtrackFile_Hook, (LPVOID*)&LoadSoundtrackFile);
 }
 
 static void ApplyPreventAlice2OnExit()
@@ -2136,6 +2146,7 @@ static void InitializeGameLoadingChecks()
 static void Init()
 {
 	ReadConfig();
+
 	// Fixes
 	ApplyFixSoundRandomization();
 	ApplyFixHardDiskFull();

@@ -175,6 +175,9 @@ namespace GameHelper
 	typedef int(__cdecl* sub_4076F0)(char*);
 	sub_4076F0 GetKeyId = (sub_4076F0)0x4076F0;
 
+	typedef int(__cdecl* sub_40B2F0)();
+	sub_40B2F0 VidRestart = (sub_40B2F0)0x40B2F0;
+
 	typedef int(__cdecl* sub_44A300)(unsigned int, const char*);
 	sub_44A300 UI_GetStaticMap = (sub_44A300)0x44A300;
 
