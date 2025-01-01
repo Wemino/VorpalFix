@@ -924,7 +924,7 @@ static int __cdecl IsGameStarted_Hook()
 		return 0;
 	}
 
-	if (isMainMenuShown)
+	if (!UseConsoleTitleScreen || isMainMenuShown)
 	{
 		return IsGameStarted();
 	}
@@ -1935,6 +1935,7 @@ static void ApplyFixMenuTransitionTiming()
 {
 	// Used for more than just this fix
 	HookHelper::ApplyHook((void*)0x44C1B0, &PushMenu_Hook, (LPVOID*)&PushMenu);
+	HookHelper::ApplyHook((void*)0x449DF0, &IsGameStarted_Hook, (LPVOID*)&IsGameStarted);
 
 	if (!FixMenuTransitionTiming) return;
 
@@ -1997,7 +1998,6 @@ static void ApplyUseConsoleTitleScreen()
 	HookHelper::ApplyHook((void*)0x4081B0, &HandleKeyboardInput_Hook, (LPVOID*)&HandleKeyboardInput);
 	HookHelper::ApplyHook((void*)0x4C1AC0, &LoadUI_Hook, (LPVOID*)&LoadUI);
 	HookHelper::ApplyHook((void*)0x44C4F0, &TriggerMainMenu_Hook, (LPVOID*)&TriggerMainMenu);
-	HookHelper::ApplyHook((void*)0x449DF0, &IsGameStarted_Hook, (LPVOID*)&IsGameStarted);
 }
 
 static void ApplyUseOriginalIntroVideos()
