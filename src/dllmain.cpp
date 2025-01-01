@@ -77,6 +77,7 @@ bool isWiderThan4By3 = false;
 float scaleFactor = 0;
 float scaledWidth = 0;
 float widthDifference = 0;
+float consoleHudAdjustmentDivisor = 0;
 
 bool hasLookedForLocalizationFiles = false;
 size_t localizationFilesToLoad = 0;
@@ -899,12 +900,12 @@ static int __cdecl RenderHUD_Hook(float x_position, float y_position, float reso
 		{
 			if (x_position < 0)
 			{
-				x_position += currentWidth / 17.0f;
+				x_position += currentWidth / consoleHudAdjustmentDivisor;
 			}
 
 			if (x_position > 0)
 			{
-				x_position -= currentWidth / 17.0f;
+				x_position -= currentWidth / consoleHudAdjustmentDivisor;
 			}
 
 			y_position -= currentHeight / 10.0f;
@@ -1245,6 +1246,7 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 		scaledWidth = currentHeight * ASPECT_RATIO_4_3;
 		scaleFactor = scaledWidth / currentWidth;
 		widthDifference = ((currentWidth - scaledWidth) / 2.0f);
+		consoleHudAdjustmentDivisor = 17.0f * (16.0f / 9.0f) / currentAspectRatio;
 	}
 
 	// Scale the FOV for non-4:3 aspect ratios
