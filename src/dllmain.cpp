@@ -885,11 +885,11 @@ static int __cdecl RenderHUD_Hook(float x_position, float y_position, float reso
 			x_position = (x_position - currentWidth / 2.0f) * scaleFactor + currentWidth / 2.0f;
 
 			// Step 3: Center the HUD horizontally by adjusting for the width difference between 4:3 and the current aspect ratio
-			if (x_position > 0) // Elements on the right side
+			if (hud_object_x_position > 0) // Elements on the right side
 			{
 				x_position += widthDifference;
 			}
-			else if (x_position < 0) // Elements on the left side
+			else if (hud_object_x_position < 0) // Elements on the left side
 			{
 				x_position -= widthDifference;
 			}
