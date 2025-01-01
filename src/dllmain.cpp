@@ -27,6 +27,7 @@ const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
 const int CURRENT_LANG = 0x7CF868;
 const int DISPLAY_MODE_IDX = 0x7D40C4;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
+const int IS_MENU_LOCKED = 0x11C2770;
 const int TOTAL_FRAME_TIME = 0x11C8AA0;
 const int UI_WAIT_TIMER = 0x12EF948;
 const int IS_CINEMATIC = 0x12F3CE8;
@@ -55,10 +56,8 @@ bool isVFMenuUsed = false;
 // =============================
 // Variables 
 // =============================
-bool isDialog = false;
 int currentWidth = 0;
 int currentHeight = 0;
-float currentAspectRatio = 0;
 bool isCursorResized = false;
 bool isDefaultFullscreenSettingSkipped = false;
 bool isUsingControllerMenu = false;
@@ -71,6 +70,13 @@ bool isInSettingMenu = false;
 bool isTakingSaveScreenshot = false;
 int saveScreenshotX = 0;
 bool isInCredits = false;
+bool isRenderingConsole = false;
+
+float currentAspectRatio = 0;
+bool isWiderThan4By3 = false;
+float scaleFactor = 0;
+float scaledWidth = 0;
+float widthDifference = 0;
 
 bool hasLookedForLocalizationFiles = false;
 size_t localizationFilesToLoad = 0;
@@ -160,13 +166,14 @@ int(__cdecl* SetupOpenGLParameters)() = nullptr; // 0x46E0D0
 void(__cdecl* FetchDisplayResolutions)() = nullptr; // 0x46F850
 int(__cdecl* GLW_CreatePFD)(void*, unsigned __int8, char, unsigned __int8, int) = nullptr; // 0x46FC70
 int(__cdecl* QGL_Init)(LPCSTR) = nullptr; // 0x47ABE0
+void(__cdecl* RE_StretchFont)(int, BYTE, float, float, float, float, float, float, float, int) = nullptr; // 0x48F1E0
 int(__cdecl* RE_StretchPic)(float, float, float, float, float, float, float, float, int) = nullptr; // 0x48FC00
 int(__cdecl* RE_StretchRaw)(int, int, int, int, int, int, int) = nullptr; // 0x490130
 void(__cdecl* UpdateRenderContext)(int, int, int, int, float, float, float, float, float, float) = nullptr; // 0x4907F0
 void(__cdecl* ConfigureScissor)(int, int, int, int) = nullptr; // 0x4908D0
+int(__thiscall* UpdateAndConfigureRenderContext)(int) = nullptr; // 0x4B1130
 DWORD(__thiscall* UISetCvars)(DWORD*, char*) = nullptr; // 0x4B9FD0
 BYTE(__thiscall* LoadUI)(DWORD*, char*) = nullptr; // 0x4C1AC0
-int(__thiscall* GetGlyphInfo)(int, float, float, int, int, float, float, float, float, float) = nullptr; // 0x4C0A10
 DWORD* (__cdecl* SetAliceMirrorViewportParams)(DWORD*, float, float, float, float, float) = nullptr; // 0x4C5D30
 int(__thiscall* UpdateHeadOrientationFromMouse)(int, float*, int, float*, float*) = nullptr; // 0x4C6050
 HWND(WINAPI* ori_CreateWindowExA)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
@@ -426,8 +433,8 @@ static int __cdecl HandleKeyboardInput_Hook(int keyId, int a2, int a3)
 		return HandleKeyboardInput(keyId, a2, a3);
 	}
 
-	// Enter, Space, Left Mouse Click, Controller 'A'
-	if (keyId == 13 || keyId == 32 || keyId == 178 || keyId == 199)
+	// Enter, Space, Controller 'A'
+	if (keyId == 13 || keyId == 32 || keyId == 199)
 	{
 		// Set keyId to 'Escape' (27) to skip the title screen
 		keyId = 27;
@@ -734,7 +741,7 @@ static int __cdecl SetupOpenGLParameters_Hook()
 }
 
 // Hook of the function used by the "ui_setcvars" command, used to save the VorpalFix menu settings to the INI
-static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_name)
+static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int* _ECX, char* group_name)
 {
 	// Apply the changes
 	if (strcmp(group_name, "group_vorpalfix") == 0)
@@ -796,7 +803,7 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* this_ptr, int* _ECX, char* group_
 		IniHelper::Save();
 	}
 
-	return UISetCvars(this_ptr, group_name);
+	return UISetCvars(thisPtr, group_name);
 }
 
 // Function executed during the unzipping phase to check for specific file presence
@@ -865,22 +872,19 @@ static FILE __cdecl FS_LoadZipFile_Hook(const char* FileName)
 // Adjust the HUD position and scaling for non-4:3 aspect ratios
 static int __cdecl RenderHUD_Hook(float x_position, float y_position, float resolution_width, float resolution_height, int a5, float* a6, float* a7, float* a8, int a9, const char* a10, __int16 a11, float* a12, float* a13, float a14, float a15, int a16)
 {
-	if (currentAspectRatio > ASPECT_RATIO_4_3)
+	if (isWiderThan4By3)
 	{
 		if (FixStretchedHUD)
 		{
 			// Step 1: Unstretch HUD
 			float hud_object_x_position = (x_position * 640.0f) / resolution_width;
-			float scaleX = ASPECT_RATIO_4_3 / currentAspectRatio;
-			resolution_width *= scaleX; // Adjust width to maintain aspect ratio
+			resolution_width *= scaleFactor; // Adjust width to maintain aspect ratio
 
 			// Step 2: 4:3 Position
 			x_position = currentWidth / 640.0f * hud_object_x_position;
-			x_position = (x_position - currentWidth / 2.0f) * scaleX + currentWidth / 2.0f;
+			x_position = (x_position - currentWidth / 2.0f) * scaleFactor + currentWidth / 2.0f;
 
 			// Step 3: Center the HUD horizontally by adjusting for the width difference between 4:3 and the current aspect ratio
-			float widthDifference = ((currentWidth - resolution_width) / 2.0f);
-
 			if (x_position > 0) // Elements on the right side
 			{
 				x_position += widthDifference;
@@ -929,14 +933,7 @@ static int __cdecl IsGameStarted_Hook()
 // Hook of the "pushmenu" command
 static int __cdecl PushMenu_Hook(const char* menu_name)
 {
-	if (FixStretchedGUI && strcmp(menu_name, "credits") == 0)
-	{
-		isInCredits = true;
-	}
-	else
-	{
-		isInCredits = false;
-	}
+	isInCredits = (FixStretchedGUI && strcmp(menu_name, "credits") == 0);
 
 	if (FixMenuTransitionTiming && strcmp(menu_name, "newgame") == 0)
 	{
@@ -962,14 +959,7 @@ static int __cdecl PushMenu_Hook(const char* menu_name)
 static int __cdecl ForceMenu_Hook(const char* menu_name)
 {
 	// Indicate when the credits start after the final boss
-	if (FixStretchedGUI && strcmp(menu_name, "credits") == 0)
-	{
-		isInCredits = true;
-	}
-	else
-	{
-		isInCredits = false;
-	}
+	isInCredits = (FixStretchedGUI && strcmp(menu_name, "credits") == 0);
 
 	// Check if the start screen is skipped
 	if (MemoryHelper::ReadMemory<int>(STARTUP_STATE_ADDR, false) == 1)
@@ -997,17 +987,22 @@ static void __cdecl TriggerMainMenu_Hook(int a1)
 }
 
 // Adjust the vertical alignment of the text in the dialog box for two-line messages
-static void __fastcall ShowDialogBoxText_Hook(int this_ptr, int* _ECX)
+static void __fastcall ShowDialogBoxText_Hook(int thisPtr, int* _ECX)
 {
-	int currentDialogLines = MemoryHelper::ReadMemory<int>(this_ptr + 0x1D8, false);
-
-	// 2 lines of dialog, lower it's position in the dialog box
-	if (currentDialogLines == 4)
+	// Hide the dialog box when we are still in the menu
+	if (MemoryHelper::ReadMemory<char>(IS_MENU_LOCKED, false))
 	{
-		MemoryHelper::WriteMemory<int>(this_ptr + 0x1D8, 3, false);
+		return;
 	}
 
-	ShowDialogBoxText(this_ptr);
+	int currentDialogLines = MemoryHelper::ReadMemory<int>(thisPtr + 0x1D8, false);
+	if (currentDialogLines == 4)
+	{
+		// 2 lines of dialog, lower it's position in the dialog box
+		MemoryHelper::WriteMemory<int>(thisPtr + 0x1D8, 3, false);
+	}
+
+	ShowDialogBoxText(thisPtr);
 }
 
 // Hook function used to load the localization pk3 file
@@ -1205,30 +1200,33 @@ static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, int wParam, LPARA
 	return lpfnWndProc_MSG(hWnd, Msg, wParam, lParam);
 }
 
-// Hook for the function that takes a screenshot for the saved snapshot, ensuring it is captured as if the game is running in a 4:3 aspect ratio.
+// Hook for the function that takes a screenshot for the saved snapshot, ensuring it is captured as if the game is running in a 4:3 aspect ratio
 static int __cdecl TakeSaveScreenshot_Hook(int a1, int a2, int a3)
 {
-	int screenshot_width = static_cast<int>(currentHeight * ASPECT_RATIO_4_3);
-	saveScreenshotX = (currentWidth - screenshot_width) / 2;
-
-	// If screenshot_width is not a multiple of 4
-	if (screenshot_width % 4 != 0)
+	if (isWiderThan4By3)
 	{
-		// Adjust the width to be the largest multiple of 4 less than currentWidth
-		screenshot_width = screenshot_width - (screenshot_width % 4);
+		int screenshot_width = static_cast<int>(scaledWidth);
+		saveScreenshotX = static_cast<int>(widthDifference);
+
+		// If screenshot_width is not a multiple of 4
+		if (screenshot_width % 4 != 0)
+		{
+			// Adjust the width to be the largest multiple of 4 less than currentWidth
+			screenshot_width = screenshot_width - (screenshot_width % 4);
+		}
+
+		// Store the new dimension for the screenshot
+		MemoryHelper::WriteMemory<int>(CODE_CAVE_WIDTH, screenshot_width, true);
+
+		// Redirect width read by sub_46D280
+		MemoryHelper::WriteMemory<int>(0x46D28B, CODE_CAVE_WIDTH, true);
+		MemoryHelper::WriteMemory<int>(0x46D307, CODE_CAVE_WIDTH, true);
+		MemoryHelper::WriteMemory<int>(0x46D321, CODE_CAVE_WIDTH, true);
+		MemoryHelper::WriteMemory<int>(0x46D3B7, CODE_CAVE_WIDTH, true);
+
+		// Tell glReadPixels_Hook to update the x position
+		isTakingSaveScreenshot = true;
 	}
-
-	// Store the new dimension for the screenshot
-	MemoryHelper::WriteMemory<int>(CODE_CAVE_WIDTH, screenshot_width, true);
-
-	// Redirect width read by sub_46D280
-	MemoryHelper::WriteMemory<int>(0x46D28B, CODE_CAVE_WIDTH, true);
-	MemoryHelper::WriteMemory<int>(0x46D307, CODE_CAVE_WIDTH, true);
-	MemoryHelper::WriteMemory<int>(0x46D321, CODE_CAVE_WIDTH, true);
-	MemoryHelper::WriteMemory<int>(0x46D3B7, CODE_CAVE_WIDTH, true);
-
-	// Tell glReadPixels_Hook to update the x position
-	isTakingSaveScreenshot = true;
 
 	return TakeSaveScreenshot(a1, a2, a3);
 }
@@ -1240,6 +1238,14 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 	currentWidth = MemoryHelper::ReadMemory<int>(CURRENT_WIDTH_ADDR, false);
 	currentHeight = MemoryHelper::ReadMemory<int>(CURRENT_HEIGHT_ADDR, false);
 	currentAspectRatio = static_cast<float>(currentWidth) / static_cast<float>(currentHeight);
+	isWiderThan4By3 = currentAspectRatio > ASPECT_RATIO_4_3;
+
+	if (isWiderThan4By3)
+	{
+		scaledWidth = currentHeight * ASPECT_RATIO_4_3;
+		scaleFactor = scaledWidth / currentWidth;
+		widthDifference = ((currentWidth - scaledWidth) / 2.0f);
+	}
 
 	// Scale the FOV for non-4:3 aspect ratios
 	if (AutoFOV)
@@ -1254,8 +1260,8 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 		isCursorResized = false;
 	}
 
-	// Note: Not necessary if 'FixStretchedGUI' is enabled, due to 'TakeSaveScreenshot_Hook'
-	if (!FixStretchedGUI && FixSaveScreenshotBufferOverflow)
+	// If we are above 4:3 and want to scale the screenshot taken, skip this
+	if ((FixStretchedGUI && !isWiderThan4By3) && FixSaveScreenshotBufferOverflow)
 	{
 		// currentWidth is not a multiple of 4?
 		if (currentWidth % 4 != 0)
@@ -1308,6 +1314,29 @@ static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 	return QGL_Init(lpLibFileName);
 }
 
+// Scale the font
+static void __cdecl RE_StretchFont_Hook(int a1, BYTE a2, float font_x_position, float font_y_position, float a5, float a6, float font_spacing, float font_scale_width, float font_scale_height, int a10)
+{
+	// Don't mess with the console or with the credits
+	if (font_x_position <= 3.0 || font_spacing == -8.0)
+	{
+		RE_StretchFont(a1, a2, font_x_position, font_y_position, a5, a6, font_spacing, font_scale_width, font_scale_height, a10);
+		return;
+	}
+
+	if (isWiderThan4By3)
+	{
+		float adjusted_font_x_position = (font_x_position * scaleFactor) + widthDifference;
+		float adjusted_font_scale_width = font_scale_width * scaleFactor;
+
+		return RE_StretchFont(a1, a2, adjusted_font_x_position, font_y_position, a5, a6, font_spacing, adjusted_font_scale_width, font_scale_height, a10);
+	}
+	else
+	{
+		RE_StretchFont(a1, a2, font_x_position, font_y_position, a5, a6, font_spacing, font_scale_width, font_scale_height, a10);
+	}
+}
+
 // Adjust the menu position and scaling for non-4:3 aspect ratios
 static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float resolution_width, float resolution_height, float a5, float a6, float a7, float a8, int ShaderHandle)
 {
@@ -1316,27 +1345,25 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 	{
 		// Calculate the scale factor to match the target height
 		float scale_factor = currentHeight / 720.0f; // Original height of the image is 720
-		float black_border_width = (currentWidth - (currentHeight * ASPECT_RATIO_4_3)) / 2.0f;
 
 		// Scale the width and height proportionally
 		resolution_width = 320.0f * scale_factor;
 		resolution_height = currentHeight;
 
 		// Align the image to the left edge to cover the black border precisely
-		x_position = black_border_width - resolution_width;
+		x_position = widthDifference - resolution_width;
 	}
 	else if (x_position == RIGHT_BORDER_X_ID) // Right border
 	{
 		// Calculate the scale factor to match the target height
 		float scale_factor = currentHeight / 720.0f; // Original height of the image is 720
-		float black_border_width = (currentWidth - (currentHeight * ASPECT_RATIO_4_3)) / 2.0f;
 
 		// Scale the width and height proportionally
 		resolution_width = 320.0f * scale_factor;
 		resolution_height = currentHeight;
 
 		// Position the image to align precisely with the right black border
-		x_position = currentWidth - black_border_width;
+		x_position = currentWidth - widthDifference;
 	}
 	else
 	{
@@ -1411,6 +1438,24 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
 
+		// Full screen effects
+		if (strcmp(ShaderName, "textures/special/drugfade") == 0 || strcmp(ShaderName, "textures/special/icefade") == 0)
+		{
+			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+		}
+
+		// Pop-up message that does not scale well with this function
+		if (strcmp(ShaderName, "ui/control/press_any_key") == 0)
+		{
+			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+		}
+
+		// Console Elements
+		if (isConsoleOpen && x_position == 0 && (strcmp(ShaderName, "ui/control/slider2_bar") == 0 || strcmp(ShaderName, "ui/control/slider2_top") == 0 || strcmp(ShaderName, "ui/control/slider2_indicator") == 0))
+		{
+			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+		}
+
 		// Credits
 		if (isInCredits)
 		{
@@ -1426,48 +1471,17 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 			}
 		}
 
-		// Full screen effects
-		if (strcmp(ShaderName, "textures/special/drugfade") == 0 || strcmp(ShaderName, "textures/special/icefade") == 0)
-		{
-			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-		}
-
-		// Pop-up message that does not scale well with this function
-		if (strcmp(ShaderName, "ui/control/press_any_key") == 0)
-		{
-			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-		}
-
 		// Scale the UI
-		if (currentAspectRatio > ASPECT_RATIO_4_3)
+		if (isWiderThan4By3)
 		{
-			float target_width = currentHeight * ASPECT_RATIO_4_3;
-			float scale_factor = target_width / currentWidth;
-			resolution_width *= scale_factor;
-			float horizontal_offset = (currentWidth - target_width) / 2.0f;
-
-			// Exceptions for some of the in-game assets
-			if ((ConsolePortHUD || strcmp(ShaderName, "ui/quicksavecam/quicksavecam") != 0) && strcmp(ShaderName, "ui/dialog/leftFrame") != 0 && strcmp(ShaderName, "ui/dialog/rightFrame") != 0)
-			{
-				x_position = (x_position * scale_factor) + horizontal_offset;
-			}
+			resolution_width *= scaleFactor;
+			x_position = (x_position * scaleFactor) + widthDifference;
 
 			// Save camera position similar to the console version
 			if ((ConsolePortHUD && strcmp(ShaderName, "ui/quicksavecam/quicksavecam") == 0))
 			{
 				x_position = currentWidth / 6.0f;
 				y_position = currentHeight / 14.25f;
-			}
-
-			// Move the dialog boxes to the center
-			if (strcmp(ShaderName, "ui/dialog/leftFrame") == 0 || strcmp(ShaderName, "ui/dialog/rightFrame") == 0)
-			{
-				x_position = (x_position * scale_factor) + horizontal_offset * 0.6f;
-				isDialog = true;
-			}
-			else
-			{
-				isDialog = false;
 			}
 		}
 	}
@@ -1478,33 +1492,38 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 // Adjust the FMV position and scaling for non-4:3 aspect ratios
 static int __cdecl RE_StretchRaw_Hook(int x_position, int y_position, int resolution_width, int resolution_height, int a5, int a6, int a7)
 {
-	int video_width = resolution_width;
-
-	if (currentAspectRatio > ASPECT_RATIO_4_3)
+	if (isWiderThan4By3)
 	{
-		video_width = static_cast<int>(resolution_height * ASPECT_RATIO_4_3);
-		x_position = (resolution_width - video_width) / 2;
+		x_position = static_cast<int>(widthDifference);
+		resolution_width = static_cast<int>(scaledWidth);
 	}
 
-	return RE_StretchRaw(x_position, y_position, video_width, resolution_height, a5, a6, a7);
+	return RE_StretchRaw(x_position, y_position, resolution_width, resolution_height, a5, a6, a7);
 }
 
 // Adjust the scaling of the 'AutoScroll' control in credits
 static void __cdecl UpdateRenderContext_Hook(int x, int y, int width, int height, float a5, float a6, float a7, float a8, float a9, float a10)
 {
-	if (isInCredits && x != 0)
+	if (isWiderThan4By3 && x != 0 && !isRenderingConsole)
 	{
-		float target_width = currentHeight * ASPECT_RATIO_4_3;
-
-		if (currentAspectRatio > ASPECT_RATIO_4_3)
+		if (isInCredits)
 		{
-			float scale_factor = target_width / currentWidth;
-			float horizontal_offset = (currentWidth - target_width) / 2.0f;
-
-			int adjusted_x = (x * scale_factor) + horizontal_offset;
-			int adjusted_width = width * scale_factor;
+			int adjusted_x = (x * scaleFactor) + widthDifference;
+			int adjusted_width = width * scaleFactor;
 
 			UpdateRenderContext(adjusted_x, y, adjusted_width, height, a5, a6, a7, a8, a9, a10);
+		}
+		else // dialog
+		{
+			// Make sure to display the borders while transitioning from menu to in-game
+			if (MemoryHelper::ReadMemory<char>(IS_MENU_LOCKED, false))
+			{
+				return;
+			}
+
+			int adjusted_x = x * scaleFactor;
+
+			UpdateRenderContext(adjusted_x, y, width, height, a5, a6, a7, a8, a9, a10);
 		}
 	}
 	else
@@ -1516,19 +1535,26 @@ static void __cdecl UpdateRenderContext_Hook(int x, int y, int width, int height
 // Used right after 'UpdateRenderContext', do the same adjustements
 static void __cdecl ConfigureScissor_Hook(int x, int y, int width, int height)
 {
-	if (isInCredits && x != 0)
+	if (isWiderThan4By3 && x != 0 && !isRenderingConsole)
 	{
-		float target_width = currentHeight * ASPECT_RATIO_4_3;
-
-		if (currentAspectRatio > ASPECT_RATIO_4_3)
+		if (isInCredits)
 		{
-			float scale_factor = target_width / currentWidth;
-			float horizontal_offset = (currentWidth - target_width) / 2.0f;
-
-			int adjusted_x = (x * scale_factor) + horizontal_offset;
-			int adjusted_width = width * scale_factor;
+			int adjusted_x = (x * scaleFactor) + widthDifference;
+			int adjusted_width = width * scaleFactor;
 
 			ConfigureScissor(adjusted_x, y, adjusted_width, height);
+		}
+		else // dialog
+		{
+			// Make sure to display the borders while transitioning from menu to in-game
+			if (MemoryHelper::ReadMemory<char>(IS_MENU_LOCKED, false))
+			{
+				return;
+			}
+
+			int adjusted_x = x * scaleFactor;
+
+			ConfigureScissor(adjusted_x, y, width, height);
 		}
 	}
 	else
@@ -1537,8 +1563,26 @@ static void __cdecl ConfigureScissor_Hook(int x, int y, int width, int height)
 	}
 }
 
+// Detect if the console is going to be used in 'UpdateRenderContext', we don't want that to happen while in the credits or during a dialog
+static DWORD __fastcall UpdateAndConfigureRenderContext_Hook(int thisPtr, int* _ECX)
+{
+	int x = *(int*)(thisPtr + 0x38);
+	BYTE isEnabled = *(BYTE*)(thisPtr + 0x1C1);
+
+	if (x != 0 && isEnabled)
+	{
+		isRenderingConsole = true;
+	}
+	else
+	{
+		isRenderingConsole = false;
+	}
+	
+	return UpdateAndConfigureRenderContext(thisPtr);
+}
+
 // Load the menu files from 'pak6_VorpalFix.pk3' when required
-static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
+static DWORD __fastcall LoadUI_Hook(DWORD* thisPtr, int* _ECX, char* ui_path)
 {
 	int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG, false);
 
@@ -1607,47 +1651,7 @@ static DWORD __fastcall LoadUI_Hook(DWORD* ptr, int* _ECX, char* ui_path)
 		}
 	}
 
-	return LoadUI(ptr, ui_path);
-}
-
-// Scale the font
-static int __fastcall GetGlyphInfo_Hook(int this_ptr, int* _EDX, float font_x_position, float font_y_position, int a4, int a5, float a6, float a7, float font_spacing, float font_scale_width, float font_scale_height)
-{
-	// Don't mess with the console or with the credits
-	if (font_x_position <= 3.0 || font_spacing == -8.0)
-	{
-		return GetGlyphInfo(this_ptr, font_x_position, font_y_position, a4, a5, a6, a7, font_spacing, font_scale_width, font_scale_height);
-	}
-
-	if (currentAspectRatio > ASPECT_RATIO_4_3)
-	{
-		// Disable original font scaling, we'll handle it ourselves
-		*(BYTE*)(this_ptr + 24) = 1;
-
-		float target_width = currentHeight * ASPECT_RATIO_4_3;
-		float horizontal_offset = (currentWidth - target_width) / 2.0f;
-
-		float width_scale_factor = target_width / 640.0f;
-		float height_scale_factor = currentHeight / 480.0f;
-
-		// Adjust font position and scaling
-		float adjusted_font_x_position = (font_x_position * width_scale_factor) + horizontal_offset;
-		float adjusted_font_scale_width = font_scale_width * width_scale_factor;
-		float adjusted_font_y_position = font_y_position * height_scale_factor;
-		float adjusted_font_scale_height = font_scale_height * height_scale_factor;
-
-		// Adjust the position of the text for the dialog box
-		if (isDialog)
-		{
-			adjusted_font_x_position = (font_x_position * width_scale_factor) + horizontal_offset * 0.6f;
-		}
-
-		return GetGlyphInfo(this_ptr, adjusted_font_x_position, adjusted_font_y_position, a4, a5, a6, a7, font_spacing, adjusted_font_scale_width, adjusted_font_scale_height);
-	}
-	else
-	{
-		return GetGlyphInfo(this_ptr, font_x_position, font_y_position, a4, a5, a6, a7, font_spacing, font_scale_width, font_scale_height);
-	}
+	return LoadUI(thisPtr, ui_path);
 }
 
 // Adjust the scaling and position of Alice's 3D model in the settings menu
@@ -1655,16 +1659,12 @@ static DWORD* __cdecl SetAliceMirrorViewportParams_Hook(DWORD* a1, float param_x
 {
 	DWORD* renderEntity = SetAliceMirrorViewportParams(a1, param_x, param_y, param_width, param_height, param_fov);
 
-	int width = renderEntity[2];
-	if (currentAspectRatio > ASPECT_RATIO_4_3)
+	if (isWiderThan4By3)
 	{
-		float aspect_ratio_adjustment = ASPECT_RATIO_4_3 / currentAspectRatio;
-
-		int adjusted_width = static_cast<int>(currentWidth * aspect_ratio_adjustment);
-		renderEntity[2] = adjusted_width;
-
-		int x_shift = (width - adjusted_width) / 2;
-		renderEntity[0] = x_shift;
+		// X position
+		renderEntity[0] = static_cast<int>(widthDifference);
+		// Width
+		renderEntity[2] = static_cast<int>(scaledWidth);
 	}
 
 	return renderEntity;
@@ -1673,7 +1673,7 @@ static DWORD* __cdecl SetAliceMirrorViewportParams_Hook(DWORD* a1, float param_x
 // Adds borders to hide the pillarbox when scaling the menu
 static void __cdecl SetUIBorder_Hook()
 {
-	if (isDialog) return;
+	if (!isWiderThan4By3) return;
 
 	int border = GameHelper::UI_GetStaticMap(18, "border1_left.tga");
 	RE_StretchPic_Hook(LEFT_BORDER_X_ID, 0, 0, 0, 0.0, 0.0, 1.0, 1.0, *(DWORD*)(border + 4));
@@ -1847,7 +1847,7 @@ static void ApplyFixStretchedGUI()
 
 	HookHelper::ApplyHook((void*)0x48FC00, &RE_StretchPic_Hook, (LPVOID*)&RE_StretchPic); // UI Scaling
 	HookHelper::ApplyHook((void*)0x44B100, &SetUIBorder_Hook, (LPVOID*)&SetUIBorder); // Add the borders
-	HookHelper::ApplyHook((void*)0x4C0A10, &GetGlyphInfo_Hook, (LPVOID*)&GetGlyphInfo); // Font Scaling
+	HookHelper::ApplyHook((void*)0x48F1E0, &RE_StretchFont_Hook, (LPVOID*)&RE_StretchFont); // Font Scaling
 	HookHelper::ApplyHook((void*)0x4C5D30, &SetAliceMirrorViewportParams_Hook, (LPVOID*)&SetAliceMirrorViewportParams); // Scale Alice's 3D model in the settings menu
 	HookHelper::ApplyHook((void*)0x452CF0, &ShowDialogBoxText_Hook, (LPVOID*)&ShowDialogBoxText);
 	MemoryHelper::MakeNOP(0x4D2AB1, 7, true); // Dark rectangle when reassigning a control
@@ -1859,6 +1859,7 @@ static void ApplyFixStretchedGUI()
 	// AutoScroll credits scaling
 	HookHelper::ApplyHook((void*)0x4907F0, &UpdateRenderContext_Hook, (LPVOID*)&UpdateRenderContext);
 	HookHelper::ApplyHook((void*)0x4908D0, &ConfigureScissor_Hook, (LPVOID*)&ConfigureScissor);
+	HookHelper::ApplyHook((void*)0x4B1130, &UpdateAndConfigureRenderContext_Hook, (LPVOID*)&UpdateAndConfigureRenderContext);
 }
 
 static void ApplyFixDPIScaling()
