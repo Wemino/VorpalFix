@@ -918,10 +918,14 @@ static int __cdecl RenderHUD_Hook(float x_position, float y_position, float reso
 // Hook of the function used by the "loadgame" and "savegame" commands, to determine if those can be used
 static int __cdecl IsGameStarted_Hook()
 {
+	// Loading a quicksave while the menu is transitioning can cause issues
+	if (FixMenuTransitionTiming && MemoryHelper::ReadMemory<char>(IS_MENU_LOCKED, false))
+	{
+		return 0;
+	}
+
 	if (isMainMenuShown)
 	{
-		// We no longer need this hook
-		MH_DisableHook((void*)0x449DF0);
 		return IsGameStarted();
 	}
 	else
