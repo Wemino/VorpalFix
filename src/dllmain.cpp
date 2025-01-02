@@ -10,7 +10,7 @@
 #include <VersionHelpers.h>
 #include <ShellScalingAPI.h>
 
-#include "MinHook.h"
+#include "MinHook.hpp"
 #include "ini.hpp"
 #include "dllmain.hpp"
 #include "helper.hpp"
