@@ -172,7 +172,7 @@ namespace GameHelper
 	typedef int(__cdecl* sub_418D90)(const char*, const char*, int);
 	sub_418D90 UpdateCvar = (sub_418D90)0x418D90;
 
-	typedef int(__cdecl* sub_4076F0)(char*);
+	typedef int(__cdecl* sub_4076F0)(const char*);
 	sub_4076F0 GetKeyId = (sub_4076F0)0x4076F0;
 
 	typedef int(__cdecl* sub_40B2F0)();
@@ -188,10 +188,10 @@ namespace GameHelper
 	typedef int(__cdecl* sub_463130)();
 	sub_463130 IsControllerConnected = (sub_463130)0x463130;
 
-	typedef int(__cdecl* sub_407870)(int, char*);
+	typedef int(__cdecl* sub_407870)(int, const char*);
 	sub_407870 Bind = (sub_407870)0x407870;
 
-	void AssignCmdKeyId(int keyId, char* cmd)
+	static void AssignCmdKeyId(int keyId, const char* cmd)
 	{
 		char* KeyCommandName = *(char**)(0x14EA2A8 + 0xC * keyId);
 
@@ -201,7 +201,7 @@ namespace GameHelper
 		}
 	}
 
-	int FindShaderIndex(const char* texturePath)
+	static int FindShaderIndex(const char* texturePath)
 	{
 		int ShaderNum = MemoryHelper::ReadMemory<int>(0x1BCCEEC, false);
 		int ShaderIndex = 0x1BCCEF0;

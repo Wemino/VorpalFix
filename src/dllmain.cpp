@@ -144,7 +144,7 @@ int(__cdecl* HandleKeyboardInput)(int, int, int) = nullptr; // 0x4081B0
 void(__cdecl* CL_InitRef)() = nullptr; // 0x409FD0
 void(__cdecl* CL_ParsePacketEntities)(int, int, int) = nullptr; // 0x40C1B0
 char* (__cdecl* GetSavePath)() = nullptr; // 0x417400
-int(__cdecl* CallCmd)(char*, char) = nullptr; // 0x4158F0
+int(__cdecl* CallCmd)(const char*, char) = nullptr; // 0x4158F0
 int(__cdecl* Cvar_Set)(const char*, const char*, int) = nullptr; // 0x419910
 int(__cdecl* FS_FOpenFileRead)(char*, int*, int, int) = nullptr; // 0x41A590
 int(__cdecl* CheckDiskFreeSpace)() = nullptr; // 0x41D1E0
@@ -152,7 +152,7 @@ float(__cdecl* UpdateHeadOrientation)(DWORD*, float*) = nullptr; // 0x423740
 BYTE(__cdecl* Str_To_Lower)(char*) = nullptr; // 0x4256E0
 void(__cdecl* LoadSoundtrackFile)() = nullptr; // 0x429600
 FILE(__cdecl* FS_LoadZipFile)(const char*) = nullptr; // 0x43E030
-int(__cdecl* RenderHUD)(float, float, float, float, int, float*, float*, float*, int, const char*, __int16, float*, float*, float, float, int) = nullptr; // 0x446050
+int(__cdecl* PrepareHUDRendering)(float, float, float, float, int, float*, float*, float*, int, const char*, __int16, float*, float*, float, float, int) = nullptr; // 0x446050
 int(__cdecl* IsGameStarted)() = nullptr; // 0x449DF0
 void(__cdecl* SetUIBorder)() = nullptr; // 0x44B100
 int(__cdecl* PushMenu)(const char*) = nullptr; // 0x44C1B0
@@ -871,7 +871,7 @@ static FILE __cdecl FS_LoadZipFile_Hook(const char* FileName)
 }
 
 // Adjust the HUD position and scaling for non-4:3 aspect ratios
-static int __cdecl RenderHUD_Hook(float x_position, float y_position, float resolution_width, float resolution_height, int a5, float* a6, float* a7, float* a8, int a9, const char* a10, __int16 a11, float* a12, float* a13, float a14, float a15, int a16)
+static int __cdecl PrepareHUDRendering_Hook(float x_position, float y_position, float resolution_width, float resolution_height, int a5, float* a6, float* a7, float* a8, int a9, const char* a10, __int16 a11, float* a12, float* a13, float a14, float a15, int a16)
 {
 	if (isWiderThan4By3)
 	{
@@ -912,7 +912,7 @@ static int __cdecl RenderHUD_Hook(float x_position, float y_position, float reso
 		}
 	}
 
-	return RenderHUD(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16);
+	return PrepareHUDRendering(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16);
 }
 
 // Hook of the function used by the "loadgame" and "savegame" commands, to determine if those can be used
@@ -1822,7 +1822,7 @@ static void ApplyFixBlinkingAnimationSpeed()
 
 static void ApplyFixStretchedHUD()
 {
-	HookHelper::ApplyHook((void*)0x446050, &RenderHUD_Hook, (LPVOID*)&RenderHUD);
+	HookHelper::ApplyHook((void*)0x446050, &PrepareHUDRendering_Hook, (LPVOID*)&PrepareHUDRendering);
 
 	// Necessary for 'ConsolePortHUD', positioning similar to the console version
 	MemoryHelper::WriteMemory<float>(0x5218A8, 263.0f, true); // hud_item_foldout
