@@ -169,23 +169,39 @@ namespace GameHelper
 {
 	bool DisableCursorScaling = false;
 
-	typedef int(__cdecl* sub_4158F0)(char*, char);
-	sub_4158F0 CallCmd = (sub_4158F0)0x4158F0;
+	typedef int(__cdecl* sub_418D90)(const char*, const char*, int);
+	sub_418D90 UpdateCvar = (sub_418D90)0x418D90;
 
-	typedef signed int(__cdecl* sub_46F850)();
-	sub_46F850 FetchDisplayResolutions = (sub_46F850)0x46F850;
-
-	typedef int(__cdecl* sub_4076F0)(char*);
+	typedef int(__cdecl* sub_4076F0)(const char*);
 	sub_4076F0 GetKeyId = (sub_4076F0)0x4076F0;
 
+	typedef int(__cdecl* sub_40B2F0)();
+	sub_40B2F0 VidRestart = (sub_40B2F0)0x40B2F0;
+
 	typedef int(__cdecl* sub_44A300)(unsigned int, const char*);
-	sub_44A300 GetTga = (sub_44A300)0x44A300;
+	sub_44A300 UI_GetStaticMap = (sub_44A300)0x44A300;
+
+	typedef char* (__cdecl* sub_441D60)(int);
+	sub_441D60 GetWeaponName = (sub_441D60)0x441D60;
 
 	// XInputGetState
 	typedef int(__cdecl* sub_463130)();
 	sub_463130 IsControllerConnected = (sub_463130)0x463130;
 
-	int FindShaderIndex(const char* texturePath)
+	typedef int(__cdecl* sub_407870)(int, const char*);
+	sub_407870 Bind = (sub_407870)0x407870;
+
+	static void AssignCmdKeyId(int keyId, const char* cmd)
+	{
+		char* KeyCommandName = *(char**)(0x14EA2A8 + 0xC * keyId);
+
+		if (strcmp(KeyCommandName, cmd) != 0)
+		{
+			Bind(keyId, cmd);
+		}
+	}
+
+	static int FindShaderIndex(const char* texturePath)
 	{
 		int ShaderNum = MemoryHelper::ReadMemory<int>(0x1BCCEEC, false);
 		int ShaderIndex = 0x1BCCEF0;
@@ -265,8 +281,6 @@ namespace GameHelper
 
 namespace SystemHelper
 {
-	namespace fs = std::filesystem;
-
 	static DWORD GetCurrentDisplayFrequency()
 	{
 		DEVMODE devMode = {};
@@ -276,6 +290,7 @@ namespace SystemHelper
 		{
 			return devMode.dmDisplayFrequency;
 		}
+		return 60;
 	}
 
 	static std::pair<DWORD, DWORD> GetScreenResolution()
@@ -294,7 +309,7 @@ namespace SystemHelper
 	{
 		std::vector<std::string> pk3Files;
 
-		if (!fs::exists(path) || !fs::is_directory(path))
+		if (!std::filesystem::exists(path) || !std::filesystem::is_directory(path))
 		{
 			return pk3Files;
 		}
@@ -338,7 +353,7 @@ namespace HookHelper
 {
 	bool isMHInitialized = false;
 
-	static void ApplyHook(void* addr, LPVOID hookFunc, LPVOID* originalFunc)
+	static bool InitializeMinHook()
 	{
 		if (!isMHInitialized)
 		{
@@ -349,9 +364,15 @@ namespace HookHelper
 			else
 			{
 				MessageBoxA(NULL, "Failed to initialize MinHook!", "Error", MB_ICONERROR | MB_OK);
-				return;
+				return false;
 			}
 		}
+		return true;
+	}
+
+	static void ApplyHook(void* addr, LPVOID hookFunc, LPVOID* originalFunc)
+	{
+		if (!InitializeMinHook()) return;
 
 		if (MH_CreateHook(addr, hookFunc, originalFunc) != MH_OK)
 		{
@@ -369,6 +390,27 @@ namespace HookHelper
 			return;
 		}
 	}
+
+	static void ApplyHookAPI(LPCWSTR moduleName, LPCSTR apiName, LPVOID hookFunc, LPVOID* originalFunc)
+	{
+		if (!InitializeMinHook()) return;
+
+		if (MH_CreateHookApi(moduleName, apiName, hookFunc, originalFunc) != MH_OK)
+		{
+			char errorMsg[0x100];
+			sprintf_s(errorMsg, "Failed to create hook for API: %s", apiName);
+			MessageBoxA(NULL, errorMsg, "Error", MB_ICONERROR | MB_OK);
+			return;
+		}
+
+		if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK)
+		{
+			char errorMsg[0x100];
+			sprintf_s(errorMsg, "Failed to enable hook for API: %s", apiName);
+			MessageBoxA(NULL, errorMsg, "Error", MB_ICONERROR | MB_OK);
+			return;
+		}
+	}
 };
 
 namespace StringHelper
@@ -376,19 +418,50 @@ namespace StringHelper
 	const char* IntegerToCString(int value) 
 	{
 		static thread_local char buffer[32];
-		std::snprintf(buffer, sizeof(buffer), "%d", value);
+		snprintf(buffer, sizeof(buffer), "%d", value);
 		return buffer;
 	}
 
 	const char* FloatToCString(float value) 
 	{
 		static thread_local char buffer[32];
-		std::snprintf(buffer, sizeof(buffer), "%.0f", value);
+		snprintf(buffer, sizeof(buffer), "%.0f", value);
 		return buffer;
 	}
 
 	const char* BoolToCString(bool value)
 	{
 		return value ? "1" : "0";
+	}
+
+	bool stricmp(const char* str1, const char* str2) 
+	{
+		if (!str1 || !str2) 
+		{
+			return false;
+		}
+
+		while (*str1 && *str2) 
+		{
+			if (tolower(static_cast<unsigned char>(*str1)) != tolower(static_cast<unsigned char>(*str2))) 
+			{
+				return false;
+			}
+			++str1;
+			++str2;
+		}
+
+		return *str1 == '\0' && *str2 == '\0';
+	}
+
+	char* ConstructPath(const char* prefix, const char* suffix) 
+	{
+		size_t len = strlen(prefix) + strlen(suffix) + 1;
+		char* path = (char*)malloc(len);
+		if (path) 
+		{
+			snprintf(path, len, "%s%s", prefix, suffix);
+		}
+		return path;
 	}
 };

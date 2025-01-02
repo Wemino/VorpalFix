@@ -1,4 +1,9 @@
 # VorpalFix
+
+<p align="center">
+  <img src="assets/VorpalFix_Logo.png">
+</p>
+
 A fix that addresses a variety of technical issues and adds quality-of-life improvements to the 2011 remaster of American McGee's Alice.
 
 ## Features
@@ -6,6 +11,8 @@ A fix that addresses a variety of technical issues and adds quality-of-life impr
 - Fix the random sound selection function. (e.g., Cheshire Cat summon, Vorpal Blade hit sounds and much more)
 - Fix "Hard Disk Full" when the game is installed on a disk with more than 2TB of free space.
 - Fix crashing when saving at resolutions where the width is not a multiple of 4.
+- Fix loading issues with certain remastered character textures.
+- Fix Meta-Essence particle effects not showing correctly when throwable weapons are reappearing in Alice's hand.
 - Fix Alice's blinking animation playing too quickly at high frame rates in the settings menu.
 - Fix HUD stretching in widescreen resolutions. [Before & After](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/hud.gif)
 - Fix FMV stretching in widescreen resolutions. [Before & After](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/fmv.gif)
@@ -17,6 +24,10 @@ A fix that addresses a variety of technical issues and adds quality-of-life impr
 
 ### General
 - Allow the game to launch without Alice: Madness Returns.
+- Additional controller commands:
+  - Pressing the Left Stick while pressing any D-pad button will save the current weapon to that D-pad key.
+  - Pressing the Right Stick + 'A' will execute a quick load.
+  - Pressing the Right Stick + 'B' will execute a quick save.
 - Prevent Alice: Madness Returns from launching on exit. (when installed with Alice: Madness Returns)
 - Allow to switch the game's supported language. (English, German, French, or Spanish)
 - Restore the "American McGee's Alice" title screen from the Xbox 360/PlayStation 3 version.
@@ -55,6 +66,11 @@ A fix that addresses a variety of technical issues and adds quality-of-life impr
 
 ## Fix Configuration
 - Modify the VorpalFix.ini file to adjust the settings for the fix.
+
+- Some configurations can be edited through the in-game VorpalFix menu: 
+![VorpalFix Menu](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/menu.png)
+
+If you prefer not to have the in-game VorpalFix menu, you can remove it by deleting the file `pak7_VorpalFix_menu.pk3`
 
 ## Credits
 - [MinHook](https://github.com/TsudaKageyu/minhook) for hooking.
