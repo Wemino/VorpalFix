@@ -13,7 +13,7 @@ for %%F in (%folders_to_compress%) do (
     for %%D in ("!output_file!") do if not exist "%%~dpD" mkdir "%%~dpD"
 
     echo Compressing %%F to !output_file!...
-    %seven_zip% a "!output_file!" "./%%F/*" -tzip -mm=Deflate -mx=9
+    %seven_zip% a "!output_file!" "./%%F/*" -tzip -mm=Deflate -mx=9 -mtm-
 
     if !ERRORLEVEL! NEQ 0 (
         echo Error occurred while compressing %%F
