@@ -532,7 +532,7 @@ static char* __cdecl GetSavePath_Hook()
 	return GetSavePath();
 }
 
-// Hook of the function used to load a sound file
+// Hook of the function initializing some of the game's CVAR
 static void __cdecl CVAR_Init_Hook()
 {
 	// Make sure that the controller keys are correctly binded
