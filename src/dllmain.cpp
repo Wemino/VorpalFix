@@ -5,14 +5,17 @@
 #include <Windows.h>
 #include <filesystem>
 #include <string>
-#include <GL/gl.h> 
+#include <GL/gl.h>
 #include <shlobj.h>
 #include <VersionHelpers.h>
 #include <ShellScalingAPI.h>
+
 #include "MinHook.h"
 #include "ini.hpp"
 #include "dllmain.hpp"
 #include "helper.hpp"
+
+#pragma comment(lib, "libMinHook.x86.lib")
 
 // =============================
 // Memory Addresses 
@@ -143,14 +146,14 @@ int(__cdecl* Bind)(int, char*) = nullptr; // 0x407870
 int(__cdecl* HandleKeyboardInput)(int, int, int) = nullptr; // 0x4081B0
 void(__cdecl* CL_InitRef)() = nullptr; // 0x409FD0
 void(__cdecl* CL_ParsePacketEntities)(int, int, int) = nullptr; // 0x40C1B0
-char* (__cdecl* GetSavePath)() = nullptr; // 0x417400
 int(__cdecl* CallCmd)(const char*, char) = nullptr; // 0x4158F0
+char* (__cdecl* GetSavePath)() = nullptr; // 0x417400
+void(__cdecl* CVAR_Init)() = nullptr; // 0x417530
 int(__cdecl* Cvar_Set)(const char*, const char*, int) = nullptr; // 0x419910
 int(__cdecl* FS_FOpenFileRead)(char*, int*, int, int) = nullptr; // 0x41A590
 int(__cdecl* CheckDiskFreeSpace)() = nullptr; // 0x41D1E0
 float(__cdecl* UpdateHeadOrientation)(DWORD*, float*) = nullptr; // 0x423740
 BYTE(__cdecl* Str_To_Lower)(char*) = nullptr; // 0x4256E0
-void(__cdecl* LoadSoundtrackFile)() = nullptr; // 0x429600
 FILE(__cdecl* FS_LoadZipFile)(const char*) = nullptr; // 0x43E030
 int(__cdecl* PrepareHUDRendering)(float, float, float, float, int, float*, float*, float*, int, const char*, __int16, float*, float*, float, float, int) = nullptr; // 0x446050
 int(__cdecl* IsGameStarted)() = nullptr; // 0x449DF0
@@ -529,6 +532,30 @@ static char* __cdecl GetSavePath_Hook()
 	return GetSavePath();
 }
 
+// Hook of the function used to load a sound file
+static void __cdecl CVAR_Init_Hook()
+{
+	// Make sure that the controller keys are correctly binded
+	if (CustomControllerBindings)
+	{
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY1"), "cheshire");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY4"), "togglemenu");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY9"), "+attackleft");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY10"), "+attackright");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY11"), "prevweapon");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY12"), "nextweapon");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY13"), "+attackleft");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY14"), "+UseAndDown");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY15"), "+moveup");
+		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY16"), "+attackright");
+	}
+
+	CVAR_Init();
+
+	// Nothing else to do here
+	MH_DisableHook((void*)0x417530);
+}
+
 // Caches display resolutions; bug: DISPLAY_MODE_IDX is never reset to 0
 static void __cdecl FetchDisplayResolutions_Hook()
 {
@@ -832,29 +859,6 @@ static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
 	}
 
 	return Str_To_Lower(Buffer);
-}
-
-// Hook of the function used to load a sound file
-static void __cdecl LoadSoundtrackFile_Hook()
-{
-	// Make sure that the controller keys are correctly binded
-	if (CustomControllerBindings)
-	{
-		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY1"), "cheshire");
-		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY4"), "togglemenu");
-		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY9"), "+attackleft");
-		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY10"), "+attackright");
-		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY11"), "prevweapon");
-		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY12"), "nextweapon");
-		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY13"), "+attackleft");
-		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY14"), "+UseAndDown");
-		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY15"), "+moveup");
-		GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY16"), "+attackright");
-	}
-
-	// Nothing else to do here
-	MH_DisableHook((void*)0x429600);
-	LoadSoundtrackFile();
 }
 
 // Function used to open and load the pk3 files
@@ -1969,7 +1973,7 @@ static void ApplyCustomControllerBindings()
 	if (!CustomControllerBindings) return;
 
 	HookHelper::ApplyHook((void*)0x4635A0, &UpdateControllerState_Hook, (LPVOID*)&UpdateControllerState);
-	HookHelper::ApplyHook((void*)0x429600, &LoadSoundtrackFile_Hook, (LPVOID*)&LoadSoundtrackFile);
+	HookHelper::ApplyHook((void*)0x417530, &CVAR_Init_Hook, (LPVOID*)&CVAR_Init);
 }
 
 static void ApplyPreventAlice2OnExit()
