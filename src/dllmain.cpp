@@ -437,8 +437,8 @@ static int __cdecl HandleKeyboardInput_Hook(int keyId, int a2, int a3)
 		return HandleKeyboardInput(keyId, a2, a3);
 	}
 
-	// Enter, Space, Controller 'A'
-	if (keyId == 13 || keyId == 32 || keyId == 199)
+	// Enter, Space, Left Mouse Click, Controller 'A'
+	if (isTitleBgSet && (keyId == 13 || keyId == 32 || keyId == 178 || keyId == 199))
 	{
 		// Set keyId to 'Escape' (27) to skip the title screen
 		keyId = 27;
