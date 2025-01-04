@@ -14,7 +14,7 @@ A fix that addresses a variety of technical issues and adds quality-of-life impr
 >
 > Extract the contents of the zip file into the game’s folder, next to the `alice.exe` file.
 >
-> Note: This fix allows the game to launch independently, so it is not necessary to install it alongside Alice: Madness Returns.
+> This fix allows the game to launch independently, so it is not necessary to install it alongside Alice: Madness Returns.
 
 ### Steam Deck/Linux Specific Instructions (Windows users can skip this)
 > [!WARNING]
