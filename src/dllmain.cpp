@@ -2005,6 +2005,7 @@ static void ApplyDisableWinsockInitialization()
 {
 	if (!DisableWinsockInitialization) return;
 
+	// Disable call to NET_Init
 	MemoryHelper::MakeNOP(0x46562E, 5, true);
 }
 
