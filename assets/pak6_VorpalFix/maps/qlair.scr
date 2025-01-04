@@ -1,0 +1,992 @@
+#include "scripts/utils.scr"
+#include "scripts/cinematics.scr"
+
+
+void GotoMiddle();
+
+// -------- Global state -----------
+
+float QS_UP;
+float QS_MOVING_UP;
+float QS_DOWN;
+float QS_MOVING_DOWN;
+
+float QueenState;
+float QueenNextState;
+
+float QueenZtop;
+float QueenZbottom;
+
+float G_slowmark;
+
+float G_Qmiddle;
+float	G_current_platform;
+float G_last_position;
+
+float Q2_isDead;
+
+// ----------------------------------
+
+/* BODY ANIMS
+
+		talk_snarl-blink = alice/queen shows her teeth, blinks
+		talk_in-yo-face = fill variation
+		talk_negative = NO!
+		pullout = spoo on face
+
+*/
+
+
+void Q2_Lightning()
+{
+	while ( 1 )
+	{
+		wait( 4 );
+		$lightning_back.animonce( "on" );
+		wait( 4 );
+		$lightning_back.animonce( "off" );
+		wait( 2 );
+		$lightning_front.animonce( "on" );
+		wait( 3 );
+		$lightning_front.animonce( "off" );
+	}
+}
+
+
+void QLair1_Alice_Powerup()
+	{
+		$player.inqueen2( 1 );
+		$player.attachmodel( "alice_halo.tik", "tag_gut", 1, "", 1 );
+		$player.full_stats();
+	}
+
+void QLair1_Fakeplayer_Powerup()
+	{
+		$fakeplayer.rendereffects( "+queenlight" );
+		$fakeplayer.attachmodel( "alice_halo.tik", "tag_gut", 1, "", 1 );
+		$player.full_stats();
+	}
+
+void QLair_Body_Anims()
+	{
+		$alice_magic_power.remove();
+		$body.anim( "intro" );
+		waitfor( $body );
+		$body.anim( "talk_base" );
+		waitfor( $body );
+		$body.anim( "talk_base" );
+		wait( 2 );
+		$body.anim( "talk_negative" );
+		waitfor( $body );
+		$body.anim( "talk_base" );
+		waitfor( $body );
+		$body.anim( "talk_blink-snarl" );
+		waitfor( $body );
+		$body.anim( "talk_base" );
+		wait( 20 );
+		$body.anim( "talk_in-yo-face" );
+		waitfor( $body );
+		$body.anim( "talk_base" );
+		wait( 8 );
+		$body.anim( "talk_in-yo-face" );
+		waitfor( $body );
+		$body.anim( "talk_blink-snarl" );
+		waitfor( $body );
+		$body.anim( "talk_negative" );
+		waitfor( $body );
+		$body.anim( "talk_in-yo-face" );
+		waitfor( $body );
+		$body.anim( "talk_base" );
+		wait( 8 );
+
+	}
+
+void QLair_Body_Dialog()
+	{
+		dialogtext.dt_clear();
+		dialogtext.dt_fadetime(4);
+		$body.playdialog( "sound/character/queen/vo/qnr002.wav" );
+		waitForDialog( $body, .3 );
+		dialogtext.dt_clear();
+		dialogtext.dt_fadetime(4);
+		$body.playdialog( "sound/character/queen/vo/qnr003.wav" );
+		waitForDialog( $body, .3 );
+		dialogtext.dt_clear();
+		dialogtext.dt_fadetime(4);
+		$body.playdialog( "sound/character/queen/vo/qnr004.wav" );
+		waitForDialog( $body, .3 );
+		$body.anim( "pullout" );
+		trigger( "$throne_sound_x1" );
+		trigger( "$throne_sound_x2" );
+		cam_fadeout( .5, .5, 0, 0, 1, 0 );
+		wait( .5 );
+		$alice_watch3.follow( $qlair_bodytx4 );
+		$alice_watch3.cut();
+		cuecamera( $alice_watch3, 0 );
+		cam_fadein( .5, .5, 0, 0, 1, 0 );
+		$fakeplayer.anim( "kneel_2_base_02" );
+		waitfor( $fakeplayer );
+		$fakeplayer.anim( "idle_base_02" );
+		wait( 1.2 );
+		$fakeplayer.headwatch( $alice_lookdown, 2 );
+		wait( 3.5 );
+		$fakeplayer.headwatch( $alice_lookforward, 7 );
+		wait( 2 );
+		$fakeplayer.runto_pathnode( "$alice_runto_queen2" );
+		wait( 1 );
+		cam_fadeout( 1, 0, 0, 0, 1, 0 );
+		wait( 1 );
+
+		$body.warpto( "$bitch_pos2" );
+		$tentacle1.show();
+		$tentacel1.solid();
+		$tentacle2.show();
+		$tentacel2.solid();
+		$tentacle3.show();
+		$tentacel3.solid();
+		$tentacle4.show();
+		$tentacel4.solid();
+		$fakeplayer.warpto( "$alice_fight_queen" );
+		$body.solid();
+		$body.anim( "idle" );
+		trigger( "$help_me1" );
+		setfarplane( '0 0 0', 3000 );
+		thread Q2_Lightning();
+		$alice_watch1.follow( $qlair_showq2 );
+		$alice_watch1.cut();
+		cuecamera( $alice_watch1, 0 );
+		cam_fadein( 1, 0, 0, 0, 1, 0 );
+		music( "normal", "normal" );
+		$halo.ai_off();
+		$halo.anim( "strobe" );
+		wait( 7 );
+		$halo.anim( "stiff" );
+		wait( 3 );
+		cam_fadeout( .5, 0, 0, 0, 1, 0 );
+		wait( .5 );
+		End_Cinematic_Fast();
+		$player.allow_cheshire(0);
+		$halo.anim( "idle" );
+		$halo.ai_on();
+		$halo.idle();
+		cam_fadein( .5, 0, 0, 0, 1, 0 );
+		thread GotoMiddle();
+		// Save the player's game for them after the Queen1 battle
+		stuffcmd( "savegame" );
+
+		wait( 5 );
+		$body.ai_on();
+
+	}
+
+void Alice_QueenMean_Anims()
+	{
+		$fakeplayer.anim( "idle_base_02" );
+		wait( 7 );
+		$fakeplayer.anim( "idle_base_02" );
+		waitfor( $fakeplayer );
+		$fakeplayer.anim( "idle_base_02_kneel" );
+		waitfor( $fakeplayer );
+		$fakeplayer.anim( "kneel_idle" );
+		waitfor( $fakeplayer );
+		$fakeplayer.anim( "kneel_shakeno" );
+		waitfor( $fakeplayer );
+		wait( 8 );
+		$fakeplayer.anim( "kneel_2_weep" );
+		waitfor( $fakeplayer );
+		$fakeplayer.anim( "weep_loop" );
+		wait( 6 );
+		$fakeplayer.anim( "weep_sobbing" );
+		wait( 4 );
+		$fakeplayer.anim( "weep_loop" );
+		wait( 3 );
+		$fakeplayer.anim( "weep_2_kneel" );
+		waitfor( $fakeplayer );
+		$fakeplayer.anim( "kneel_shakeno" );
+		waitfor( $fakeplayer );
+		$fakeplayer.anim( "kneel_idle" );
+		waitfor( $fakeplayer );
+
+	}
+
+void QLair_Body_Talk()
+	{
+		QLair1_Alice_Powerup();
+		$body.notsolid();
+		$body.maxmouthangle( 45 );
+		wait( .1 );
+		thread QLair_Body_Anims();
+		$throne.anim( "throne_break_2" );
+		trigger( "$throne_sound_x1" );
+		trigger( "$throne_sound_x2" );
+		setcvar( "timescale", ".8" );
+		wait( .5 );
+		$fakeplayer.anim( "pain_knockdown" );
+		$alice_watch1.follow( $qlair_alicefallp1 );
+		$alice_watch1.cut();
+		cuecamera( $alice_watch1, 0 );
+		waitfor( $fakeplayer );
+		setcvar( "timescale", "1" );
+		$queen_breast_hide.hide();
+		$fakeplayer.anim( "ready" );
+		wait( 1 );
+		$alice_watch2.follow( $qlair_bodytx1 );
+		$alice_watch2.cut();
+		cuecamera( $alice_watch2, 0 );
+		wait( 8.5 );
+		thread QLair_Body_Dialog();
+		$fakeplayer.walkto_pathnode( "$alice_talk_queen_x1" );
+		waitfor( $fakeplayer );
+		wait( 4 );
+		thread Alice_QueenMean_Anims();
+		wait( 12.5 );
+		$alice_watch1.follow( $qlair_bodytx2 );
+		$alice_watch1.cut();
+		cuecamera( $alice_watch1, 0 );
+		wait( 9 );
+		$alice_watch2.follow( $qlair_bodytx3 );
+		$alice_watch2.cut();
+		cuecamera( $alice_watch2, 0 );
+		wait( 6 );
+		$alice_watch1.follow( $qlair_bodyt2 );
+		$alice_watch1.cut();
+		cuecamera( $alice_watch1, 0 );
+		//wait( 40 );
+
+		//End_Cinematic_Fast();
+		/*
+		*/
+	}
+
+void DownBitch()
+{
+float i;
+float qspeed;
+vector qorg;
+
+	i = 1;	// Not zero.
+
+	qorg = $body.getorigin();
+
+	QueenState = QS_MOVING_DOWN;
+
+	//$body.ai_off();
+	//$body.anim( "move_front" );
+
+	while ( qorg_z > QueenZbottom )
+	{
+		if ( i < 50 )
+		{
+			qspeed = 70 * ( i / 50 );
+			i++;
+		}
+		else
+			qspeed = 70;
+
+		qorg_z -= qspeed;
+		if ( qorg_z < QueenZbottom )
+			qorg_z = QueenZbottom;
+
+		$body.origin( qorg );
+		wait( 0.05 );
+	}
+
+	QueenState = QS_DOWN;
+}
+
+void UpBitch( float startpoint )
+{
+float i;
+float qspeed;
+vector qorg, neworg, newang;
+entity waypoint;
+string wpname;
+
+	// Find new waypoint to warp to...
+
+	wpname = "point" + startpoint;
+
+	waypoint = getentity( wpname );
+	neworg = waypoint.getorigin();
+	newang = waypoint.getangles();
+
+	//print( "neworg: " );
+	//printvector( neworg );
+	//print( "newang: " );
+	//printvector( newang );
+	//newline();
+
+	$body.angles( newang );
+
+	qorg = $body.getorigin();
+
+	qorg_x = neworg_x;
+	qorg_y = neworg_y;
+
+	QueenState = QS_MOVING_UP;
+	$body.anim( "move_front" );
+
+	while ( qorg_z <= ( QueenZtop - 1 ) )
+	{
+		if ( qorg_z > G_slowmark )
+			qspeed = 45 * ( ( (QueenZtop - qorg_z) + 50 ) / 512 );
+		else
+			qspeed = 45;
+
+		qorg_z += qspeed;
+		if ( qorg_z > QueenZtop )
+			qorg_z = QueenZtop;
+
+		$body.origin( qorg );
+		wait( 0.05 );
+	}
+
+	//$body.ai_on();
+
+	G_last_position = startpoint;
+	QueenState = QS_UP;
+}
+
+
+void GotoMiddle()
+{
+	float qthreadnum;
+	vector newang;
+
+	if ( G_Qmiddle == 0 )
+	{
+		G_Qmiddle = 1;
+
+		newang_x = 0;
+		newang_z = 0;
+
+		if ( G_current_platform == -1 )
+			newang_y = 315;
+		else if ( G_current_platform == -2 )
+			newang_y = 45;
+		else if ( G_current_platform == -3 )
+			newang_y = 135;
+		else if ( G_current_platform == -4 )
+			newang_y = 225;
+		else if ( G_current_platform == 1 )
+			newang_y = 315;
+		else if ( G_current_platform == 2 )
+			newang_y = 45;
+		else if ( G_current_platform == 3 )
+			newang_y = 135;
+		else if ( G_current_platform == 4 )
+			newang_y = 225;
+
+		qthreadnum = thread DownBitch();
+		waitForThread( qthreadnum );
+
+		$body.angles( newang );
+
+		qthreadnum = thread UpBitch( 5 );
+		waitForThread( qthreadnum );
+
+		wait( 17 );
+		while ( G_current_platform < 0 )
+		{
+			wait( 1 );
+		}
+
+		qthreadnum = thread DownBitch();
+		waitForThread( qthreadnum );
+
+		if ( G_current_platform > 0 )
+		{
+			qthreadnum = thread UpBitch( G_current_platform );
+			waitForThread( qthreadnum );
+			G_Qmiddle = 0;
+		}
+		else
+		{
+			G_Qmiddle = 0;
+			thread GotoMiddle();
+		}
+	}
+}
+
+void MoveQueen1()
+{
+	if ( Q2_isDead )
+		return;
+
+	if ( G_current_platform > 0 )
+	{
+		G_current_platform = -1;
+		thread GotoMiddle();
+	}
+	else
+	{
+		G_current_platform = 1;
+	}
+}
+
+void MoveQueen2()
+{
+	if ( Q2_isDead )
+		return;
+
+	if ( G_current_platform > 0 )
+	{
+		G_current_platform = -2;
+		thread GotoMiddle();
+	}
+	else
+	{
+		G_current_platform = 2;
+	}
+}
+
+void MoveQueen3()
+{
+	if ( Q2_isDead )
+		return;
+
+	if ( G_current_platform > 0 )
+	{
+		G_current_platform = -3;
+		thread GotoMiddle();
+	}
+	else
+	{
+		G_current_platform = 3;
+	}
+}
+
+void MoveQueen4()
+{
+	if ( Q2_isDead )
+		return;
+
+	if ( G_current_platform > 0 )
+	{
+		G_current_platform = -4;
+		thread GotoMiddle();
+	}
+	else
+	{
+		G_current_platform = 4;
+	}
+}
+
+void QLair_Dialog1()
+	{
+		dialogtext.dt_clear();
+		dialogtext.dt_fadetime(4);
+		$fakeplayer.playdialog( "sound/character/alice/vo/alcz5003.wav" );
+		waitForDialog( $fakeplayer, 1 );
+	}
+
+void Setup_Queen2()
+	{
+		$queen_teleport.triggerable();
+	}
+
+void QLair_Floor_Break2()
+	{
+		wait( .2 );
+		$brokenfloor7.rotateZ (55);
+		$brokenfloor7.rotateX (-55);
+		$brokenfloor7.moveDown (2400);
+		$brokenfloor7.time (10);
+		wait( .1 );
+		$brokenfloor8.rotateX (-55);
+		$brokenfloor8.moveDown (2400);
+		$brokenfloor8.time (10.6);
+		wait (.3);
+		$brokenfloor9.rotateZ (55);
+		$brokenfloor9.moveDown (2400);
+		$brokenfloor9.time (9.6);
+		wait( .2 );
+		$brokenfloor10.rotateZ (45);
+		$brokenfloor10.rotateX (-45);
+		$brokenfloor10.moveDown (2400);
+		$brokenfloor10.time (10);
+		wait( .15 );
+		$brokenfloor11.rotateZ (60);
+		$brokenfloor11.moveDown (2400);
+		$brokenfloor11.time (11.5);
+		wait( .3 );
+		$brokenfloor12.rotateZ (55);
+		$brokenfloor12.rotateX (-55);
+		$brokenfloor12.moveDown (2400);
+		$brokenfloor12.time (10.2);
+	}
+
+void QLair_Floor_Break1()
+	{
+		$brokenfloor1.rotateZ (55);
+		$brokenfloor1.rotateX (-55);
+		$brokenfloor1.moveDown (2400);
+		$brokenfloor1.time (10);
+		wait( .2 );
+		$brokenfloor2.rotateX (-55);
+		$brokenfloor2.moveDown (2400);
+		$brokenfloor2.time (10.4);
+		wait (.1);
+		$brokenfloor3.rotateZ (55);
+		$brokenfloor3.moveDown (2400);
+		$brokenfloor3.time (10);
+		wait( .3 );
+		$brokenfloor4.rotateZ (45);
+		$brokenfloor4.rotateX (-45);
+		$brokenfloor4.moveDown (2400);
+		$brokenfloor4.time (10);
+		wait( .2 );
+		$brokenfloor5.rotateZ (60);
+		$brokenfloor5.moveDown (2400);
+		$brokenfloor5.time (9.5);
+		wait( .1 );
+		$brokenfloor6.rotateZ (55);
+		$brokenfloor6.rotateX (-55);
+		$brokenfloor6.moveDown (2400);
+		$brokenfloor6.time (10);
+	}
+
+void QLair_Stairs_Break()
+	{
+		$queen_stairs.playsound( "sound/ambience/special/thronebreak1.wav", 8, 1, "levelwide" );
+		wait( 1 );
+		$queen_stairs.rotateXdownto( -7 );
+		$queen_stairs.rotateZdownto( -8 );
+		$queen_stairs.time( .5 );
+		wait( 1.5 );
+		$queen_stairs.playsound( "sound/ambience/special/thronebreak2.wav", 8, 1, "levelwide" );
+		$queen_stairs.rotateZ (35);
+		$queen_stairs.rotateX (-30);
+		$queen_stairs.moveDown (2400);
+		$queen_stairs.time (9);
+	}
+
+void QLair_Fade_Fog()
+	{
+		fadefog( '0 0 0', 5000, 8 );
+	}
+
+
+void Die_Bitch2()
+	{
+		cam_fadeout( .5, .5, 0, 0, 1, 0 );
+		wait( .5 );
+		$alice_watch1.follow( $qlair_slitherp1 );
+		$alice_watch1.cut();
+		cuecamera( $alice_watch1, 0 );
+		cam_fadein( .5, .5, 0, 0, 1, 0 );
+		thread QLair_Fade_Fog();
+		$tentacle.anim( "death_pullthrough" );
+		$queen.anim( "death_pullthrough" );
+		waitfor( $tentacle );
+		$tentacle.hide();
+		$queen.hide();
+		$queen_teleport.triggerable();
+		wait( 1 );
+		QLair_Body_Talk();
+	}
+
+void Die_Bitch()
+	{
+	float alicehealth;
+
+		alicehealth = $player.gethealth();
+		if ( alicehealth <= 0 )
+		{
+			return;
+		}
+
+		cam_fadeout( .5, .5, 0, 0, 1, 0 );
+		wait( .5 );
+		$player.hideweapon( 1 );
+		fakeplayer();
+		Start_Cinematic();
+		$tentacle1.hide();
+		$tentacel1.notsolid();
+		$tentacle2.hide();
+		$tentacel2.notsolid();
+		$tentacle3.hide();
+		$tentacel3.notsolid();
+		$tentacle4.hide();
+		$tentacel4.notsolid();
+		cam_fadein( .5, .5, 0, 0, 1, 0 );
+		$body.ai_off();
+		$body.warpto( "$bitch2_pos1" );
+		$body.setframe( 0, "intro" );
+		$alice_watch2.follow( $qlair_q1dead );
+		$alice_watch2.cut();
+		cuecamera( $alice_watch2 );
+		setcvar( "timescale", "1" );
+		wait( 4.5 );
+
+		alicehealth = $player.gethealth();
+		if ( alicehealth <= 0 )
+		{
+			End_Cinematic_Fast();
+			$player.allow_cheshire(0);
+			return;
+		}
+
+		cam_fadeout( .5, .5, 0, 0, 1, 0 );
+		wait( .5 );
+		$alice_watch1.follow( $qlair_bodybounce );
+		$alice_watch1.cut();
+		cuecamera( $alice_watch1, 0 );
+		cam_fadein( .5, .5, 0, 0, 1, 0 );
+		setcvar( "timescale", "1" );
+		wait( .2 );
+		trigger( "$queen_body_quake" );
+		wait( 2.8 );
+		cam_fadeout( .5, .5, 0, 0, 1, 0 );
+		wait( .5 );
+		setcvar( "timescale", "1" );
+		$tentacle.inanimate();
+		$queen.inanimate();
+		$tentacle.ai_off();
+		$queen.ai_off();
+		$tentacle.health( 5 );
+		$queen.health( 5 );
+		$queen.anim( "death_idle" );
+		$tentacle.anim( "death_idle" );
+		$fakeplayer.warpto( "$alice_walkto_dq1" );
+		$fakeplayer.headwatch( $queen, 4 );
+		$alice_watch2.follow( $qlair_q1deadpx1 );
+		$alice_watch2.cut();
+		cuecamera( $alice_watch2, 0 );
+		cam_fadein( .5, .5, 0, 0, 1, 0 );
+		setcvar( "timescale", "1" );
+		wait( 2 );
+		music( "suspense", "suspense" );
+		wait( 5 );
+		$alice_magic_power.angle( 270 );
+		//$alice_magic_power.moveSouth( 32 );
+		//$alice_magic_power.time( 2 );
+		$alice_magic_power.show();
+		$alice_magic_power.anim( "rise" );
+		wait( 2 );
+		cam_fadeout( .5, 1, 1, 1, 1, 0 );
+		wait( .5 );
+		$alice_watch1.follow( $qlair_getpower );
+		$alice_watch1.cut();
+		cuecamera( $alice_watch1, 0 );
+		cam_fadein( .5, 1, 1, 1, 1, 0 );
+		$fakeplayer.anim( "use_recharger" );
+		wait( 2 );
+		thread QLair1_Fakeplayer_Powerup();
+		wait( 1.5 );
+		Die_Bitch2();
+
+	}
+
+void QLair_Cinema1()
+	{
+		$player.hideweapon( 1 );
+		fakeplayer();
+		Start_Cinematic_AI_ON();
+		skipthread( "Null" );
+		$queen.solid();
+		$tentacle.solid();
+		cam_fadeout( .5, .5, 0, 0, 1, 0 );
+		wait( .5 );
+		$fakeplayer.warpto( "$alice_start_pos1" );
+		$fakeplayer.walkto_pathnode( "$alice_pos1" );
+		$alice_watch1.follow( $qlair_path1 );
+		$alice_watch1.cut();
+		cuecamera( $alice_watch1, 0 );
+		cam_fadein( .5, .5, 0, 0, 1, 0 );
+		wait( 3 );
+		cam_fadeout( .5, .5, 0, 0, 1, 0 );
+		wait( .5 );
+		$alice_watch2.follow( $qlair_path2 );
+		$alice_watch2.cut();
+		cuecamera( $alice_watch2, 0 );
+		cam_fadein( .5, .5, 0, 0, 1, 0 );
+		wait( 2 );
+		dialogtext.dt_clear();
+		dialogtext.dt_fadetime(4);
+		$queen.playdialog( "sound/character/alice/vo/alcz5003.wav" );
+		wait( 2 );
+		$alice_watch2.stop();
+		waitForDialog( $queen, 1 );
+		$queen.ai_on();
+		$tentacle.ai_on();
+		$throne.anim( "throne_break1" );
+		dialogtext.dt_clear();
+		dialogtext.dt_fadetime(4);
+		$queen.playdialog( "sound/character/queen/vo/qnr001a.wav" );
+		wait( 1 );
+		wait( .5 );
+		$fakeplayer.anim( "ready" );
+		wait( 1 );
+		$alice_watch2.continue();
+		$alice_watch2.playsound( "sound/ambience/special/thronebreak3.wav", 8, 1.5, "levelwide" );
+		wait( 2.5 );
+		trigger( "$floor_sound" );
+		trigger( "$queen_quakex1" );
+		thread QLair_Floor_Break1();
+		thread QLair_Floor_Break2();
+		thread QLair_Stairs_Break();
+		wait( 3 );
+		cam_fadeout( .5, .5, 0, 0, 1, 0 );
+		wait( .5 );
+		$fakeplayer.warpto( "$alice_start_pos1" );
+		End_Cinematic_Fast();
+		$player.allow_cheshire(0);
+		cam_fadein( .5, .5, 0, 0, 1, 0 );
+		trigger( "$get_me1" );
+		$queen_clip.solid();
+		$player.hideweapon( 0 );
+	}
+
+void QLair_Cinema_Setup()
+	{
+
+		// SETUP FARPLANE
+
+		setfarplane( '0 0 0', 10000 );
+
+		cam.load( "qlair_path1" );
+		cam.load( "qlair_path2" );
+		cam.load( "qlair_path3" );
+		cam.load( "qlair_q1dead" );
+		cam.load( "qlair_grab1" );
+		cam.load( "qlair_bodyt1" );
+		cam.load( "qlair_bodyt2" );
+		cam.load( "qlair_q1deadpx1" );
+		cam.load( "qlair_bodybounce" );
+		cam.load( "qlair_getpower" );
+		cam.load( "qlair_slitherp1" );
+		cam.load( "qlair_alicefallp1" );
+		cam.load( "qlair_bodytx1" );
+		cam.load( "qlair_bodytx2" );
+		cam.load( "qlair_bodytx3" );
+		cam.load( "qlair_bodytx4" );
+		cam.load( "qlair_showq2" );
+		// SETUP OBJECTS
+
+		$qlair_popup1.hide();
+		$qlair_popup2.hide();
+		$qlair_popup3.hide();
+		$qlair_popup4.hide();
+		$qlair_popup5.hide();
+
+		$alice_magic_power.hide();
+		$alice_magic_power.anim( "idle" );
+	}
+
+void QLair_Setup()
+	{
+	vector throneorigin;
+
+		$player.allow_cheshire(0);
+		$player.full_stats();
+
+		// SETUP BOSSLEVEL
+
+		// SETUP OBJECTS AND TRIGGERS
+
+		$queen_clip.notsolid();
+		$throne.notsolid();
+		$queen_teleport.nottriggerable();
+
+		// SETUP QUEEN1
+
+		$queen.ai_off();
+		$queen.notsolid();
+		$tentacle.ai_off();
+		$tentacle.notsolid();
+		$queen.attach( $tentacle, "tag_queen", 0 );
+		$queen.setpostthink( 1 );
+		$queen.killthread( "Die_Bitch" );
+
+		// SETUP THRONE
+
+		throneorigin = $throne.getorigin();
+		$tentacle.origin( throneorigin );
+	}
+
+void Queen2_Death()
+	{
+		Q2_isDead = 1;
+		killthread( "GotoMiddle" );
+		killthread( "Q2_Lightning" );
+
+		$lightning_back.animonce( "on" );
+		$lightning_front.animonce( "on" );
+
+		if ( QueenState == QS_MOVING_DOWN || QueenState == QS_DOWN )
+		{
+			thread UpBitch( G_last_position );
+		}
+	}
+
+void QLair_Ending()
+	{
+	float alicehealth;
+
+		alicehealth = $player.gethealth();
+		if ( alicehealth <= 0 )
+		{
+			return;
+		}
+
+		wait( 10 );
+
+		alicehealth = $player.gethealth();
+		if ( alicehealth <= 0 )
+		{
+			return;
+		}
+
+		setcvar( "nextmap", ";forcemenu main;forcemenu credits\n" );
+		stuffcmd( "cinematic ending.roq" );
+	}
+
+
+void Queen2_Birthing_and_Creation()
+	{
+		vector qorg;
+
+		// Initialize Queen2
+
+		$halo.attach( $body, "tag_halo", 1 );
+
+		$tentacle1.attach( $body, "tag_t01", 1 );
+		$tentacle1.solid();
+		$tentacle1.setpostthink( 1 );
+
+		$tentacle2.attach( $body, "tag_t02", 1 );
+		$tentacle2.solid();
+		$tentacle2.setpostthink( 1 );
+
+		$tentacle3.attach( $body, "tag_t03", 1 );
+		$tentacle3.solid();
+		$tentacle3.setpostthink( 1 );
+
+		$tentacle4.attach( $body, "tag_t04", 1 );
+		$tentacle4.solid();
+		$tentacle4.setpostthink( 1 );
+
+		$body.killthread( "QLair_Ending" );
+
+		// Initialize everything
+
+		QS_UP = 0;
+		QS_MOVING_UP = 1;
+		QS_DOWN = 2;
+		QS_MOVING_DOWN = 3;
+
+		QueenState = QS_UP;
+		QueenNextState = QS_MOVING_DOWN;
+
+		qorg = $body.getorigin();
+		QueenZtop = qorg_z;
+		QueenZbottom = QueenZtop - 3000;
+
+		G_slowmark = QueenZtop - 512;
+
+		G_Qmiddle = 0;
+		G_current_platform = 4;
+		G_last_position = 5;
+
+		Q2_isDead = 0;
+
+		$lightning_back.animonce( "off" );
+		$lightning_front.animonce( "off" );
+	}
+
+void GotoQueenCam()
+	{
+		$queen_grab_cam.follow( $qlair_grab1 );
+		$queen_grab_cam.watch( "$player" );
+		$queen_grab_cam.cut();
+		cuecamera( $queen_grab_cam, 1 );
+	}
+
+ void GotoPlayerCam()
+	{
+		cueplayer( 1 );
+	}
+
+
+//Manna Respawners
+
+void Queen1_ME1()
+	{
+		wait( 10 );
+		trigger( "$get_me2" );
+	}
+
+void Queen1_ME2()
+	{
+		wait( 10 );
+		trigger( "$get_me1" );
+	}
+//--------------------------------------
+
+void Queen2_MY1()
+	{
+		wait( 10 );
+		trigger( "$help_me2" );
+	}
+
+void Queen2_MY2()
+	{
+		wait( 10 );
+		trigger( "$help_me3" );
+	}
+void Queen2_MY3()
+	{
+		wait( 10 );
+		trigger( "$help_me4" );
+	}
+
+void Queen2_MY4()
+	{
+		wait( 10 );
+		trigger( "$help_me1" );
+	}
+
+//------------------------------------
+
+void Popup_Thread()
+	{
+		$qlair_popup1.show();
+		$qlair_popup1.anim( "popup" );
+		wait( .5 );
+		$qlair_popup1.remove();
+		$qlair_popup2.show();
+		$qlair_popup2.anim( "popup" );
+		wait( .5 );
+		$qlair_popup2.remove();
+		$qlair_popup3.show();
+		$qlair_popup3.anim( "popup" );
+		wait( .5 );
+		$qlair_popup3.remove();
+		$qlair_popup4.show();
+		$qlair_popup4.anim( "popup" );
+		wait( .5 );
+		$qlair_popup4.remove();
+		$qlair_popup5.show();
+		$qlair_popup5.anim( "popup" );
+		wait( .5 );
+		$qlair_popup5.remove();
+	}
+
+void main()
+	{
+		// Queen1 starts not solid
+		$queen.notsolid();
+		Func_Sound_Init();
+		thread QLair_Cinema_Setup();
+		thread QLair_Setup();
+		thread Queen2_Birthing_and_Creation();
+		soundtrack( "sound/music/qlair.mus" );
+		waitForPlayer();
+		$player.bosslevel(1);
+		$player.killdemons();
+		$player.full_stats();
+		$player.allow_cheshire(0);
+		music( "normal", "normal" );
+		thread Popup_Thread();
+	}

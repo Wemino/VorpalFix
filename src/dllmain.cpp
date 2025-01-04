@@ -10,7 +10,7 @@
 #include <VersionHelpers.h>
 #include <ShellScalingAPI.h>
 
-#include "MinHook.h"
+#include "MinHook.hpp"
 #include "ini.hpp"
 #include "dllmain.hpp"
 #include "helper.hpp"
@@ -74,6 +74,7 @@ bool isTakingSaveScreenshot = false;
 int saveScreenshotX = 0;
 bool isInCredits = false;
 bool isRenderingConsole = false;
+bool isLoadingSaveFromMenuButton = false;
 
 float currentAspectRatio = 0;
 bool isWiderThan4By3 = false;
@@ -162,6 +163,7 @@ int(__cdecl* PushMenu)(const char*) = nullptr; // 0x44C1B0
 int(__cdecl* ForceMenu)(const char*) = nullptr; // 0x44C280
 void(__cdecl* TriggerMainMenu)(int) = nullptr; // 0x44C4F0
 void(__thiscall* ShowDialogBoxText)(int) = nullptr; // 0x452CF0
+void(__thiscall* LoadSaveFromUI)(DWORD*, int) = nullptr; // 0x456380
 const char* (__cdecl* LoadLocalizationFile)() = nullptr; // 0x4615F0
 MMRESULT(__cdecl* UpdateControllerState)() = nullptr; // 0x4635A0
 int(__stdcall* lpfnWndProc_MSG)(HWND, UINT, int, LPARAM) = nullptr; // 0x46C600
@@ -437,8 +439,8 @@ static int __cdecl HandleKeyboardInput_Hook(int keyId, int a2, int a3)
 		return HandleKeyboardInput(keyId, a2, a3);
 	}
 
-	// Enter, Space, Controller 'A'
-	if (keyId == 13 || keyId == 32 || keyId == 199)
+	// Enter, Space, Left Mouse Click, Controller 'A'
+	if (isTitleBgSet && (keyId == 13 || keyId == 32 || keyId == 178 || keyId == 199))
 	{
 		// Set keyId to 'Escape' (27) to skip the title screen
 		keyId = 27;
@@ -922,6 +924,13 @@ static int __cdecl PrepareHUDRendering_Hook(float x_position, float y_position, 
 // Hook of the function used by the "loadgame" and "savegame" commands, to determine if those can be used
 static int __cdecl IsGameStarted_Hook()
 {
+	// Don't add a delay when loading a save from the UI
+	if (isLoadingSaveFromMenuButton)
+	{
+		isLoadingSaveFromMenuButton = false;
+		return IsGameStarted();
+	}
+
 	// Loading a quicksave while the menu is transitioning can cause issues
 	if (FixMenuTransitionTiming && MemoryHelper::ReadMemory<char>(IS_MENU_LOCKED, false))
 	{
@@ -1012,6 +1021,13 @@ static void __fastcall ShowDialogBoxText_Hook(int thisPtr, int* _ECX)
 	}
 
 	ShowDialogBoxText(thisPtr);
+}
+
+// Hook function to set 'isLoadingSaveFromMenuButton' to true
+static void __fastcall LoadSaveFromUI_Hook(DWORD* thisPtr, int* _ECX, int a2)
+{
+	isLoadingSaveFromMenuButton = true;
+	LoadSaveFromUI(thisPtr, a2);
 }
 
 // Hook function used to load the localization pk3 file
@@ -1696,6 +1712,8 @@ static void __cdecl SetUIBorder_Hook()
 
 static void ApplyFixSoundRandomization()
 {
+	HookHelper::ApplyHook((void*)0x456380, &LoadSaveFromUI_Hook, (LPVOID*)&LoadSaveFromUI);
+
 	if (!FixSoundRandomization) return;
 
 	// Instructions from the 2000 version, ported to the remaster
@@ -1987,6 +2005,7 @@ static void ApplyDisableWinsockInitialization()
 {
 	if (!DisableWinsockInitialization) return;
 
+	// Disable call to NET_Init
 	MemoryHelper::MakeNOP(0x46562E, 5, true);
 }
 

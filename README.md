@@ -6,6 +6,28 @@
 
 A fix that addresses a variety of technical issues and adds quality-of-life improvements to the 2011 remaster of American McGee's Alice.
 
+## How to Install
+> [!NOTE]
+> This fix will only work on the 2011 remaster of American McGee's Alice and **will not work on the 2000 version** of the game.
+>
+> **Download**: [VorpalFix.zip](https://github.com/Wemino/VorpalFix/releases/latest/download/VorpalFix.zip)
+>
+> Extract the contents of the zip file into the game’s folder, next to the `alice.exe` file.
+>
+> This fix allows the game to launch independently, so it is not necessary to install it alongside Alice: Madness Returns.
+
+### Steam Deck/Linux Specific Instructions (Windows users can skip this)
+> [!WARNING]
+> To launch the game on Steam Deck or Linux, open the game’s properties in Steam and include `WINEDLLOVERRIDES="winmm.dll=n,b" %command%` in the launch options.
+
+## Configuration
+- Modify the VorpalFix.ini file to adjust the settings for the fix.
+
+- Some configurations can be edited through the in-game VorpalFix menu: 
+![VorpalFix Menu](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/menu.png)
+
+If you prefer not to have the in-game VorpalFix menu, you can remove it by deleting the file `pak7_VorpalFix_menu.pk3`
+
 ## Features
 ### Fixes
 - Fix the random sound selection function. (e.g., Cheshire Cat summon, Vorpal Blade hit sounds and much more)
@@ -19,7 +41,8 @@ A fix that addresses a variety of technical issues and adds quality-of-life impr
 - Fix GUI stretching in widescreen resolutions. [Before & After](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/gui.gif)
 - Fix DPI Scaling on high-DPI displays.
 - Fix the fullscreen setting not saving.
-- Fix menu timing issues during rapid transitions.
+- Fix multiple menu issues.
+- Fix multiple oversights in the script files.
 - Workaround for a Proton specific issue related to the menus when playing on Linux.
 
 ### General
@@ -35,6 +58,7 @@ A fix that addresses a variety of technical issues and adds quality-of-life impr
 - Allow the option to disable the use of the remastered models.
 - Allow the use of the developer console from the original game.
 - Allow the option to set a custom path for saving the game's data.
+- Allow the option to disable the Winsock initialization process, which is a remnant from the Quake 3 engine.
  
 ### Display
 - Provide the option to use the HUD position similar to the Xbox 360/PlayStation 3 console version.
@@ -51,26 +75,6 @@ A fix that addresses a variety of technical issues and adds quality-of-life impr
 - Force highest quality models with enhanced LOD.
 - Allow to set a custom frame rate limit, with the option to match the monitor’s refresh rate.
 - Configure the Field of View (FOV), with an option for automatic adjustment based on aspect ratio.
-
-## How to Install
-> [!NOTE]
-> This fix will only work on the 2011 remaster of American McGee's Alice and **will not work on the 2000 version** of the game.
->
-> **Download**: [VorpalFix.zip](https://github.com/Wemino/VorpalFix/releases/latest/download/VorpalFix.zip)
->
-> Extract the contents of the zip file into the game’s folder, next to the `alice.exe` file.
-
-### Steam Deck/Linux Specific Instructions (Windows users can skip this)
-> [!WARNING]
-> To launch the game on Steam Deck or Linux, open the game’s properties in Steam and include `WINEDLLOVERRIDES="winmm.dll=n,b" %command%` in the launch options.
-
-## Fix Configuration
-- Modify the VorpalFix.ini file to adjust the settings for the fix.
-
-- Some configurations can be edited through the in-game VorpalFix menu: 
-![VorpalFix Menu](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/menu.png)
-
-If you prefer not to have the in-game VorpalFix menu, you can remove it by deleting the file `pak7_VorpalFix_menu.pk3`
 
 ## Credits
 - [MinHook](https://github.com/TsudaKageyu/minhook) for hooking.
