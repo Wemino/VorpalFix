@@ -1014,7 +1014,7 @@ ui/main/wick
 	surfaceparm nolightmap
 	{
 		nodepthtest
-		map ui/main/wick_glow.tga
+		clampmap ui/main/wick_glow.tga
 		rgbgen identity
 //		rgbGen wave noise 0 1 0 3 //0.8 0.2 0 10
 		alphaGen wave sin .7 .35 0 .2
