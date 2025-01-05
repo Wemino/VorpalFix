@@ -71,6 +71,7 @@ If you prefer not to have the in-game VorpalFix menu, you can remove it by delet
 
 ### Graphics
 - Add support for Anisotropic Texture Filtering to enhance texture clarity and reduce blurriness at oblique viewing angles.
+  - [[Anisotropic Off](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_off.png)] VS [[Anisotropic On (x16)](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_on.png)]
 - Allow to enable trilinear texture filtering for better texture quality.
 - Force highest quality models with enhanced LOD.
 - Allow to set a custom frame rate limit, with the option to match the monitor’s refresh rate.
