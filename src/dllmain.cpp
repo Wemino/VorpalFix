@@ -1712,8 +1712,6 @@ static void __cdecl SetUIBorder_Hook()
 
 static void ApplyFixSoundRandomization()
 {
-	HookHelper::ApplyHook((void*)0x456380, &LoadSaveFromUI_Hook, (LPVOID*)&LoadSaveFromUI);
-
 	if (!FixSoundRandomization) return;
 
 	// Instructions from the 2000 version, ported to the remaster
@@ -1958,6 +1956,7 @@ static void ApplyFixMenuTransitionTiming()
 	// Used for more than just this fix
 	HookHelper::ApplyHook((void*)0x44C1B0, &PushMenu_Hook, (LPVOID*)&PushMenu);
 	HookHelper::ApplyHook((void*)0x449DF0, &IsGameStarted_Hook, (LPVOID*)&IsGameStarted);
+	HookHelper::ApplyHook((void*)0x456380, &LoadSaveFromUI_Hook, (LPVOID*)&LoadSaveFromUI);
 
 	if (!FixMenuTransitionTiming) return;
 
