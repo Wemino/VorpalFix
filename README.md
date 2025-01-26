@@ -14,7 +14,7 @@ A fix that addresses a variety of technical issues and adds quality-of-life impr
 >
 > Extract the contents of the zip file into the game’s folder, next to the `alice.exe` file:
 > 
-> ![install](assets/vf_install.png)
+> <img width="180" src="assets/vf_install.png">
 > 
 > This fix allows the game to launch independently (by executing `alice.exe`), so it is not necessary to install it alongside Alice: Madness Returns.
 
@@ -32,7 +32,7 @@ If you prefer not to have the in-game VorpalFix menu, you can remove it by delet
 
 ## Features
 ### Fixes
-- Fix the random sound selection function. (e.g., Cheshire Cat summon, Vorpal Blade hit sounds and much more)
+- Fix missing sound effects. (e.g., Cheshire Cat summon, Vorpal Blade hit sounds and much more)
 - Fix "Hard Disk Full" when the game is installed on a disk with more than 2TB of free space.
 - Fix crashing when saving at resolutions where the width is not a multiple of 4.
 - Fix loading issues with certain remastered character textures.
@@ -54,13 +54,13 @@ If you prefer not to have the in-game VorpalFix menu, you can remove it by delet
   - Pressing the Right Stick + 'A' will execute a quick load.
   - Pressing the Right Stick + 'B' will execute a quick save.
 - Prevent Alice: Madness Returns from launching on exit. (when installed with Alice: Madness Returns)
-- Allow to switch the game's supported language. (English, German, French, or Spanish)
+- Provide the option to switch the game's supported language. (English, German, French, or Spanish)
 - Restore the "American McGee's Alice" title screen from the Xbox 360/PlayStation 3 version.
 - Provide the option to display the EA and Rogue Entertainment intro videos that were disabled in the remaster.
-- Allow the option to disable the use of the remastered models.
-- Allow the use of the developer console from the original game.
-- Allow the option to set a custom path for saving the game's data.
-- Allow the option to disable the Winsock initialization process, which is a remnant from the Quake 3 engine.
+- Provide the option to disable the remastered models without modifying game files.
+- Allow the use of the developer console from the original game, which was disabled in this remaster.
+- Provide the option to set a custom path for saving the game's data.
+- Provide the option to disable the Winsock initialization process, which is a remnant from the Quake 3 engine.
  
 ### Display
 - Provide the option to use the HUD position similar to the Xbox 360/PlayStation 3 console version.
@@ -72,12 +72,12 @@ If you prefer not to have the in-game VorpalFix menu, you can remove it by delet
 - Custom resolution settings.
 
 ### Graphics
-- Add support for Anisotropic Texture Filtering to enhance texture clarity and reduce blurriness at oblique viewing angles.
+- Automatic adjustment of the Field of View (FOV) based on aspect ratio.
+- Add support for Anisotropic Texture Filtering.
   - [[Anisotropic Off](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_off.png)] VS [[Anisotropic On (x16)](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_on.png)]
-- Allow to enable trilinear texture filtering for better texture quality.
-- Force highest quality models with enhanced LOD.
+- Provide the option to enable trilinear texture filtering for better texture quality.
+- Provide the option to always prioritize the highest quality models, regardless of distance.
 - Allow to set a custom frame rate limit, with the option to match the monitor’s refresh rate.
-- Configure the Field of View (FOV), with an option for automatic adjustment based on aspect ratio.
 
 ## Credits
 - [MinHook](https://github.com/TsudaKageyu/minhook) for hooking.
