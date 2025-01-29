@@ -12,9 +12,11 @@ A fix that addresses a variety of technical issues and adds quality-of-life impr
 >
 > **Download**: [VorpalFix.zip](https://github.com/Wemino/VorpalFix/releases/latest/download/VorpalFix.zip)
 >
-> Extract the contents of the zip file into the game’s folder, next to the `alice.exe` file.
->
-> This fix allows the game to launch independently, so it is not necessary to install it alongside Alice: Madness Returns.
+> Extract the contents of the zip file into the game’s folder, next to the `alice.exe` file:
+> 
+> ![install](assets/vf_install.png)
+> 
+> This fix allows the game to launch independently (by executing `alice.exe`), so it is not necessary to install it alongside Alice: Madness Returns.
 
 ### Steam Deck/Linux Specific Instructions (Windows users can skip this)
 > [!WARNING]
@@ -34,7 +36,7 @@ If you prefer not to have the in-game VorpalFix menu, you can remove it by delet
 - Fix "Hard Disk Full" when the game is installed on a disk with more than 2TB of free space.
 - Fix crashing when saving at resolutions where the width is not a multiple of 4.
 - Fix loading issues with certain remastered character textures.
-- Fix Meta-Essence particle effects not showing correctly when throwable weapons are reappearing in Alice's hand.
+- Fix some particle effects that are not displaying properly at certain distances.
 - Fix Alice's blinking animation playing too quickly at high frame rates in the settings menu.
 - Fix HUD stretching in widescreen resolutions. [Before & After](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/hud.gif)
 - Fix FMV stretching in widescreen resolutions. [Before & After](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/fmv.gif)
@@ -71,6 +73,7 @@ If you prefer not to have the in-game VorpalFix menu, you can remove it by delet
 
 ### Graphics
 - Add support for Anisotropic Texture Filtering to enhance texture clarity and reduce blurriness at oblique viewing angles.
+  - [[Anisotropic Off](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_off.png)] VS [[Anisotropic On (x16)](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_on.png)]
 - Allow to enable trilinear texture filtering for better texture quality.
 - Force highest quality models with enhanced LOD.
 - Allow to set a custom frame rate limit, with the option to match the monitor’s refresh rate.
