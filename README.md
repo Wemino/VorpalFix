@@ -4,11 +4,11 @@
   <img src="assets/VorpalFix_Logo.png">
 </p>
 
-A fix that addresses a variety of technical issues and adds quality-of-life improvements to the 2011 remaster of American McGee's Alice.
+A patch that addresses a variety of technical issues and adds quality-of-life improvements to the 2011 remaster of American McGee's Alice.
 
 ## How to Install
 > [!NOTE]
-> This fix will only work on the 2011 remaster of American McGee's Alice and **will not work on the 2000 version** of the game.
+> This patch will only work on the 2011 remaster of American McGee's Alice and **will not work on the 2000 version** of the game.
 >
 > **Download**: [VorpalFix.zip](https://github.com/Wemino/VorpalFix/releases/latest/download/VorpalFix.zip)
 >
@@ -16,7 +16,7 @@ A fix that addresses a variety of technical issues and adds quality-of-life impr
 > 
 > <img width="180" src="assets/vf_install.png">
 > 
-> This fix allows the game to launch independently (by executing `alice.exe`), so it is not necessary to install it alongside Alice: Madness Returns.
+> This patch allows the game to launch independently (by executing `alice.exe`), so it is not necessary to install it alongside Alice: Madness Returns.
 
 ### Steam Deck/Linux Specific Instructions (Windows users can skip this)
 > [!WARNING]
@@ -73,8 +73,7 @@ If you prefer not to have the in-game VorpalFix menu, you can remove it by delet
 
 ### Graphics
 - Automatic adjustment of the Field of View (FOV) based on aspect ratio.
-- Add support for Anisotropic Texture Filtering.
-  - [[Anisotropic Off](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_off.png)] VS [[Anisotropic On (x16)](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_on.png)]
+- Add support for Anisotropic Texture Filtering. [Off](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_off.png) VS [On (x16)](https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_on.png)
 - Provide the option to enable trilinear texture filtering for better texture quality.
 - Provide the option to always prioritize the highest quality models, regardless of distance.
 - Allow to set a custom frame rate limit, with the option to match the monitor’s refresh rate.
