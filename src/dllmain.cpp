@@ -3,12 +3,14 @@
 #define NOMINMAX
 
 #include <Windows.h>
-#include <filesystem>
-#include <string>
-#include <GL/gl.h>
-#include <shlobj.h>
-#include <VersionHelpers.h>
 #include <ShellScalingAPI.h>
+#include <VersionHelpers.h>
+#include <shlobj.h>
+
+#include <string>
+#include <filesystem>
+
+#include <GL/gl.h>
 
 #include "MinHook.hpp"
 #include "ini.hpp"
@@ -31,6 +33,7 @@ const int CURRENT_LANG = 0x7CF868;
 const int DISPLAY_MODE_IDX = 0x7D40C4;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
 const int IS_MENU_LOCKED = 0x11C2770;
+const int BLINK_TIMER = 0x11C35EC;
 const int TOTAL_FRAME_TIME = 0x11C8AA0;
 const int UI_WAIT_TIMER = 0x12EF948;
 const int IS_CINEMATIC = 0x12F3CE8;
@@ -59,8 +62,8 @@ bool isVFMenuUsed = false;
 // =============================
 // Variables 
 // =============================
-int currentWidth = 0;
-int currentHeight = 0;
+
+// Misc
 bool isCursorResized = false;
 bool isDefaultFullscreenSettingSkipped = false;
 bool isUsingControllerMenu = false;
@@ -71,22 +74,33 @@ bool skipAutoResolution = false;
 bool isAnisotropyRetrieved = false;
 bool isInSettingMenu = false;
 bool isTakingSaveScreenshot = false;
-int saveScreenshotX = 0;
 bool isInCredits = false;
 bool isRenderingConsole = false;
 bool isLoadingSaveFromMenuButton = false;
 
+// Misc (read-only)
+const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
+const int LEFT_BORDER_X_ID = 0x1000000;
+const int RIGHT_BORDER_X_ID = 0x2000000;
+const char* ALICE2_DEFAULT_PATH = "..\\..\\Alice2\\Binaries\\Win32\\AliceMadnessReturns.exe";
+
+// Scaling
+int currentWidth = 0;
+int currentHeight = 0;
 float currentAspectRatio = 0;
 bool isWiderThan4By3 = false;
 float scaleFactor = 0;
 float scaledWidth = 0;
 float widthDifference = 0;
 float consoleHudAdjustmentDivisor = 0;
+int saveScreenshotX = 0;
 
+// Localization pk3
 bool hasLookedForLocalizationFiles = false;
 size_t localizationFilesToLoad = 0;
 std::vector<std::string> pk3LocFiles;
 
+// Additional commands
 bool isHoldingLeftStick = false;
 int lastQuickSaveFrame = 0;
 char* lastWeaponIdUp = nullptr;
@@ -107,6 +121,7 @@ const char* weaponCommands[] =
 	"use blunderbuss"
 };
 
+// pak5 fix
 bool isUsingBrokenPak5 = false;
 const char* correctPaths[] =
 {
@@ -121,7 +136,7 @@ const char* correctPaths[] =
 	"models/characters/mock_turtle/mturt.ftx"
 };
 
-const char* brokenPaths[] =
+const char* pak5BrokenPaths[] =
 {
 	"models/characters/cheshire_cat/skin01.ftx",
 	"models/characters/cheshire_cat/skin02.ftx",
@@ -134,15 +149,10 @@ const char* brokenPaths[] =
 	"models/characters/morckturtle/mturt.ftx"
 };
 
-const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
-const int LEFT_BORDER_X_ID = 0x1000000;
-const int RIGHT_BORDER_X_ID = 0x2000000;
-const char* ALICE2_DEFAULT_PATH = "..\\..\\Alice2\\Binaries\\Win32\\AliceMadnessReturns.exe";
-const int BLINK_SPEED_RATE = 20;
-
 // =============================
 // Original Function Pointers
 // =============================
+int(__cdecl* JumpCommand)() = nullptr; // 0x4061D0
 int(__cdecl* Bind)(int, char*) = nullptr; // 0x407870
 int(__cdecl* HandleKeyboardInput)(int, int, int) = nullptr; // 0x4081B0
 void(__cdecl* CL_InitRef)() = nullptr; // 0x409FD0
@@ -407,6 +417,19 @@ static void WINAPI glReadPixels_Hook(GLint x, GLint y, GLsizei width, GLsizei he
 	ori_glReadPixels(x, y, width, height, format, type, data);
 }
 
+// Hook of the function used by the "+moveup" command
+static int __cdecl JumpCommand_Hook()
+{
+	// If jumping during a cutscene
+	if (MemoryHelper::ReadMemory<int>(IS_CINEMATIC, false))
+	{
+		// Don't play 'jump.wav' (from a player's action) during a cutscene
+		return 0;
+	}
+
+	return JumpCommand();
+}
+
 // Hook of the function used by the "bind" command
 static int __cdecl Bind_Hook(int keyId, char* cmd_name)
 {
@@ -513,13 +536,6 @@ static int __cdecl CallCmd_Hook(char* cmd, char a2)
 		}
 	}
 
-	// If jumping during a cutscene
-	if (FixCutsceneJumpSound && MemoryHelper::ReadMemory<int>(IS_CINEMATIC, false) == 1 && strstr(cmd, "+moveup"))
-	{
-		// Don't play 'jump.wav' during a cutscene
-		return 0;
-	}
-
 	return CallCmd(cmd, a2);
 }
 
@@ -583,11 +599,6 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		MH_DisableHook((void*)0x419910);
 	}
 
-	if (TrilinearTextureFiltering && StringHelper::stricmp(var_name, "r_textureMode"))
-	{
-		value = "GL_LINEAR_MIPMAP_LINEAR";
-	}
-
 	if (EnhancedLOD)
 	{
 		if (StringHelper::stricmp(var_name, "r_lodbias"))
@@ -604,11 +615,6 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	{
 		value = "0";
 		flag = 0x10; // read-only
-	}
-
-	if (FixParticleDistanceRatio && StringHelper::stricmp(var_name, "cg_particledistanceratio"))
-	{
-		value = "0";
 	}
 
 	if (StringHelper::stricmp(var_name, "s_Alice2URL"))
@@ -693,7 +699,7 @@ static int __cdecl FS_FOpenFileRead_Hook(char* Source, int* a2, int a3, int a4)
 			if (strcmp(Source, correctPaths[i]) == 0)
 			{
 				// If a match is found, redirect to the corresponding correct texture path
-				Source = (char*)brokenPaths[i];
+				Source = (char*)pak5BrokenPaths[i];
 				break;
 			}
 		}
@@ -822,14 +828,7 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int* _ECX, char* group_n
 		// Write the new value
 		GameHelper::UpdateCvar("com_maxfps", StringHelper::IntegerToCString(CustomFPSLimit), 1);
 
-		// Fix the blinking eyes speed
-		if (FixBlinkingAnimationSpeed)
-		{
-			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x2, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
-			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x1A, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
-			MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x22, 4 * CustomFPSLimit / 60, true);
-		}
-
+		// Update the INI
 		IniHelper::Save();
 	}
 
@@ -840,7 +839,7 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int* _ECX, char* group_n
 static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
 {
 	// Check if using the original 'pak5_mod.pk3' with broken paths
-	if (!isUsingBrokenPak5 && FixPak5 && StringHelper::stricmp(Buffer, brokenPaths[0]))
+	if (!isUsingBrokenPak5 && FixPak5 && StringHelper::stricmp(Buffer, pak5BrokenPaths[0]))
 	{
 		HookHelper::ApplyHook((void*)0x41A590, &FS_FOpenFileRead_Hook, (LPVOID*)&FS_FOpenFileRead);
 		isUsingBrokenPak5 = true;
@@ -1163,16 +1162,16 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 					switch (dpadId)
 					{
 						case 1:
-							GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY5"), weaponCommand);
+							Bind(GameHelper::GetKeyId("JOY5"), weaponCommand);
 							break;
 						case 2:
-							GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY7"), weaponCommand);
+							Bind(GameHelper::GetKeyId("JOY7"), weaponCommand);
 							break;
 						case 3:
-							GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY8"), weaponCommand);
+							Bind(GameHelper::GetKeyId("JOY8"), weaponCommand);
 							break;
 						case 4:
-							GameHelper::AssignCmdKeyId(GameHelper::GetKeyId("JOY6"), weaponCommand);
+							Bind(GameHelper::GetKeyId("JOY6"), weaponCommand);
 							break;
 					}
 				}
@@ -1256,10 +1255,10 @@ static int __cdecl TakeSaveScreenshot_Hook(int a1, int a2, int a3)
 	return TakeSaveScreenshot(a1, a2, a3);
 }
 
-// Hooks the resolution update process to cache relevant variables
+// Used during OpenGL refresh
 static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, char depthbits, unsigned __int8 stencilbits, int stereo)
 {
-	// Resolution updated, update the variables
+	// Resolution updated, cache the new variables
 	currentWidth = MemoryHelper::ReadMemory<int>(CURRENT_WIDTH_ADDR, false);
 	currentHeight = MemoryHelper::ReadMemory<int>(CURRENT_HEIGHT_ADDR, false);
 	currentAspectRatio = static_cast<float>(currentWidth) / static_cast<float>(currentHeight);
@@ -1312,7 +1311,7 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 		}
 	}
 
-	// Disable console title screen for aspect ratios greater than 21:9 
+	// Skip console title screen for aspect ratios greater than 21:9 
 	if (UseConsoleTitleScreen && currentAspectRatio > 2.0f)
 	{
 		UseConsoleTitleScreen = false;
@@ -1501,13 +1500,20 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 		if (isWiderThan4By3)
 		{
 			resolution_width *= scaleFactor;
-			x_position = (x_position * scaleFactor) + widthDifference;
 
 			// Save camera position similar to the console version
-			if ((ConsolePortHUD && strcmp(ShaderName, "ui/quicksavecam/quicksavecam") == 0))
+			if (strcmp(ShaderName, "ui/quicksavecam/quicksavecam") == 0)
 			{
-				x_position = currentWidth / 6.0f;
-				y_position = currentHeight / 14.25f;
+				if (ConsolePortHUD)
+				{
+					x_position = currentWidth / 6.0f;
+					y_position = currentHeight / 14.25f;
+				}
+			}
+			else
+			{
+				// Don't change the x position of the save camera
+				x_position = (x_position * scaleFactor) + widthDifference;
 			}
 		}
 	}
@@ -1706,6 +1712,39 @@ static void __cdecl SetUIBorder_Hook()
 	RE_StretchPic_Hook(RIGHT_BORDER_X_ID, 0, 0, 0, 1.0, 0.0, 0.0, 1.0, *(DWORD*)(border + 4));
 }
 
+// Update 'BLINK_TIMER' at a consistent rate, independent of frame rate
+static void UpdateBlinkTimer()
+{
+	static auto lastUpdate = std::chrono::steady_clock::now();
+	static std::chrono::microseconds accumulated(0);
+
+	const auto now = std::chrono::steady_clock::now();
+	const auto delta = now - lastUpdate;
+	lastUpdate = now;
+
+	accumulated += std::chrono::duration_cast<std::chrono::microseconds>(delta);
+	constexpr auto interval = std::chrono::milliseconds(50);
+
+	while (accumulated >= interval)
+	{
+		MemoryHelper::WriteMemory<int>(BLINK_TIMER, MemoryHelper::ReadMemory<int>(BLINK_TIMER, false) + 1, false);
+		accumulated -= interval;
+	}
+}
+
+// Hook to update 'BLINK_TIMER' and jump to the original code
+__declspec(naked) static void BlinkAnimationHookStub()
+{
+	__asm {
+		pushad
+		pushfd
+		call UpdateBlinkTimer
+		popfd
+		popad
+		jmp[CODE_CAVE_BLINK]
+	}
+}
+
 #pragma endregion Hooks with MinHook
 
 #pragma region
@@ -1811,33 +1850,21 @@ static void ApplyFixBlinkingAnimationSpeed()
 {
 	if (!FixBlinkingAnimationSpeed) return;
 
-	// First JMP Redirect
-	MemoryHelper::MakeJMP(0x4C6367, CODE_CAVE_BLINK, true);
+	// mov	ecx, dword_11C35EC
+	uint8_t originalCode[] = { 0x8B, 0x0D, 0xEC, 0x35, 0x1C, 0x01 };
 
-	uint8_t cmpInstruction[] = { 0x81, 0xF9 };
-	uint8_t addInstruction[] = { 0x8B, 0xF0 };
+	// Step 1: Copy original code to trampoline
+	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK, originalCode, sizeof(originalCode), true);
 
-	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK, cmpInstruction, sizeof(cmpInstruction), true);
-	MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x2, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
-	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK + 0x6, addInstruction, sizeof(addInstruction), true);
+	// Step 2: Add a jump back to the original code + 8 (0x4C6364), skipping 'add ecx, ebx' as we will handle that ourselves
+	MemoryHelper::MakeJMP(CODE_CAVE_BLINK + sizeof(originalCode), 0x4C6364, true);
 
-	// Back to the function
-	MemoryHelper::MakeJMP(CODE_CAVE_BLINK + 0x8, 0x4C636C, true);
+	// Step 3: Overwrite original code with JMP to our stub
+	MemoryHelper::MakeNOP(0x4C635C, 8, true);
+	MemoryHelper::MakeJMP(0x4C635C, reinterpret_cast<uintptr_t>(BlinkAnimationHookStub), true);
 
-	// Second JMP Redirect
-	MemoryHelper::MakeJMP(0x4C638D, CODE_CAVE_BLINK + 0x18, true);
-
-	uint8_t imulInstruction[] = { 0x69, 0xC0 };
-
-	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK + 0x18, imulInstruction, sizeof(imulInstruction), true);
-	MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x1A, 100 * CustomFPSLimit / BLINK_SPEED_RATE, true);
-	MemoryHelper::MakeNOP(CODE_CAVE_BLINK + 0x1E, 2, true);
-
-	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK + 0x20, cmpInstruction, sizeof(cmpInstruction), true);
-	MemoryHelper::WriteMemory<int>(CODE_CAVE_BLINK + 0x22, 4 * CustomFPSLimit / 60, true);
-
-	// Back to the function
-	MemoryHelper::MakeJMP(CODE_CAVE_BLINK + 0x26, 0x4C6395, true);
+	// Make sure Alice's eyes aren't closed for too long
+	MemoryHelper::WriteMemory<char>(0x4C6394, 0x01, true);
 }
 
 static void ApplyFixStretchedHUD()
@@ -1940,6 +1967,14 @@ static void ApplyFixDPIScaling()
 	}
 }
 
+static void ApplyFixParticleDistanceRatio()
+{
+	if (!FixParticleDistanceRatio) return;
+
+	// cg_particledistanceratio "150" -> "0"
+	MemoryHelper::WriteMemory<int>(0x417A1F, 0x5151BC, true);
+}
+
 static void ApplyFixMenuAnimationSpeed()
 {
 	if (!FixMenuAnimationSpeed) return;
@@ -1962,6 +1997,13 @@ static void ApplyFixMenuTransitionTiming()
 
 	// Increase the time allowed to skip the intro so that the game can load properly
 	MemoryHelper::WriteMemory<int>(0x4082FC, 0x3200, true);
+}
+
+static void ApplyFixCutsceneJumpSound()
+{
+	if (!FixCutsceneJumpSound) return;
+
+	HookHelper::ApplyHook((void*)0x4061D0, &JumpCommand_Hook, (LPVOID*)&JumpCommand);
 }
 
 static void ApplyFixLocalizationFiles()
@@ -2141,6 +2183,14 @@ static void ApplyEnableAltF4Close()
 	HookHelper::ApplyHook((void*)0x46C600, &lpfnWndProc_MSG_Hook, (LPVOID*)&lpfnWndProc_MSG);
 }
 
+static void ApplyTrilinearTextureFiltering()
+{
+	if (!TrilinearTextureFiltering) return;
+
+	// r_textureMode "GL_LINEAR_MIPMAP_NEAREST" -> "GL_LINEAR_MIPMAP_LINEAR"
+	MemoryHelper::WriteMemory<int>(0x46E5A7, 0x52A32C, true);
+}
+
 static void ApplyAnisotropicTextureFiltering()
 {
 	HookHelper::ApplyHookAPI(L"opengl32", "glTexParameterf", &glTexParameterf_Hook, (LPVOID*)&ori_glTexParameterf);
@@ -2185,8 +2235,10 @@ static void Init()
 	ApplyFixStretchedFMV();
 	ApplyFixStretchedGUI();
 	ApplyFixDPIScaling();
+	ApplyFixParticleDistanceRatio();
 	ApplyFixMenuAnimationSpeed();
 	ApplyFixMenuTransitionTiming();
+	ApplyFixCutsceneJumpSound();
 	ApplyFixLocalizationFiles();
 	ApplyFixProton();
 	// General
@@ -2208,6 +2260,7 @@ static void Init()
 	ApplyCustomResolution();
 	ApplyEnableAltF4Close();
 	// Graphics
+	ApplyTrilinearTextureFiltering();
 	ApplyAnisotropicTextureFiltering();
 	ApplyProcessAPIPacket();
 	// Misc
