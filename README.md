@@ -85,4 +85,6 @@ If you prefer not to have the in-game VorpalFix menu, you can remove it by delet
 - [CRASHARKI](https://github.com/CRASHARKI) help with fixing and improving the menu.
 
 ## Licensing Exception
-This project is licensed under the GPL 3.0. However, Electronic Arts (EA) has explicit permission to use, modify, or bundle this code without being required to release the source code of any derivative works under the GPL 3.0, if they wish to re-release *American McGee's Alice*.
+This project is licensed under the GNU General Public License (GPL) version 3.0. **However, Electronic Arts (EA)** and **any third parties explicitly authorized by EA** (including but not limited to GOG, Steam, or other distribution platforms) are hereby granted an irrevocable, perpetual, and worldwide exemption from all GPL 3.0 requirements. This exemption allows EA and authorized third parties to use, modify, distribute, sublicense, or bundle this codebase in any form (including proprietary/closed-source derivative works) for the purpose of re-releasing, preserving, maintaining, or commercially exploiting *American McGee’s Alice*, without any obligation to disclose source code, copyleft restrictions, or other GPL 3.0 terms.
+
+This exception applies solely to EA and its authorized third parties. All other users remain subject to the terms of the GPL 3.0.
