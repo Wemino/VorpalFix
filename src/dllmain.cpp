@@ -961,10 +961,21 @@ static int __cdecl PushMenu_Hook(const char* menu_name)
 	// Override the main menu with the title screen
 	if (!isTitleBgSet && UseConsoleTitleScreen && strcmp(menu_name, "main") == 0)
 	{
-		// Hide the cursor
-		GameHelper::ResizeCursor(true, currentWidth, currentHeight);
-		isTitleBgSet = true;
-		return PushMenu("title");
+		// Don't show the title screen if the game has already started
+		int start_state = MemoryHelper::ReadMemory<int>(STARTUP_STATE_ADDR, true);
+		if (start_state == 4 || start_state == 6 || start_state == 100)
+		{
+			// Hide the cursor on the title screen
+			GameHelper::ResizeCursor(true, currentWidth, currentHeight);
+			isTitleBgSet = true;
+			return PushMenu("title");
+		}
+		else
+		{
+			// Skipped
+			isTitleBgSet = true;
+			return PushMenu(menu_name);
+		}
 	}
 	else
 	{
