@@ -866,7 +866,7 @@ static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
 static FILE __cdecl FS_LoadZipFile_Hook(const char* FileName)
 {
 	// Skip pak5_mod.pk3 and disable the hook
-	if (strstr(FileName, "pak5_mod.pk3"))
+	if (strstr(FileName, "\pak5_mod.pk3\x00"))
 	{
 		FileName = "\x00";
 		MH_DisableHook((void*)0x43E030);
