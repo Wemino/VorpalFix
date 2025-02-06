@@ -288,7 +288,7 @@ static void ReadConfig()
 	LanguageId = IniHelper::ReadInteger("General", "LanguageId", 0);
 	UseOriginalIntroVideos = IniHelper::ReadInteger("General", "UseOriginalIntroVideos", 0) == 1;
 	Disable8BitAudioAsDefault = IniHelper::ReadInteger("General", "Disable8BitAudioAsDefault", 1) == 1;
-	UseConsoleTitleScreen = IniHelper::ReadInteger("General", "UseConsoleTitleScreen", 0) == 1;
+	UseConsoleTitleScreen = IniHelper::ReadInteger("General", "UseConsoleTitleScreen", 1) == 1;
 	DisableRemasteredModels = IniHelper::ReadInteger("General", "DisableRemasteredModels", 0) == 1;
 	CustomSavePath = IniHelper::ReadString("General", "CustomSavePath", "");
 
