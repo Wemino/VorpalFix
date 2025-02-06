@@ -281,13 +281,13 @@ static void ReadConfig()
 	// General
 	LaunchWithoutAlice2 = IniHelper::ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
 	CustomControllerBindings = IniHelper::ReadInteger("General", "CustomControllerBindings", 1) == 1;
-	PreventAlice2OnExit = IniHelper::ReadInteger("General", "PreventAlice2OnExit", 0) == 1;
+	PreventAlice2OnExit = IniHelper::ReadInteger("General", "PreventAlice2OnExit", 1) == 1;
 	DisableWinsockInitialization = IniHelper::ReadInteger("General", "DisableWinsockInitialization", 1) == 1;
 	Alice2Path = IniHelper::ReadString("General", "Alice2Path", ALICE2_DEFAULT_PATH);
 	LanguageId = IniHelper::ReadInteger("General", "LanguageId", 0);
 	UseOriginalIntroVideos = IniHelper::ReadInteger("General", "UseOriginalIntroVideos", 0) == 1;
 	Disable8BitAudioAsDefault = IniHelper::ReadInteger("General", "Disable8BitAudioAsDefault", 1) == 1;
-	UseConsoleTitleScreen = IniHelper::ReadInteger("General", "UseConsoleTitleScreen", 0) == 1;
+	UseConsoleTitleScreen = IniHelper::ReadInteger("General", "UseConsoleTitleScreen", 1) == 1;
 	DisableRemasteredModels = IniHelper::ReadInteger("General", "DisableRemasteredModels", 0) == 1;
 	CustomSavePath = IniHelper::ReadString("General", "CustomSavePath", "");
 
