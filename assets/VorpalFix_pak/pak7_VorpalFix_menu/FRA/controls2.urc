@@ -12,7 +12,7 @@ keycommand		1 "widgetcommand TitleBar activategroup group_video\n"
 keycommand		2 "widgetcommand TitleBar activategroup group_audio\n"
 keycommand		3 "widgetcommand TitleBar activategroup group_control\n"
 keycommand		4 "widgetcommand TitleBar activategroup group_game\n" 
-keycommand		5 "widgetcommand TitleBar activategroup group_vorpalfix\n"
+keycommand		5 "widgetcommand TitleBar activategroup group_vf\n"
 // Mirror background
 resource
 Label
@@ -231,7 +231,7 @@ Label
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	staticshader	6 ui/control/head_1_vorpalfix
+	staticshader	6 ui/control/head_1_vf
 	groupid			"group_main"
 	allowactivate	false
 }
@@ -333,8 +333,8 @@ Button
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
 	ordernumber		5
-	mouseEnterCmd	"widgetcommand TitleBar shader ui/control/head_2_vorpalfix\n"
-	stuffcommand	"widgetcommand TitleBar activategroup group_vorpalfix\n"
+	mouseEnterCmd	"widgetcommand TitleBar shader ui/control/head_2_vf\n"
+	stuffcommand	"widgetcommand TitleBar activategroup group_vf\n"
 	groupid			"group_main"
 }
 
@@ -399,7 +399,7 @@ Label
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
 	groupid			"group_main"
-	shader			ui/control/vorpalfix_options
+	shader			ui/control/vf_options
 	noinput
 	allowactivate	false
 }
@@ -1574,8 +1574,8 @@ Button
 	borderstyle		"NONE"
 	shader			ui/buttons/plaque
 	hovershader		ui/buttons/plaque_hover
-	stuffcommand	"ui_setcvars group_vorpalfix; widgetcommand TitleBar activategroup group_main\n"
-	groupid			"group_vorpalfix"
+	stuffcommand	"ui_setcvars group_vf; widgetcommand TitleBar activategroup group_main\n"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		center center
 	fontpos			30 8
@@ -1592,7 +1592,7 @@ Button
 	borderstyle		"NONE"
 	shader			"x_button_xbox"	
 	allowactivate	false
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 } 
 // CANCEL BUTTON
 resource
@@ -1606,8 +1606,8 @@ Button
 	borderstyle		"NONE"
 	shader			ui/buttons/plaque
 	hovershader		ui/buttons/plaque_hover
-	stuffcommand	"ui_restorecvars group_vorpalfix; widgetcommand TitleBar activategroup group_main\n"
-	groupid			"group_vorpalfix"
+	stuffcommand	"ui_restorecvars group_vf; widgetcommand TitleBar activategroup group_main\n"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		center center
 	fontpos			30 8
@@ -1624,7 +1624,7 @@ Button
 	borderstyle		"NONE"
 	shader			"b_button_xbox"	
 	allowactivate	false
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 }
 
 // LANGUAGE
@@ -1637,7 +1637,7 @@ Label
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		left center
 	
@@ -1650,7 +1650,7 @@ List
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		center top
 
@@ -1674,7 +1674,7 @@ Label
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		left center
 }
@@ -1686,7 +1686,7 @@ CheckBox
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		right center
 	linkcvar		"vf_remastered_models"
@@ -1708,7 +1708,7 @@ Label
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		left center
 }
@@ -1720,7 +1720,7 @@ CheckBox
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		right center
 	linkcvar		"vf_ui_console_hud"
@@ -1742,7 +1742,7 @@ Label
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		left center
 }
@@ -1754,7 +1754,7 @@ List
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		center top
 
@@ -1776,7 +1776,7 @@ Label
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		left center
 }
@@ -1788,7 +1788,7 @@ CheckBox
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		right center
 	linkcvar		"vf_ui_letterbox"
@@ -1810,7 +1810,7 @@ Label
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		left center
 }
@@ -1822,7 +1822,7 @@ CheckBox
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		right center
 	linkcvar		"r_swapInterval"
@@ -1844,7 +1844,7 @@ Label
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		left center
 }
@@ -1856,7 +1856,7 @@ List
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		center top
 
@@ -1881,7 +1881,7 @@ Label
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		left center
 }
@@ -1893,7 +1893,7 @@ List
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		center top
 	fontscale		0.7
@@ -1925,7 +1925,7 @@ Label
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
 	shader			notification_dialog.tga
-	groupid			"group_vorpalfix"
+	groupid			"group_vf"
 	allowactivate	false
 	
 	font			"asrafel"

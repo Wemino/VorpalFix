@@ -93,7 +93,6 @@ float scaleFactor = 0;
 float scaledWidth = 0;
 float widthDifference = 0;
 float consoleHudAdjustmentDivisor = 0;
-int saveScreenshotX = 0;
 
 // Localization pk3
 bool hasLookedForLocalizationFiles = false;
@@ -410,7 +409,8 @@ static void WINAPI glReadPixels_Hook(GLint x, GLint y, GLsizei width, GLsizei he
 {
 	if (isTakingSaveScreenshot)
 	{
-		x = saveScreenshotX;
+		// 4:3 x position
+		x = static_cast<int>(widthDifference);
 		isTakingSaveScreenshot = false;
 	}
 
@@ -446,7 +446,7 @@ static int __cdecl Bind_Hook(int keyId, char* cmd_name)
 		// cmp toggleConsoleKeyId instead of hardcoded cmp 96 and cmp 126 (` and ~)
 		MemoryHelper::WriteMemoryRaw(0x40823A, cmpInstruction, sizeof(cmpInstruction), true);
 		MemoryHelper::WriteMemory<int>(0x40823C, keyId, true);
-		MemoryHelper::MakeNOP(0x408240, 6, true);
+		MemoryHelper::MakeNOP(0x408240, 6);
 	}
 
 	return Bind(keyId, cmd_name);
@@ -755,21 +755,16 @@ static int __fastcall UpdateHeadOrientationFromMouse_Hook(int thisPtr, int* _ECX
 // Initialize the cvars used for the VorpalFix menu
 static int __cdecl SetupOpenGLParameters_Hook()
 {
-	VF_LANGUAGE_PTR = Cvar_Set("vf_language", StringHelper::IntegerToCString(LanguageId), 0);
+	// Current game language
+	int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG, false);
+
+	VF_LANGUAGE_PTR = Cvar_Set("vf_language", StringHelper::IntegerToCString(lang), 0);
 	VF_REMASTERED_MODELS_PTR = Cvar_Set("vf_remastered_models", StringHelper::BoolToCString(!DisableRemasteredModels), 0);
 	VF_UI_CONSOLE_HUD_PTR = Cvar_Set("vf_ui_console_hud", StringHelper::BoolToCString(ConsolePortHUD), 0);
 	VF_UI_PS3_PTR = Cvar_Set("vf_ui_ps3", StringHelper::BoolToCString(UsePS3ControllerIcons), 0);
 	VF_UI_LETTERBOX_PTR = Cvar_Set("vf_ui_letterbox", StringHelper::BoolToCString(!DisableLetterbox), 0);
 	VF_R_EXT_MAX_ANISOTROPY_PTR = Cvar_Set("vf_r_ext_max_anisotropy", StringHelper::FloatToCString(MaxAnisotropy), 0);
-
-	if (isScreenRateFps)
-	{
-		VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", "-1", 0);
-	}
-	else
-	{
-		VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", StringHelper::IntegerToCString(CustomFPSLimit), 0);
-	}
+	VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", isScreenRateFps ? "-1" : StringHelper::IntegerToCString(CustomFPSLimit), 0);
 
 	// We only need to do that once
 	MH_DisableHook((void*)0x46E0D0);
@@ -780,7 +775,7 @@ static int __cdecl SetupOpenGLParameters_Hook()
 static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int* _ECX, char* group_name)
 {
 	// Apply the changes
-	if (strcmp(group_name, "group_vorpalfix") == 0)
+	if (strcmp(group_name, "group_vf") == 0)
 	{
 		// LanguageId - Need a restart
 		int languageId = MemoryHelper::ReadMemory<int>(VF_LANGUAGE_PTR + 0x20, false);
@@ -846,7 +841,7 @@ static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
 	}
 
 	// Check if 'pak7_VorpalFix_menu.pk3' is used
-	if (!isVFMenuUsed && StringHelper::stricmp(Buffer, "ui/control/vorpalfix_options.tga"))
+	if (!isVFMenuUsed && StringHelper::stricmp(Buffer, "ui/control/vf_options.tga"))
 	{
 		HookHelper::ApplyHook((void*)0x46E0D0, &SetupOpenGLParameters_Hook, (LPVOID*)&SetupOpenGLParameters);
 		HookHelper::ApplyHook((void*)0x4B9FD0, &UISetCvars_Hook, (LPVOID*)&UISetCvars);
@@ -1070,7 +1065,7 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
 
 			// Loop back to 4615F0 for every files
-			MemoryHelper::MakeCALL(0x41CB4E, 0x41CB32, true);
+			MemoryHelper::MakeCALL(0x41CB4E, 0x41CB32);
 		}
 
 		// Load the original localization file
@@ -1240,26 +1235,7 @@ static int __cdecl TakeSaveScreenshot_Hook(int a1, int a2, int a3)
 {
 	if (isWiderThan4By3)
 	{
-		int screenshot_width = static_cast<int>(scaledWidth);
-		saveScreenshotX = static_cast<int>(widthDifference);
-
-		// If screenshot_width is not a multiple of 4
-		if (screenshot_width % 4 != 0)
-		{
-			// Adjust the width to be the largest multiple of 4 less than currentWidth
-			screenshot_width = screenshot_width - (screenshot_width % 4);
-		}
-
-		// Store the new dimension for the screenshot
-		MemoryHelper::WriteMemory<int>(CODE_CAVE_WIDTH, screenshot_width, true);
-
-		// Redirect width read by sub_46D280
-		MemoryHelper::WriteMemory<int>(0x46D28B, CODE_CAVE_WIDTH, true);
-		MemoryHelper::WriteMemory<int>(0x46D307, CODE_CAVE_WIDTH, true);
-		MemoryHelper::WriteMemory<int>(0x46D321, CODE_CAVE_WIDTH, true);
-		MemoryHelper::WriteMemory<int>(0x46D3B7, CODE_CAVE_WIDTH, true);
-
-		// Tell glReadPixels_Hook to update the x position
+		// Tell glReadPixels_Hook to update the x position to simulate a 4:3 screenshot
 		isTakingSaveScreenshot = true;
 	}
 
@@ -1290,36 +1266,32 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 		FOV = 2.0 * atan(tan(vFOV / 2.0) * currentAspectRatio) * 180.0 / M_PI;
 	}
 
-	// New cursor size
+	// If we are going to update how the width is read during a save screenshot
+	if (FixStretchedGUI || FixSaveScreenshotBufferOverflow)
+	{
+		int screenshotWidth = (FixStretchedGUI && isWiderThan4By3) ? static_cast<int>(scaledWidth) : currentWidth;
+
+		// Check if screenshotWidth is not a multiple of 4
+		if (FixSaveScreenshotBufferOverflow && screenshotWidth % 4 != 0)
+		{
+			// Adjust the width to be the largest multiple of 4 less than currentWidth
+			screenshotWidth = screenshotWidth - (screenshotWidth % 4);
+		}
+
+		// Write the new width to a safe location
+		MemoryHelper::WriteMemory<int>(CODE_CAVE_WIDTH, screenshotWidth, true);
+
+		// Redirect the width read by sub_46D280 to the safe width
+		MemoryHelper::WriteMemory<int>(0x46D28B, CODE_CAVE_WIDTH, true);
+		MemoryHelper::WriteMemory<int>(0x46D307, CODE_CAVE_WIDTH, true);
+		MemoryHelper::WriteMemory<int>(0x46D321, CODE_CAVE_WIDTH, true);
+		MemoryHelper::WriteMemory<int>(0x46D3B7, CODE_CAVE_WIDTH, true);
+	}
+
+	// Update the cursor size
 	if (isMainMenuShown)
 	{
 		isCursorResized = false;
-	}
-
-	// If we are above 4:3 and want to scale the screenshot taken, skip this
-	if ((FixStretchedGUI && !isWiderThan4By3) && FixSaveScreenshotBufferOverflow)
-	{
-		// currentWidth is not a multiple of 4?
-		if (currentWidth % 4 != 0)
-		{
-			// Adjust the width to be the largest multiple of 4 less than currentWidth
-			int safeWidth = currentWidth - (currentWidth % 4);
-			MemoryHelper::WriteMemory<int>(CODE_CAVE_WIDTH, safeWidth, true);
-
-			// Redirect the width read by sub_46D280 to the safe width
-			MemoryHelper::WriteMemory<int>(0x46D28B, CODE_CAVE_WIDTH, true);
-			MemoryHelper::WriteMemory<int>(0x46D307, CODE_CAVE_WIDTH, true);
-			MemoryHelper::WriteMemory<int>(0x46D321, CODE_CAVE_WIDTH, true);
-			MemoryHelper::WriteMemory<int>(0x46D3B7, CODE_CAVE_WIDTH, true);
-		}
-		else
-		{
-			// If width is safe, redirect to the original address
-			MemoryHelper::WriteMemory<int>(0x46D28B, 0x1C4798C, true);
-			MemoryHelper::WriteMemory<int>(0x46D307, 0x1C4798C, true);
-			MemoryHelper::WriteMemory<int>(0x46D321, 0x1C4798C, true);
-			MemoryHelper::WriteMemory<int>(0x46D3B7, 0x1C4798C, true);
-		}
 	}
 
 	// Skip console title screen for aspect ratios greater than 21:9 
@@ -1645,8 +1617,8 @@ static DWORD __fastcall LoadUI_Hook(DWORD* thisPtr, int* _ECX, char* ui_path)
 			isUsingControllerMenu = true;
 
 			// Disable mouse navigation
-			MemoryHelper::MakeNOP(0x40675E, 2, true);
-			MemoryHelper::MakeNOP(0x40676E, 2, true);
+			MemoryHelper::MakeNOP(0x40675E, 2);
+			MemoryHelper::MakeNOP(0x40676E, 2);
 
 			// For Alice's 3d model in the settings
 			HookHelper::ApplyHook((void*)0x423740, &UpdateHeadOrientation_Hook, (LPVOID*)&UpdateHeadOrientation);
@@ -1746,7 +1718,8 @@ static void UpdateBlinkTimer()
 // Hook to update 'BLINK_TIMER' and jump to the original code
 __declspec(naked) static void BlinkAnimationHookStub()
 {
-	__asm {
+	__asm 
+	{
 		pushad
 		pushfd
 		call UpdateBlinkTimer
@@ -1838,10 +1811,10 @@ static void ApplyFixSoundRandomization()
 
 	MemoryHelper::WriteMemoryRaw(CODE_CAVE_SOUND, portedInstructions, sizeof(portedInstructions), true);
 
-	MemoryHelper::MakeCALL(0x402131, CODE_CAVE_SOUND + 0x310, true);
-	MemoryHelper::MakeJMP(0x4348BF, CODE_CAVE_SOUND + 0x310, true);
-	MemoryHelper::MakeJMP(0x43491F, CODE_CAVE_SOUND + 0x220, true);
-	MemoryHelper::MakeJMP(0x43494F, CODE_CAVE_SOUND + 0x290, true);
+	MemoryHelper::MakeCALL(0x402131, CODE_CAVE_SOUND + 0x310);
+	MemoryHelper::MakeJMP(0x4348BF, CODE_CAVE_SOUND + 0x310);
+	MemoryHelper::MakeJMP(0x43491F, CODE_CAVE_SOUND + 0x220);
+	MemoryHelper::MakeJMP(0x43494F, CODE_CAVE_SOUND + 0x290);
 }
 
 static void ApplyFixHardDiskFull()
@@ -1868,11 +1841,11 @@ static void ApplyFixBlinkingAnimationSpeed()
 	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK, originalCode, sizeof(originalCode), true);
 
 	// Step 2: Add a jump back to the original code + 8 (0x4C6364), skipping 'add ecx, ebx' as we will handle that ourselves
-	MemoryHelper::MakeJMP(CODE_CAVE_BLINK + sizeof(originalCode), 0x4C6364, true);
+	MemoryHelper::MakeJMP(CODE_CAVE_BLINK + sizeof(originalCode), 0x4C6364);
 
 	// Step 3: Overwrite original code with JMP to our stub
-	MemoryHelper::MakeNOP(0x4C635C, 8, true);
-	MemoryHelper::MakeJMP(0x4C635C, reinterpret_cast<uintptr_t>(BlinkAnimationHookStub), true);
+	MemoryHelper::MakeNOP(0x4C635C, 8);
+	MemoryHelper::MakeJMP(0x4C635C, reinterpret_cast<uintptr_t>(BlinkAnimationHookStub));
 
 	// Make sure Alice's eyes aren't closed for too long
 	MemoryHelper::WriteMemory<char>(0x4C6394, 0x01, true);
@@ -1914,7 +1887,7 @@ static void ApplyFixStretchedGUI()
 	HookHelper::ApplyHook((void*)0x48F1E0, &RE_StretchFont_Hook, (LPVOID*)&RE_StretchFont); // Font Scaling
 	HookHelper::ApplyHook((void*)0x4C5D30, &SetAliceMirrorViewportParams_Hook, (LPVOID*)&SetAliceMirrorViewportParams); // Scale Alice's 3D model in the settings menu
 	HookHelper::ApplyHook((void*)0x452CF0, &ShowDialogBoxText_Hook, (LPVOID*)&ShowDialogBoxText);
-	MemoryHelper::MakeNOP(0x4D2AB1, 7, true); // Dark rectangle when reassigning a control
+	MemoryHelper::MakeNOP(0x4D2AB1, 7); // Dark rectangle when reassigning a control
 
 	// Save screenshot
 	HookHelper::ApplyHook((void*)0x46D280, &TakeSaveScreenshot_Hook, (LPVOID*)&TakeSaveScreenshot);
@@ -2022,7 +1995,8 @@ static void ApplyLaunchWithoutAlice2()
 {
 	if (!LaunchWithoutAlice2) return;
 
-	MemoryHelper::MakeNOP(0x46560A, 8, true);
+	// Disable the '-RunningFromAlice2' launch argument check
+	MemoryHelper::MakeNOP(0x4655F4, 30);
 }
 
 static void ApplyCustomControllerBindings()
@@ -2037,6 +2011,7 @@ static void ApplyPreventAlice2OnExit()
 {
 	if (!PreventAlice2OnExit) return;
 
+	// Launch Alice2 Off
 	MemoryHelper::WriteMemory<int>(0x559A08, 0, false);
 }
 
@@ -2045,7 +2020,7 @@ static void ApplyDisableWinsockInitialization()
 	if (!DisableWinsockInitialization) return;
 
 	// Disable call to NET_Init
-	MemoryHelper::MakeNOP(0x46562E, 5, true);
+	MemoryHelper::MakeNOP(0x46562E, 5);
 }
 
 static void ApplyLanguageId()
@@ -2112,7 +2087,7 @@ static void ApplyUseOriginalIntroVideos()
 
 	MemoryHelper::WriteMemoryRaw(CODE_CAVE_INTRO, portedIntroData, sizeof(portedIntroData), true);
 
-	MemoryHelper::MakeJMP(0x44D91F, CODE_CAVE_INTRO, true);
+	MemoryHelper::MakeJMP(0x44D91F, CODE_CAVE_INTRO);
 	MemoryHelper::WriteMemory(0x44E409, CODE_CAVE_INTRO, true);
 }
 
