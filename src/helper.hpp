@@ -95,7 +95,7 @@ namespace MemoryHelper
 
 namespace IniHelper
 {
-	mINI::INIFile iniFile("VorpalFix.ini");
+	mINI::INIFile iniFile("config.ini");
 	mINI::INIStructure iniReader;
 
 	void Init()
@@ -326,26 +326,6 @@ namespace SystemHelper
 		}
 
 		return pk3Files;
-	}
-
-	static void LoadProxyLibrary()
-	{
-		wchar_t systemPath[MAX_PATH];
-		GetSystemDirectoryW(systemPath, MAX_PATH);
-		lstrcatW(systemPath, L"\\winmm.dll");
-
-		HINSTANCE hL = LoadLibraryExW(systemPath, 0, LOAD_WITH_ALTERED_SEARCH_PATH);
-		if (!hL)
-		{
-			DWORD errorCode = GetLastError();
-			wchar_t errorMessage[512];
-
-			FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorCode, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), errorMessage, sizeof(errorMessage) / sizeof(wchar_t), NULL);
-			MessageBoxW(NULL, errorMessage, L"Error Loading winmm.dll", MB_ICONERROR);
-			return;
-		}
-
-		winmm.ProxySetup(hL);
 	}
 };
 

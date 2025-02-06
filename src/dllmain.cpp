@@ -14,7 +14,6 @@
 
 #include "MinHook.hpp"
 #include "ini.hpp"
-#include "dllmain.hpp"
 #include "helper.hpp"
 
 #pragma comment(lib, "libMinHook.x86.lib")
@@ -277,7 +276,7 @@ static void ReadConfig()
 	FixResolutionModeOOB = IniHelper::ReadInteger("Fixes", "FixResolutionModeOOB", 1) == 1;
 	FixCutsceneJumpSound = IniHelper::ReadInteger("Fixes", "FixCutsceneJumpSound", 1) == 1;
 	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
-	FixProton = IniHelper::ReadInteger("Fixes", "FixProton", 0) == 1;
+	FixProton = IniHelper::ReadInteger("Fixes", "FixProton", 0) == 1; // https://github.com/ValveSoftware/Proton/issues/8179
 
 	// General
 	LaunchWithoutAlice2 = IniHelper::ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
@@ -2254,12 +2253,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
 			if ((base + nt->OptionalHeader.AddressOfEntryPoint + (0x400000 - base)) == MAIN_ENTRY_POINT)
 			{
-				SystemHelper::LoadProxyLibrary();
 				Init();
 			}
 			else
 			{
-				MessageBoxA(NULL, "This .exe is not supported.", "VorpalFix", MB_ICONERROR);
 				return false;
 			}
 			break;
