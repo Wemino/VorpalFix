@@ -238,8 +238,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
 <div align="center">
   <table>
     <tr>
-      <td width="50%"><a href="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/AF_Off_Full.png"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/AF_Off.png"></a></td>
-      <td width="50%"><a href="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/AF_On_Full.png"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/AF_On.png"></a></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/AF_Off.png"></a></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/AF_On.png"></a></td>
     </tr>
     <tr>
       <td align="center"><a href="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_off.png">Vanilla</a></td>
