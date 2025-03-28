@@ -22,7 +22,10 @@ A patch that addresses various technical issues and adds quality-of-life improve
 > [!WARNING]
 > To launch the game on Steam Deck or Linux, open the game’s properties in Steam and include `WINEDLLOVERRIDES="winmm.dll=n,b" %command%` in the launch options.
 
-## Features
+# Features
+
+## General Fixes and Stability
+
 - **Fix missing sound effects** - Fix the missing sound effects introduced in the 2011 remaster, affecting most weapons and the Cheshire Cat summon.
 
 - **Fix "Hard Disk Full"** - Fixed the "Hard Disk Full" error message incorrectly appearing when the game is installed on a disk with more than 2TB of free space.
@@ -42,6 +45,10 @@ A patch that addresses various technical issues and adds quality-of-life improve
 - **Workaround for a Proton specific issue related to the menus when playing on Linux** - Set `FixProton = 1` in `VorpalFix.ini` (https://github.com/ValveSoftware/Proton/issues/8179)
   
 - **Fix DPI Scaling on high-DPI displays.**
+
+---
+
+## Texture and UI Fixes
 
 - **Fix remastered character textures not loading** - Fixed an issue where multiple typos in the archive containing the remastered textures prevented them from loading. Affects **Cheshire Cat**, **Card Guards** and **Mock Turtle**.
 
@@ -103,6 +110,10 @@ A patch that addresses various technical issues and adds quality-of-life improve
   </table>
 </div>
 
+---
+
+## Game Launch and Settings Options
+
 - **Allow the game to launch without Alice: Madness Returns** - The 2011 remaster is designed to launch with the `-RunningFromAlice2` option, this check has been disabled by default, allowing `alice.exe` to launch independently.
 
 - **Prevent Alice: Madness Returns from launching on exit** - On exit, the game checks the installation path of Alice: Madness Returns to relaunch it. Set `PreventAlice2OnExit = 1` in `VorpalFix.ini`
@@ -144,6 +155,10 @@ A patch that addresses various technical issues and adds quality-of-life improve
 - **Provide the option to set a custom path for saving the game's data** - Added the option to set a custom path for saving the game's data. Edit `CustomSavePath` in `VorpalFix.ini`.
 
 - **Provide the option to disable the Winsock initialization process** - Added the option to disable the Winsock initialization process, a remnant from the Quake 3 engine.
+
+---
+
+## Gameplay Options
 
 - **Additional controller commands:**
   - Pressing the Left Stick while pressing any D-pad button will save the current weapon to that D-pad key.
@@ -197,7 +212,11 @@ A patch that addresses various technical issues and adds quality-of-life improve
 
 - **Provide the option to launch the game in borderless fullscreen mode** - Set `ForceBorderlessFullscreen = 1` in `VorpalFix.ini`.
 
-- **VSync and Custom Frame Rate Options** - Added the option to enable VSync and set a custom frame rate limit, including an option to match the monitor's refresh rate. Both can be adjusted in the VorpalFix menu.  
+- **VSync and Custom Frame Rate Options** - Added the option to enable VSync and set a custom frame rate limit, including an option to match the monitor's refresh rate. Both can be adjusted in the VorpalFix menu.
+
+---
+
+## Graphical Enhancements
 
 - **FOV Fix** - Auto-scales 4:3 FOV for wider aspect ratios.
 
