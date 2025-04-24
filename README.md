@@ -1,5 +1,3 @@
-# VorpalFix
-
 <p align="center">
   <img src="assets/VorpalFix_Logo.png">
 </p>
@@ -26,31 +24,43 @@ A patch that addresses various technical issues and adds quality-of-life improve
 
 ## General Fixes and Stability
 
-- **Fix missing sound effects** - Fix the missing sound effects introduced in the 2011 remaster, affecting most weapons and the Cheshire Cat summon.
+- **Sound Effects Restored**  
+  Restored missing weapon sounds and re-enabled Cheshire Cat summon lost in the 2011 remaster.
 
-- **Fix "Hard Disk Full"** - Fixed the "Hard Disk Full" error message incorrectly appearing when the game is installed on a disk with more than 2TB of free space.
+- **Fix "Hard Disk Full"**  
+  Fixed the "Hard Disk Full" error message incorrectly appearing when the game is installed on a disk with more than 2TB of free space.
 
-- **Fix multiple crashes** - Fixed a crash that occurred when saving at resolutions where the width is not a multiple of 4 (e.g., 1366x768), as well as another crash that could happen while fetching the resolution list.
+- **Crash Fixes**  
+  Fixed a crash that occurred when saving at resolutions where the width is not a multiple of 4 (e.g., 1366x768), as well as another crash that could happen while fetching the resolution list.
 
-- **Fix particle effects not displaying properly at certain distances** - Fixed an issue where re-materialization effects for Alice's throwable weapons were inconsistent, sometimes failing to appear.
+- **Particle Effect Fixes**  
+  Fixed missing re-materialization visuals for Alice’s throwable weapons.
 
-- **Fix Alice's blinking animation speed in the settings menu** - Fixed an issue where Alice's blinking animation played too quickly at high frame rates.
+- **High Frame Rate Fix**  
+  Fixed an issue where Alice's blinking animation played too quickly at high frame rates.
 
-- **Fix fullscreen setting not saving.**
+- **Fullscreen Setting Fix**  
+  Fullscreen selection now persists after restarting.
 
-- **Fix multiple menu issues** - Texture bleeding, inconsistent "Back" button animation, and minor problems.
+- **Menu Fixes**  
+  Fixed texture bleeding, corrected the back button animation, and resolved minor UI issues.
 
-- **Fix multiple oversights in the script files** - Typos in texture/sound paths.
+- **Script Path Corrections**  
+  Corrected typos in texture and sound paths to prevent missing assets.
 
-- **Workaround for a Proton specific issue related to the menus when playing on Linux** - Set `FixProton = 1` in `VorpalFix.ini` (https://github.com/ValveSoftware/Proton/issues/8179)
+- **Workaround for a Proton specific issue related to the menus when playing on Linux**  
+  Set `FixProton = 1` in `VorpalFix.ini` (https://github.com/ValveSoftware/Proton/issues/8179)
   
-- **Fix DPI Scaling on high-DPI displays.**
+- **High‑DPI Scaling Fix**  
+  Corrected display scaling on high‑DPI monitors.
 
 ---
 
 ## Texture and UI Fixes
 
-- **Fix remastered character textures not loading** - Fixed an issue where multiple typos in the archive containing the remastered textures prevented them from loading. Affects **Cheshire Cat**, **Card Guards** and **Mock Turtle**.
+- **Fix remastered character textures not loading**  
+  Fixed an issue where multiple typos in the archive containing the remastered textures prevented them from loading.  
+  Affects **Cheshire Cat**, **Card Guards** and **Mock Turtle**.
 
 <div align="center">
   <table>
@@ -59,13 +69,14 @@ A patch that addresses various technical issues and adds quality-of-life improve
       <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/pak5_VF.jpg"></td>
     </tr>
     <tr>
-      <td align="center">Vanilla</td>
-      <td align="center">VorpalFix with "FixPak5" enabled</td>
+      <td align="center">Original Textures</td>
+      <td align="center">Remastered Textures</td>
     </tr>
   </table>
 </div>
 
-- **Fix Menu stretching in widescreen resolutions** - Fixed the stretching of menus and screenshots taken for the save file thumbnail in widescreen resolutions.
+- **Menu & Screenshot Aspect Ratio**  
+  Maintains correct aspect ratio for in‑game menus and save‑file thumbnails in widescreen resolutions.
 
 <div align="center">
   <table>
@@ -74,13 +85,14 @@ A patch that addresses various technical issues and adds quality-of-life improve
       <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/Menu_VF.jpg"></td>
     </tr>
     <tr>
-      <td align="center">Vanilla Menu (16:9)</td>
-      <td align="center">VorpalFix Menu (16:9)</td>
+      <td align="center">Original Menu (16:9)</td>
+      <td align="center">Corrected Menu</td>
     </tr>
   </table>
 </div>
 
-- **Fix HUD stretching in widescreen resolutions:**
+- **HUD Aspect Ratio**  
+  Prevents HUD elements from stretching in any widescreen format.
 
 <div align="center">
   <table style="width: 130%; max-width: 1200px;">
@@ -89,13 +101,14 @@ A patch that addresses various technical issues and adds quality-of-life improve
       <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/HUD_VF.jpg"></td>
     </tr>
     <tr>
-      <td align="center">Vanilla HUD (16:9)</td>
-      <td align="center">VorpalFix HUD (16:9)</td>
+      <td align="center">HUD Stretching</td>
+      <td align="center">HUD Corrected</td>
     </tr>
   </table>
 </div>
 
-- **Fix FMV stretching in widescreen resolutions:**
+- **FMV Aspect Ratio**  
+  Prevents cinematic videos from warping in widescreen resolutions.
 
 <div align="center">
   <table>
@@ -104,8 +117,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
       <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/FMV_VF.jpg"></td>
     </tr>
     <tr>
-      <td align="center">Vanilla FMV (16:9)</td>
-      <td align="center">VorpalFix FMV (16:9)</td>
+      <td align="center">Original FMV (16:9)</td>
+      <td align="center">Corrected FMV</td>
     </tr>
   </table>
 </div>
@@ -114,11 +127,15 @@ A patch that addresses various technical issues and adds quality-of-life improve
 
 ## Game Launch and Settings Options
 
-- **Allow the game to launch without Alice: Madness Returns** - The 2011 remaster is designed to launch with the `-RunningFromAlice2` option, this check has been disabled by default, allowing `alice.exe` to launch independently.
+- **Allow the game to launch without Alice: Madness Returns**  
+  The 2011 remaster is designed to launch with the `-RunningFromAlice2` option, this check has been disabled by default, allowing `alice.exe` to launch independently.
 
-- **Prevent Alice: Madness Returns from launching on exit** - On exit, the game checks the installation path of Alice: Madness Returns to relaunch it. Set `PreventAlice2OnExit = 1` in `VorpalFix.ini`
+- **Prevent Alice: Madness Returns from launching on exit**  
+  On exit, the game checks the installation path of Alice: Madness Returns to relaunch it.  
+  Set `PreventAlice2OnExit = 1` in `VorpalFix.ini`
 
-- **Add a dedicated menu to edit some of the settings of `VorpalFix.ini`** - Delete `pak7_VorpalFix_menu.pk3` to remove.
+- **Add a dedicated menu to edit some of the settings of `VorpalFix.ini`**  
+  Delete `pak7_VorpalFix_menu.pk3` to remove.
 
 <div align="center">
   <table>
@@ -131,7 +148,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
   </table>
 </div>
 
-- **Provide the option to disable the remastered models without modifying game files** - Added the option to disable the remastered models without modifying game files. Adjust in VorpalFix menu.
+- **Toggle Remastered Models**  
+  Switch between remaster and original models without editing game files.
 
 <div align="center">
   <table>
@@ -146,15 +164,23 @@ A patch that addresses various technical issues and adds quality-of-life improve
   </table>
 </div>
 
-- **Restore the "American McGee's Alice" title screen from the Xbox 360/PlayStation 3 version** - Restored the "American McGee's Alice" title screen, as seen in the Xbox 360/PlayStation 3 version.
+- **Original Title Screen Restored**  
+  Re-added the "American McGee's Alice" title screen from the Xbox 360/PS3 version.
 
-- **Provide the option to switch the game's supported language** - Added the option to switch between English, German, French, or Spanish as the game's supported language. Adjust in VorpalFix menu.
+- **Language Options**  
+  Select English, German, French, or Spanish from the menu.
 
-- **Provide the option to display the EA and Rogue Entertainment intro videos** - Added the option to enable the previously disabled EA and Rogue Entertainment intro videos from the remaster. Set `UseOriginalIntroVideos = 1` in `VorpalFix.ini`.
+- **Original Intro Videos**  
+  Restore EA and Rogue Entertainment intros with `UseOriginalIntroVideos = 1`.
 
-- **Provide the option to set a custom path for saving the game's data** - Added the option to set a custom path for saving the game's data. Edit `CustomSavePath` in `VorpalFix.ini`.
+- **Developer Console Re-enabled**  
+  Restore access to the original game’s console. Default key: F2
 
-- **Provide the option to disable the Winsock initialization process** - Added the option to disable the Winsock initialization process, a remnant from the Quake 3 engine.
+- **Custom Save Path**  
+  Redirect save files via `CustomSavePath` in `VorpalFix.ini`.
+
+- **Disable Winsock Initialization**  
+  Turn off legacy Quake 3 network startup.
 
 ---
 
@@ -165,7 +191,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
   - Pressing the Right Stick + 'A' will execute a quick load.
   - Pressing the Right Stick + 'B' will execute a quick save.
  
-- **Provide the option to use the HUD position similar to the Xbox 360/PlayStation 3 console version** - Added the option to position the HUD like in the Xbox 360/PlayStation 3 console version.
+- **Console-Style HUD Layout**  
+  Position the HUD as in the Xbox 360/PS3 versions.
 
 <div align="center">
   <table>
@@ -174,13 +201,14 @@ A patch that addresses various technical issues and adds quality-of-life improve
       <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/HUD_Console.jpg"></td>
     </tr>
     <tr>
-      <td align="center">Vanilla HUD Position</td>
-      <td align="center">VorpalFix Console Style HUD Position</td>
+      <td align="center">PC HUD Position</td>
+      <td align="center">Console HUD Position</td>
     </tr>
   </table>
 </div>
 
-- **Provide the option to disable the letterboxing during cutscenes** - Adjust in VorpalFix menu.
+- **Letterbox Toggle**  
+  Disable cinematic bars during cutscenes.
 
 <div align="center">
   <table>
@@ -190,13 +218,14 @@ A patch that addresses various technical issues and adds quality-of-life improve
     </tr>
     <tr>
       <td align="center">Vanilla</td>
-      <td align="center">VorpalFix (Letterbox Disabled)</td>
+      <td align="center">Letterbox Disabled</td>
     </tr>
   </table>
 </div>
  
-- **Enable support for controller icons in the menus** - Xbox or PlayStation 3 controller icons are displayed in the menus when a controller is detected at startup. Adjust the controller style in the VorpalFix menu.
-
+- **Controller Icon Support**  
+  Xbox or PlayStation 3 controller icons are displayed in the menus when a controller is detected at startup.
+  
 <div align="center">
   <table>
     <tr>
@@ -210,15 +239,15 @@ A patch that addresses various technical issues and adds quality-of-life improve
   </table>
 </div>
 
-- **Provide the option to launch the game in borderless fullscreen mode** - Set `ForceBorderlessFullscreen = 1` in `VorpalFix.ini`.
-
-- **VSync and Custom Frame Rate Options** - Added the option to enable VSync and set a custom frame rate limit, including an option to match the monitor's refresh rate. Both can be adjusted in the VorpalFix menu.
+- **Borderless Fullscreen & VSync**  
+  Enable borderless mode and custom frame rate limits, including refresh rate matching.
 
 ---
 
 ## Graphical Enhancements
 
-- **FOV Fix** - Auto-scales 4:3 FOV for wider aspect ratios.
+- **Field of View Correction**  
+  Auto-adjusts 4:3 FOV for widescreen displays.
 
 <div align="center">
   <table>
@@ -228,12 +257,13 @@ A patch that addresses various technical issues and adds quality-of-life improve
     </tr>
     <tr>
       <td align="center">Vanilla 16:9 FOV</td>
-      <td align="center">VorpalFix Corrected 16:9 FOV</td>
+      <td align="center">Corrected 16:9 FOV</td>
     </tr>
   </table>
 </div>
 
-- **Add support for texture filtering** - Added support for Anisotropic and Trilinear texture filtering to improve texture quality.
+- **Texture Filtering**  
+  Anisotropic and trilinear filtering sharpen textures and minimize distant blurring or shimmering, even at steep angles, with minimal performance cost.
 
 <div align="center">
   <table>
@@ -243,12 +273,13 @@ A patch that addresses various technical issues and adds quality-of-life improve
     </tr>
     <tr>
       <td align="center"><a href="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_off.png">Vanilla</a></td>
-      <td align="center"><a href="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_on.png">VorpalFix Anisotropic Filtering (16x)</a></td>
+      <td align="center"><a href="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_on.png">Anisotropic Filtering (16x)</a></td>
     </tr>
   </table>
 </div>
 
-- **No Model LOD Bias** - Forces the highest quality models to be rendered at all distances.
+- **Maximum Model Detail**  
+  Disable LOD bias to render models at full quality at any distance.
 
 <div align="center">
   <table>
@@ -258,7 +289,7 @@ A patch that addresses various technical issues and adds quality-of-life improve
     </tr>
     <tr>
       <td align="center">Vanilla</td>
-      <td align="center">VorpalFix (No Model LOD Bias)</td>
+      <td align="center">No Model LOD Bias</td>
     </tr>
   </table>
 </div>
