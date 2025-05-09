@@ -169,27 +169,13 @@ namespace GameHelper
 {
 	bool DisableCursorScaling = false;
 
-	typedef int(__cdecl* sub_418D90)(const char*, const char*, int);
-	sub_418D90 UpdateCvar = (sub_418D90)0x418D90;
-
-	typedef int(__cdecl* sub_4076F0)(const char*);
-	sub_4076F0 GetKeyId = (sub_4076F0)0x4076F0;
-
-	typedef int(__cdecl* sub_40B2F0)();
-	sub_40B2F0 VidRestart = (sub_40B2F0)0x40B2F0;
-
-	typedef int(__cdecl* sub_44A300)(unsigned int, const char*);
-	sub_44A300 UI_GetStaticMap = (sub_44A300)0x44A300;
-
-	typedef char* (__cdecl* sub_441D60)(int);
-	sub_441D60 GetWeaponName = (sub_441D60)0x441D60;
-
-	// XInputGetState
-	typedef int(__cdecl* sub_463130)();
-	sub_463130 IsControllerConnected = (sub_463130)0x463130;
-
-	typedef int(__cdecl* sub_407870)(int, const char*);
-	sub_407870 Bind = (sub_407870)0x407870;
+	int(__cdecl* GetKeyId)(const char*) = (int(__cdecl*)(const char*))0x4076F0;
+	int(__cdecl* Bind)(int, const char*) = (int(__cdecl*)(int, const char*))0x407870;
+	int(__cdecl* VidRestart)() = (int(__cdecl*)())0x40B2F0;
+	int(__cdecl* UpdateCvar)(const char*, const char*, int) = (int(__cdecl*)(const char*, const char*, int))0x418D90;
+	char* (__cdecl* GetWeaponName)(int) = (char* (__cdecl*)(int))0x441D60;
+	int(__cdecl* UI_GetStaticMap)(unsigned int, const char*) = (int(__cdecl*)(unsigned int, const char*))0x44A300;
+	int(__cdecl* IsControllerConnected)() = (int(__cdecl*)())0x463130;
 
 	static void AssignCmdKeyId(int keyId, const char* cmd)
 	{
@@ -203,7 +189,7 @@ namespace GameHelper
 
 	static int FindShaderIndex(const char* texturePath)
 	{
-		int ShaderNum = MemoryHelper::ReadMemory<int>(0x1BCCEEC, false);
+		int ShaderNum = MemoryHelper::ReadMemory<int>(0x1BCCEEC);
 		int ShaderIndex = 0x1BCCEF0;
 
 		for (int i = 0; i < ShaderNum; i++)
@@ -266,7 +252,7 @@ namespace GameHelper
 
 		if (ImageIndex == -1) return;
 
-		int image_width = MemoryHelper::ReadMemory<int>(ImageIndex + 0x48, false);
+		int image_width = MemoryHelper::ReadMemory<int>(ImageIndex + 0x48);
 
 		float current_width = static_cast<float>(width);
 		float current_height = static_cast<float>(height);
@@ -374,18 +360,20 @@ namespace HookHelper
 	{
 		if (!InitializeMinHook()) return;
 
-		if (MH_CreateHook(addr, hookFunc, originalFunc) != MH_OK)
+		MH_STATUS status = MH_CreateHook(addr, hookFunc, originalFunc);
+		if (status != MH_OK)
 		{
 			char errorMsg[0x100];
-			sprintf_s(errorMsg, "Failed to create hook at address: %p", addr);
+			sprintf_s(errorMsg, "Failed to create hook at address: %p\nError: %s", addr, MH_StatusToString(status));
 			MessageBoxA(NULL, errorMsg, "Error", MB_ICONERROR | MB_OK);
 			return;
 		}
 
-		if (MH_EnableHook(addr) != MH_OK)
+		status = MH_EnableHook(addr);
+		if (status != MH_OK)
 		{
 			char errorMsg[0x100];
-			sprintf_s(errorMsg, "Failed to enable hook at address: %p", addr);
+			sprintf_s(errorMsg, "Failed to enable hook at address: %p\nError: %s", addr, MH_StatusToString(status));
 			MessageBoxA(NULL, errorMsg, "Error", MB_ICONERROR | MB_OK);
 			return;
 		}
@@ -395,18 +383,20 @@ namespace HookHelper
 	{
 		if (!InitializeMinHook()) return;
 
-		if (MH_CreateHookApi(moduleName, apiName, hookFunc, originalFunc) != MH_OK)
+		MH_STATUS status = MH_CreateHookApi(moduleName, apiName, hookFunc, originalFunc);
+		if (status != MH_OK)
 		{
 			char errorMsg[0x100];
-			sprintf_s(errorMsg, "Failed to create hook for API: %s", apiName);
+			sprintf_s(errorMsg, "Failed to create hook for API: %s\nError: %s", apiName, MH_StatusToString(status));
 			MessageBoxA(NULL, errorMsg, "Error", MB_ICONERROR | MB_OK);
 			return;
 		}
 
-		if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK)
+		status = MH_EnableHook(MH_ALL_HOOKS);
+		if (status != MH_OK)
 		{
 			char errorMsg[0x100];
-			sprintf_s(errorMsg, "Failed to enable hook for API: %s", apiName);
+			sprintf_s(errorMsg, "Failed to enable hook for API: %s\nError: %s", apiName, MH_StatusToString(status));
 			MessageBoxA(NULL, errorMsg, "Error", MB_ICONERROR | MB_OK);
 			return;
 		}

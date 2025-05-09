@@ -421,7 +421,7 @@ static void WINAPI glReadPixels_Hook(GLint x, GLint y, GLsizei width, GLsizei he
 static int __cdecl JumpCommand_Hook()
 {
 	// If jumping during a cutscene
-	if (MemoryHelper::ReadMemory<int>(IS_CINEMATIC, false))
+	if (MemoryHelper::ReadMemory<int>(IS_CINEMATIC))
 	{
 		// Don't play 'jump.wav' (from a player's action) during a cutscene
 		return 0;
@@ -487,24 +487,15 @@ static void __cdecl CL_InitRef_Hook()
 // Process the snapshot returned from the server (fgamex86.dll) and modify specific properties
 static void __cdecl CL_ParsePacketEntities_Hook(int msg, int oldframe, int newframe)
 {
-	float* fovPtr = (float*)((DWORD)newframe + 0x418);
-
-	if (*fovPtr != FOV)
-	{
-		*fovPtr = FOV;
-	}
+	*(float*)(newframe + 0x418) = FOV; // Update FOV
 
 	if (DisableLetterbox)
 	{
-		int* isCinematicPtr = (int*)((DWORD)newframe + 0x104);
-		int* letterboxPtr = (int*)((DWORD)newframe + 0x10C);
+		*(int*)(newframe + 0x10C) = 0; // No letterbox
 
-		*letterboxPtr = 0;
-
-		// Zoom a bit during cutscenes
-		if (AutoFOV && *isCinematicPtr == 1)
+		if (AutoFOV && *(int*)(newframe + 0x104)) // isCinematic
 		{
-			*fovPtr = FOV / 1.18f;
+			*(float*)(newframe + 0x418) = FOV / 1.18f; // Cinematic zoom
 		}
 	}
 
@@ -514,29 +505,18 @@ static void __cdecl CL_ParsePacketEntities_Hook(int msg, int oldframe, int newfr
 // Hook of the command function
 static int __cdecl CallCmd_Hook(char* cmd, char a2)
 {
-	// If holding the left stick to assign a weapon
-	if (CustomControllerBindings && isHoldingLeftStick)
+    if (!CustomControllerBindings || !isHoldingLeftStick || !cmd)
+        return CallCmd(cmd, a2);
+
+    std::string inputCmd(cmd);
+    std::transform(inputCmd.begin(), inputCmd.end(), inputCmd.begin(), ::tolower);
+
+    for (const auto& command : weaponCommands) 
 	{
-		if (cmd == nullptr)
-		{
-			return CallCmd(cmd, a2);
-		}
-
-		// Convert the input command to lowercase for case-insensitive comparison
-		std::string inputCommand(cmd);
-		std::transform(inputCommand.begin(), inputCommand.end(), inputCommand.begin(), ::tolower);
-
-		// Check if 'cmd' is in the list of commands
-		for (const auto& command : weaponCommands)
-		{
-			if (inputCommand == command)
-			{
-				return 0; // Return 0 if the command matches, skip the weapon switch command that has been replaced
-			}
-		}
-	}
-
-	return CallCmd(cmd, a2);
+        if (inputCmd == command) return 0; // Return 0 if the command matches, skip the weapon switch command that has been replaced
+    }
+    
+    return CallCmd(cmd, a2);
 }
 
 // Return the current save directory
@@ -584,7 +564,7 @@ static void __cdecl FetchDisplayResolutions_Hook()
 	}
 
 	// If already executed, skip it
-	if (MemoryHelper::ReadMemory<int>(DISPLAY_MODE_IDX, false) == 0)
+	if (MemoryHelper::ReadMemory<int>(DISPLAY_MODE_IDX) == 0)
 	{
 		FetchDisplayResolutions();
 	}
@@ -594,7 +574,7 @@ static void __cdecl FetchDisplayResolutions_Hook()
 static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int flag)
 {
 	// If the game has fully started (all relevant cvars have been initialized), disable this hook
-	if (MemoryHelper::ReadMemory<int>(STARTUP_STATE_ADDR, false) == -1)
+	if (MemoryHelper::ReadMemory<int>(STARTUP_STATE_ADDR) == -1)
 	{
 		MH_DisableHook((void*)0x419910);
 	}
@@ -640,7 +620,7 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		skipAutoResolution = true;
 
 		// Get config file path
-		const char* configFile = (MemoryHelper::ReadMemory<int>(CURRENT_LANG, false) == 2) ? "config_pc_fra.cfg" : "config.cfg";
+		const char* configFile = (MemoryHelper::ReadMemory<int>(CURRENT_LANG) == 2) ? "config_pc_fra.cfg" : "config.cfg";
 
 		std::string directoryPath = GetSavePath_Hook();
 		std::filesystem::path configFilePath = std::filesystem::path(directoryPath) / configFile;
@@ -649,7 +629,7 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		FetchDisplayResolutions_Hook();
 
 		auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
-		int resolutionNum = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_NUM, false);
+		int resolutionNum = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_NUM);
 
 		// Check if 'r_mode' exceeds the total count of available resolution modes
 		if (FixResolutionModeOOB)
@@ -671,8 +651,8 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 			// Find the 'r_mode' value matching the screen resolution
 			for (int i = 0; i < resolutionNum; i++)
 			{
-				int screenWidthMode = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR + (i * 8), false);
-				int screenHeightMode = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR + (i * 8), false);
+				int screenWidthMode = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_ARRAY_WIDTH_ADDR + (i * 8));
+				int screenHeightMode = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_ARRAY_HEIGHT_ADDR + (i * 8));
 
 				if (screenWidth == screenWidthMode && screenHeight == screenHeightMode)
 				{
@@ -746,7 +726,7 @@ static float __cdecl UpdateHeadOrientation_Hook(DWORD* a1, float* a2)
 }
 
 // Hook to check if we are in the setting menu and not in-game 
-static int __fastcall UpdateHeadOrientationFromMouse_Hook(int thisPtr, int* _ECX, float* a2, int a3, float* a4, float* a5)
+static int __fastcall UpdateHeadOrientationFromMouse_Hook(int thisPtr, int*, float* a2, int a3, float* a4, float* a5)
 {
 	isInSettingMenu = true;
 	return UpdateHeadOrientationFromMouse(thisPtr, a2, a3, a4, a5);
@@ -756,7 +736,7 @@ static int __fastcall UpdateHeadOrientationFromMouse_Hook(int thisPtr, int* _ECX
 static int __cdecl SetupOpenGLParameters_Hook()
 {
 	// Current game language
-	int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG, false);
+	int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG);
 
 	VF_LANGUAGE_PTR = Cvar_Set("vf_language", StringHelper::IntegerToCString(lang), 0);
 	VF_REMASTERED_MODELS_PTR = Cvar_Set("vf_remastered_models", StringHelper::BoolToCString(!DisableRemasteredModels), 0);
@@ -772,34 +752,34 @@ static int __cdecl SetupOpenGLParameters_Hook()
 }
 
 // Hook of the function used by the "ui_setcvars" command, used to save the VorpalFix menu settings to the INI
-static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int* _ECX, char* group_name)
+static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int*, char* group_name)
 {
 	// Apply the changes
 	if (strcmp(group_name, "group_vf") == 0)
 	{
 		// LanguageId - Need a restart
-		int languageId = MemoryHelper::ReadMemory<int>(VF_LANGUAGE_PTR + 0x20, false);
+		int languageId = MemoryHelper::ReadMemory<int>(VF_LANGUAGE_PTR + 0x20);
 		IniHelper::iniReader["General"]["LanguageId"] = StringHelper::IntegerToCString(languageId);
 
 		// DisableRemasteredModels - Need a restart
-		bool disableRemasteredModels = MemoryHelper::ReadMemory<int>(VF_REMASTERED_MODELS_PTR + 0x20, false);
+		bool disableRemasteredModels = MemoryHelper::ReadMemory<int>(VF_REMASTERED_MODELS_PTR + 0x20);
 		IniHelper::iniReader["General"]["DisableRemasteredModels"] = StringHelper::IntegerToCString(!disableRemasteredModels);
 
 		// ConsolePortHUD
-		ConsolePortHUD = MemoryHelper::ReadMemory<int>(VF_UI_CONSOLE_HUD_PTR + 0x20, false);
+		ConsolePortHUD = MemoryHelper::ReadMemory<int>(VF_UI_CONSOLE_HUD_PTR + 0x20);
 		IniHelper::iniReader["Display"]["ConsolePortHUD"] = StringHelper::IntegerToCString(ConsolePortHUD);
 
 		// UsePS3ControllerIcons - Need a restart
-		int usePS3ControllerIcons = MemoryHelper::ReadMemory<int>(VF_UI_PS3_PTR + 0x20, false);
+		int usePS3ControllerIcons = MemoryHelper::ReadMemory<int>(VF_UI_PS3_PTR + 0x20);
 		IniHelper::iniReader["Display"]["UsePS3ControllerIcons"] = StringHelper::IntegerToCString(usePS3ControllerIcons);
 
 		// DisableLetterbox
-		bool isLetterboxEnabled = MemoryHelper::ReadMemory<int>(VF_UI_LETTERBOX_PTR + 0x20, false);
+		bool isLetterboxEnabled = MemoryHelper::ReadMemory<int>(VF_UI_LETTERBOX_PTR + 0x20);
 		IniHelper::iniReader["Display"]["DisableLetterbox"] = StringHelper::IntegerToCString(!isLetterboxEnabled);
 		DisableLetterbox = !isLetterboxEnabled;
 
 		// MaxAnisotropy
-		float maxAnisotropy = MemoryHelper::ReadMemory<float>(VF_R_EXT_MAX_ANISOTROPY_PTR + 0x1C, false);
+		float maxAnisotropy = MemoryHelper::ReadMemory<float>(VF_R_EXT_MAX_ANISOTROPY_PTR + 0x1C);
 		IniHelper::iniReader["Graphics"]["MaxAnisotropy"] = StringHelper::FloatToCString(maxAnisotropy);
 
 		// Execute vid_restart to refresh the textures
@@ -811,7 +791,7 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int* _ECX, char* group_n
 		}
 
 		// CustomFPSLimit
-		CustomFPSLimit = MemoryHelper::ReadMemory<int>(VF_COM_MAXFPS_PTR + 0x20, false);
+		CustomFPSLimit = MemoryHelper::ReadMemory<int>(VF_COM_MAXFPS_PTR + 0x20);
 		IniHelper::iniReader["Graphics"]["CustomFPSLimit"] = StringHelper::IntegerToCString(CustomFPSLimit);
 
 		// Set to monitor's refresh rate
@@ -926,7 +906,7 @@ static int __cdecl IsGameStarted_Hook()
 	}
 
 	// Loading a quicksave while the menu is transitioning can cause issues
-	if (FixMenuTransitionTiming && MemoryHelper::ReadMemory<char>(IS_MENU_LOCKED, false))
+	if (FixMenuTransitionTiming && MemoryHelper::ReadMemory<uint8_t>(IS_MENU_LOCKED))
 	{
 		return 0;
 	}
@@ -957,7 +937,7 @@ static int __cdecl PushMenu_Hook(const char* menu_name)
 	if (!isTitleBgSet && UseConsoleTitleScreen && strcmp(menu_name, "main") == 0)
 	{
 		// Don't show the title screen if the game has already started
-		int start_state = MemoryHelper::ReadMemory<int>(STARTUP_STATE_ADDR, true);
+		int start_state = MemoryHelper::ReadMemory<int>(STARTUP_STATE_ADDR);
 		if (start_state == 4 || start_state == 6 || start_state == 100)
 		{
 			// Hide the cursor on the title screen
@@ -985,7 +965,7 @@ static int __cdecl ForceMenu_Hook(const char* menu_name)
 	isInCredits = (FixStretchedGUI && strcmp(menu_name, "credits") == 0);
 
 	// Check if the start screen is skipped
-	if (MemoryHelper::ReadMemory<int>(STARTUP_STATE_ADDR, false) == 1)
+	if (MemoryHelper::ReadMemory<int>(STARTUP_STATE_ADDR) == 1)
 	{
 		UseConsoleTitleScreen = false;
 	}
@@ -1010,26 +990,23 @@ static void __cdecl TriggerMainMenu_Hook(int a1)
 }
 
 // Adjust the vertical alignment of the text in the dialog box for two-line messages
-static void __fastcall ShowDialogBoxText_Hook(int thisPtr, int* _ECX)
+static void __fastcall ShowDialogBoxText_Hook(int thisPtr, int*)
 {
-	// Hide the dialog box when we are still in the menu
-	if (MemoryHelper::ReadMemory<char>(IS_MENU_LOCKED, false))
+	// Hide dialog box when still in menu
+	if (!MemoryHelper::ReadMemory<uint8_t>(IS_MENU_LOCKED))
 	{
-		return;
-	}
+		// Adjust vertical position for 2-line messages (4 -> 3)
+		if (*(DWORD*)(thisPtr + 0x1D8) == 4)
+		{
+			*(DWORD*)(thisPtr + 0x1D8) = 3;
+		}
 
-	int currentDialogLines = MemoryHelper::ReadMemory<int>(thisPtr + 0x1D8, false);
-	if (currentDialogLines == 4)
-	{
-		// 2 lines of dialog, lower it's position in the dialog box
-		MemoryHelper::WriteMemory<int>(thisPtr + 0x1D8, 3, false);
+		ShowDialogBoxText(thisPtr);
 	}
-
-	ShowDialogBoxText(thisPtr);
 }
 
 // Hook function to set 'isLoadingSaveFromMenuButton' to true
-static void __fastcall LoadSaveFromUI_Hook(DWORD* thisPtr, int* _ECX, int a2)
+static void __fastcall LoadSaveFromUI_Hook(DWORD* thisPtr, int*, int a2)
 {
 	isLoadingSaveFromMenuButton = true;
 	LoadSaveFromUI(thisPtr, a2);
@@ -1040,7 +1017,7 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 {
 	if (!hasLookedForLocalizationFiles)
 	{
-		int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG, false);
+		int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG);
 
 		std::string searchPath = "";
 		switch (lang)
@@ -1096,7 +1073,7 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 // Hook of the function used to parse the controller state, add some more features
 static MMRESULT __cdecl UpdateControllerState_Hook()
 {
-	int xinput_state = MemoryHelper::ReadMemory<int>(0x7CF880, false);
+	int xinput_state = MemoryHelper::ReadMemory<int>(0x7CF880);
 
 	// Save current weapon to d-pad
 	if (xinput_state & 0x40) // If left stick is pressed
@@ -1123,7 +1100,7 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 				break;
 		}
 
-		int currentWeaponId = MemoryHelper::ReadMemory<int>(CURRENT_WEAPON_ID, false);
+		int currentWeaponId = MemoryHelper::ReadMemory<int>(CURRENT_WEAPON_ID);
 		if (dpadId != -1 && currentWeaponId != -1) // If dpad is pressed and if holding a weapon
 		{
 			char** lastWeaponSet = nullptr;
@@ -1192,7 +1169,7 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 	// Right Stick Pressed + A
 	if ((xinput_state & 0x1080) == 0x1080)
 	{
-		int totalFrameTime = MemoryHelper::ReadMemory<int>(TOTAL_FRAME_TIME, false);
+		int totalFrameTime = MemoryHelper::ReadMemory<int>(TOTAL_FRAME_TIME);
 
 		// Don't accidentally spam the command every frames
 		if ((totalFrameTime - lastQuickSaveFrame) >= 50)
@@ -1205,7 +1182,7 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 	// Right Stick Pressed + B
 	if ((xinput_state & 0x2080) == 0x2080)
 	{
-		int totalFrameTime = MemoryHelper::ReadMemory<int>(TOTAL_FRAME_TIME, false);
+		int totalFrameTime = MemoryHelper::ReadMemory<int>(TOTAL_FRAME_TIME);
 
 		// Don't accidentally spam the command every frames
 		if ((totalFrameTime - lastQuickSaveFrame) >= 50)
@@ -1222,7 +1199,7 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, int wParam, LPARAM lParam)
 {
 	// Alt+F4
-	if (Msg == WM_SYSKEYDOWN && wParam == VK_F4 && (GetAsyncKeyState(VK_MENU) & 0x8000))
+	if (Msg == WM_SYSKEYDOWN && wParam == VK_F4)
 	{
 		Msg = WM_CLOSE;
 	}
@@ -1246,8 +1223,8 @@ static int __cdecl TakeSaveScreenshot_Hook(int a1, int a2, int a3)
 static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, char depthbits, unsigned __int8 stencilbits, int stereo)
 {
 	// Resolution updated, cache the new variables
-	currentWidth = MemoryHelper::ReadMemory<int>(CURRENT_WIDTH_ADDR, false);
-	currentHeight = MemoryHelper::ReadMemory<int>(CURRENT_HEIGHT_ADDR, false);
+	currentWidth = MemoryHelper::ReadMemory<int>(CURRENT_WIDTH_ADDR);
+	currentHeight = MemoryHelper::ReadMemory<int>(CURRENT_HEIGHT_ADDR);
 	currentAspectRatio = static_cast<float>(currentWidth) / static_cast<float>(currentHeight);
 	isWiderThan4By3 = currentAspectRatio > ASPECT_RATIO_4_3;
 
@@ -1334,15 +1311,11 @@ static void __cdecl RE_StretchFont_Hook(int a1, BYTE a2, float font_x_position, 
 
 	if (isWiderThan4By3)
 	{
-		float adjusted_font_x_position = (font_x_position * scaleFactor) + widthDifference;
-		float adjusted_font_scale_width = font_scale_width * scaleFactor;
+		font_x_position = font_x_position * scaleFactor + widthDifference;
+		font_scale_width *= scaleFactor;
+	}
 
-		return RE_StretchFont(a1, a2, adjusted_font_x_position, font_y_position, a5, a6, font_spacing, adjusted_font_scale_width, font_scale_height, a10);
-	}
-	else
-	{
-		RE_StretchFont(a1, a2, font_x_position, font_y_position, a5, a6, font_spacing, font_scale_width, font_scale_height, a10);
-	}
+	RE_StretchFont(a1, a2, font_x_position, font_y_position, a5, a6, font_spacing, font_scale_width, font_scale_height, a10);
 }
 
 // Adjust the menu position and scaling for non-4:3 aspect ratios
@@ -1468,7 +1441,7 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 		if (isInCredits)
 		{
 			// Don't check for credits when in-game
-			if (MemoryHelper::ReadMemory<int>(IS_IN_MENU, false) == 0)
+			if (MemoryHelper::ReadMemory<int>(IS_IN_MENU) == 0)
 			{
 				isInCredits = false;
 			}
@@ -1531,7 +1504,7 @@ static void __cdecl UpdateRenderContext_Hook(int x, int y, int width, int height
 		else // dialog
 		{
 			// Make sure to display the borders while transitioning from menu to in-game
-			if (MemoryHelper::ReadMemory<char>(IS_MENU_LOCKED, false))
+			if (MemoryHelper::ReadMemory<uint8_t>(IS_MENU_LOCKED))
 			{
 				return;
 			}
@@ -1562,7 +1535,7 @@ static void __cdecl ConfigureScissor_Hook(int x, int y, int width, int height)
 		else // dialog
 		{
 			// Make sure to display the borders while transitioning from menu to in-game
-			if (MemoryHelper::ReadMemory<char>(IS_MENU_LOCKED, false))
+			if (MemoryHelper::ReadMemory<uint8_t>(IS_MENU_LOCKED))
 			{
 				return;
 			}
@@ -1579,7 +1552,7 @@ static void __cdecl ConfigureScissor_Hook(int x, int y, int width, int height)
 }
 
 // Detect if the console is going to be used in 'UpdateRenderContext', we don't want that to happen while in the credits or during a dialog
-static DWORD __fastcall UpdateAndConfigureRenderContext_Hook(int thisPtr, int* _ECX)
+static DWORD __fastcall UpdateAndConfigureRenderContext_Hook(int thisPtr, int*)
 {
 	int x = *(int*)(thisPtr + 0x38);
 	BYTE isEnabled = *(BYTE*)(thisPtr + 0x1C1);
@@ -1597,9 +1570,9 @@ static DWORD __fastcall UpdateAndConfigureRenderContext_Hook(int thisPtr, int* _
 }
 
 // Load the menu files from 'pak6_VorpalFix.pk3' when required
-static DWORD __fastcall LoadUI_Hook(DWORD* thisPtr, int* _ECX, char* ui_path)
+static DWORD __fastcall LoadUI_Hook(DWORD* thisPtr, int*, char* ui_path)
 {
-	int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG, false);
+	int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG);
 
 	const char* langPrefix = "INT";
 	switch (lang)
@@ -1698,20 +1671,16 @@ static void __cdecl SetUIBorder_Hook()
 // Update 'BLINK_TIMER' at a consistent rate, independent of frame rate
 static void UpdateBlinkTimer()
 {
-	static auto lastUpdate = std::chrono::steady_clock::now();
-	static std::chrono::microseconds accumulated(0);
+	using namespace std::chrono;
+	static auto lastUpdate = steady_clock::now();
 
-	const auto now = std::chrono::steady_clock::now();
-	const auto delta = now - lastUpdate;
-	lastUpdate = now;
+	const auto now = steady_clock::now();
+	const auto elapsed = duration_cast<milliseconds>(now - lastUpdate);
 
-	accumulated += std::chrono::duration_cast<std::chrono::microseconds>(delta);
-	constexpr auto interval = std::chrono::milliseconds(50);
-
-	while (accumulated >= interval)
+	if (elapsed >= 50ms) 
 	{
-		MemoryHelper::WriteMemory<int>(BLINK_TIMER, MemoryHelper::ReadMemory<int>(BLINK_TIMER, false) + 1, false);
-		accumulated -= interval;
+		MemoryHelper::WriteMemory<int>(BLINK_TIMER, MemoryHelper::ReadMemory<int>(BLINK_TIMER) + 1);
+		lastUpdate = now;
 	}
 }
 
@@ -1848,17 +1817,14 @@ static void ApplyFixBlinkingAnimationSpeed()
 	MemoryHelper::MakeJMP(0x4C635C, reinterpret_cast<uintptr_t>(BlinkAnimationHookStub));
 
 	// Make sure Alice's eyes aren't closed for too long
-	MemoryHelper::WriteMemory<char>(0x4C6394, 0x01, true);
+	MemoryHelper::WriteMemory<uint8_t>(0x4C6394, 0x01, true);
 }
 
 static void ApplyFixStretchedHUD()
 {
+	// Hook regardless of 'FixStretchedHUD' since 'ConsolePortHUD' can be toggled from the menu
 	HookHelper::ApplyHook((void*)0x446050, &PrepareHUDRendering_Hook, (LPVOID*)&PrepareHUDRendering);
-
-	// Necessary for 'ConsolePortHUD', positioning similar to the console version
-	MemoryHelper::WriteMemory<float>(0x5218A8, 263.0f, true); // hud_item_foldout
-	MemoryHelper::WriteMemory<float>(0x5218F8, -263.0f, true); // hud_weapon_foldout
-
+	
 	// Improve HUD positioning
 	if (FixStretchedHUD)
 	{
@@ -2132,7 +2098,7 @@ static void ApplyHideConsoleAtLaunch()
 	if (!HideConsoleAtLaunch) return;
 
 	// ShowWindow(hWndParent, 10) -> ShowWindow(hWndParent, 0)
-	MemoryHelper::WriteMemory<char>(0x46C28F, 0x00, true);
+	MemoryHelper::WriteMemory<uint8_t>(0x46C28F, 0x00, true);
 }
 
 static void ApplyForceBorderlessFullscreen()
