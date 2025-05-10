@@ -511,10 +511,10 @@ static int __cdecl CallCmd_Hook(char* cmd, char a2)
     std::string inputCmd(cmd);
     std::transform(inputCmd.begin(), inputCmd.end(), inputCmd.begin(), ::tolower);
 
-    for (const auto& command : weaponCommands) 
+	for (const auto& command : weaponCommands)
 	{
-        if (inputCmd == command) return 0; // Return 0 if the command matches, skip the weapon switch command that has been replaced
-    }
+		if (inputCmd == command) return 0; // Return 0 if the command matches, skip the weapon switch command that has been replaced
+	}
     
     return CallCmd(cmd, a2);
 }
@@ -2214,10 +2214,14 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 	{
 		case DLL_PROCESS_ATTACH:
 		{
+			// Prevents DLL from receiving thread notifications
+			DisableThreadLibraryCalls(hModule);
+
 			uintptr_t base = (uintptr_t)GetModuleHandleA(NULL);
 			IMAGE_DOS_HEADER* dos = (IMAGE_DOS_HEADER*)(base);
 			IMAGE_NT_HEADERS* nt = (IMAGE_NT_HEADERS*)(base + dos->e_lfanew);
 
+			// Check if the entry point matches our expected MAIN_ENTRY_POINT
 			if ((base + nt->OptionalHeader.AddressOfEntryPoint + (0x400000 - base)) == MAIN_ENTRY_POINT)
 			{
 				SystemHelper::LoadProxyLibrary();
@@ -2226,7 +2230,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 			else
 			{
 				MessageBoxA(NULL, "This .exe is not supported.", "VorpalFix", MB_ICONERROR);
-				return false;
+				return FALSE;
 			}
 			break;
 		}
