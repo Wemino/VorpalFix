@@ -251,6 +251,7 @@ float MaxAnisotropy = 0;
 bool TrilinearTextureFiltering = false;
 bool EnhancedLOD = false;
 int CustomFPSLimit = 0;
+bool EnableVsyncAsDefault = false;
 float FOV = 0;
 bool AutoFOV = false;
 
@@ -311,7 +312,8 @@ static void ReadConfig()
 	MaxAnisotropy = IniHelper::ReadFloat("Graphics", "MaxAnisotropy", 16);
 	TrilinearTextureFiltering = IniHelper::ReadInteger("Graphics", "TrilinearTextureFiltering", 1) == 1;
 	EnhancedLOD = IniHelper::ReadInteger("Graphics", "EnhancedLOD", 1) == 1;
-	CustomFPSLimit = IniHelper::ReadInteger("Graphics", "CustomFPSLimit", 60);
+	CustomFPSLimit = IniHelper::ReadInteger("Graphics", "CustomFPSLimit", -1);
+	EnableVsyncAsDefault = IniHelper::ReadInteger("Graphics", "EnableVsyncAsDefault", 1) == 1;
 	FOV = IniHelper::ReadFloat("Graphics", "FOV", 90.0);
 	AutoFOV = IniHelper::ReadInteger("Graphics", "AutoFOV", 1) == 1;
 
@@ -320,6 +322,12 @@ static void ReadConfig()
 	{
 		CustomFPSLimit = SystemHelper::GetCurrentDisplayFrequency();
 		isScreenRateFps = true;
+
+		// Unstable at > 500fps
+		if (CustomFPSLimit > 500)
+		{
+			CustomFPSLimit = 500;
+		}
 	}
 
 	// UseConsoleTitleScreen rely on FixStretchedGUI
@@ -798,6 +806,10 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int*, char* group_name)
 		if (CustomFPSLimit == -1)
 		{
 			CustomFPSLimit = SystemHelper::GetCurrentDisplayFrequency();
+			if (CustomFPSLimit > 500)
+			{
+				CustomFPSLimit = 500;
+			}
 		}
 
 		// Write the new value
@@ -2140,6 +2152,14 @@ static void ApplyProcessAPIPacket()
 	HookHelper::ApplyHook((void*)0x40C1B0, &CL_ParsePacketEntities_Hook, (LPVOID*)&CL_ParsePacketEntities);
 }
 
+static void ApplyEnableVsyncAsDefault()
+{
+	if (!EnableVsyncAsDefault) return;
+
+	// r_swapInterval "0" -> "1"
+	MemoryHelper::WriteMemory<int>(0x46E5BE, 0x515C1C, true);
+}
+
 static void ApplyCvarTweaks()
 {
 	HookHelper::ApplyHook((void*)0x419910, &Cvar_Set_Hook, (LPVOID*)&Cvar_Set);
@@ -2202,6 +2222,7 @@ static void Init()
 	ApplyTrilinearTextureFiltering();
 	ApplyAnisotropicTextureFiltering();
 	ApplyProcessAPIPacket();
+	ApplyEnableVsyncAsDefault();
 	// Misc
 	ApplyCvarTweaks();
 	ApplyResolutionChangeHook();
