@@ -1334,29 +1334,15 @@ static void __cdecl RE_StretchFont_Hook(int a1, BYTE a2, float font_x_position, 
 static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float resolution_width, float resolution_height, float a5, float a6, float a7, float a8, int ShaderHandle)
 {
 	// Pillarbox borders
-	if (x_position == LEFT_BORDER_X_ID) // Left border
+	if (x_position == LEFT_BORDER_X_ID || x_position == RIGHT_BORDER_X_ID)
 	{
-		// Calculate the scale factor to match the target height
-		float scale_factor = currentHeight / 720.0f; // Original height of the image is 720
-
-		// Scale the width and height proportionally
+		float scale_factor = currentHeight / 720.0f;
 		resolution_width = 320.0f * scale_factor;
 		resolution_height = currentHeight;
 
-		// Align the image to the left edge to cover the black border precisely
-		x_position = widthDifference - resolution_width;
-	}
-	else if (x_position == RIGHT_BORDER_X_ID) // Right border
-	{
-		// Calculate the scale factor to match the target height
-		float scale_factor = currentHeight / 720.0f; // Original height of the image is 720
+		x_position = (x_position == LEFT_BORDER_X_ID) ? widthDifference - resolution_width : currentWidth - widthDifference;
 
-		// Scale the width and height proportionally
-		resolution_width = 320.0f * scale_factor;
-		resolution_height = currentHeight;
-
-		// Position the image to align precisely with the right black border
-		x_position = currentWidth - widthDifference;
+		return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 	}
 	else
 	{
@@ -1385,50 +1371,34 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 			isMainMenuShown = true;
 		}
 
-		// Scale the legalplate
-		if (!isMainMenuShown && strstr(ShaderName, "legalplate"))
+		// Handle pre-main menu elements that need scaling and centering
+		if (!isMainMenuShown)
 		{
-			if (currentWidth > 1280)
+			// Scale and center legalplate
+			if (strstr(ShaderName, "legalplate") && currentWidth > 1280)
 			{
 				float scale_factor = (float)currentHeight / 720.0f;
-
 				resolution_width *= scale_factor;
 				resolution_height *= scale_factor;
-
 				x_position = (currentWidth - resolution_width) / 2.0f;
 				y_position = (currentHeight - resolution_height) / 2.0f;
+
+				return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 			}
 
-			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-		}
-
-		// Scale the title screen
-		if (!isMainMenuShown && strcmp(ShaderName, "title_bg") == 0)
-		{
-			float image_aspect_ratio = 1280.0f / 720.0f;
-
-			// Determine the scale factor to fill the screen
-			float scale_factor;
-			if (currentAspectRatio > image_aspect_ratio)
+			// Scale and center title screen background
+			if (strcmp(ShaderName, "title_bg") == 0)
 			{
-				// Screen is wider than 16:9; scale based on width to fill horizontally, cropping top and bottom
-				scale_factor = (float)currentWidth / 1280.0f;
+				float titlebg_aspect_ratio = 1280.0f / 720.0f;
+				float scale_factor = (currentAspectRatio > titlebg_aspect_ratio) ? (float)currentWidth / 1280.0f : (float)currentHeight / 720.0f;
+
+				resolution_width = 1280 * scale_factor;
+				resolution_height = 720 * scale_factor;
+				x_position = (currentWidth - resolution_width) / 2.0f;
+				y_position = (currentHeight - resolution_height) / 2.0f;
+
+				return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 			}
-			else
-			{
-				// Screen is taller than 16:9; scale based on height to fill vertically, cropping sides
-				scale_factor = (float)currentHeight / 720.0f;
-			}
-
-			// Set scaled dimensions to fill the screen fully
-			resolution_width = 1280 * scale_factor;
-			resolution_height = 720 * scale_factor;
-
-			// Center the image on the screen
-			x_position = (currentWidth - resolution_width) / 2.0f;
-			y_position = (currentHeight - resolution_height) / 2.0f;
-
-			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
 
 		// Full screen effects
