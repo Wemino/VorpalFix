@@ -80,6 +80,7 @@ void blunder_cat()
 
 		$blunder_cat.playdialog( "sound/character/cheshire_cat/vo/cat016.wav" );
 		waitForDialog( $blunder_cat, 1 );
+		$blunder_cat.fade(2.0, 0.0 );
 		$blunder_cat.playsound( "sound/character/cheshire_cat/disappear.wav" );
 		wait(2);
 
