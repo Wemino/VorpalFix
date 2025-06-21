@@ -312,7 +312,7 @@ static void ReadConfig()
 	MaxAnisotropy = IniHelper::ReadFloat("Graphics", "MaxAnisotropy", 16);
 	TrilinearTextureFiltering = IniHelper::ReadInteger("Graphics", "TrilinearTextureFiltering", 1) == 1;
 	EnhancedLOD = IniHelper::ReadInteger("Graphics", "EnhancedLOD", 1) == 1;
-	CustomFPSLimit = IniHelper::ReadInteger("Graphics", "CustomFPSLimit", -1);
+	CustomFPSLimit = IniHelper::ReadInteger("Graphics", "CustomFPSLimit", 85);
 	EnableVsyncAsDefault = IniHelper::ReadInteger("Graphics", "EnableVsyncAsDefault", 1) == 1;
 	FOV = IniHelper::ReadFloat("Graphics", "FOV", 90.0);
 	AutoFOV = IniHelper::ReadInteger("Graphics", "AutoFOV", 1) == 1;
