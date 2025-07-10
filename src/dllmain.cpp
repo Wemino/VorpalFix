@@ -34,7 +34,6 @@ const int DISPLAY_MODE_IDX = 0x7D40C4;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
 const int IS_MENU_LOCKED = 0x11C2770;
 const int BLINK_TIMER = 0x11C35EC;
-const int TOTAL_FRAME_TIME = 0x11C8AA0;
 const int UI_WAIT_TIMER = 0x12EF948;
 const int IS_CINEMATIC = 0x12F3CE8;
 const int CURRENT_WEAPON_ID = 0x12F3D60;
@@ -252,7 +251,6 @@ bool TrilinearTextureFiltering = false;
 bool EnhancedLOD = false;
 int CustomFPSLimit = 0;
 bool EnableVsyncAsDefault = false;
-float FOV = 0;
 bool AutoFOV = false;
 
 static void ReadConfig()
@@ -314,7 +312,6 @@ static void ReadConfig()
 	EnhancedLOD = IniHelper::ReadInteger("Graphics", "EnhancedLOD", 1) == 1;
 	CustomFPSLimit = IniHelper::ReadInteger("Graphics", "CustomFPSLimit", 85);
 	EnableVsyncAsDefault = IniHelper::ReadInteger("Graphics", "EnableVsyncAsDefault", 1) == 1;
-	FOV = IniHelper::ReadFloat("Graphics", "FOV", 90.0);
 	AutoFOV = IniHelper::ReadInteger("Graphics", "AutoFOV", 1) == 1;
 
 	// Set to monitor's refresh rate
@@ -495,15 +492,52 @@ static void __cdecl CL_InitRef_Hook()
 // Process the snapshot returned from the server (fgamex86.dll) and modify specific properties
 static void __cdecl CL_ParsePacketEntities_Hook(int msg, int oldframe, int newframe)
 {
-	*(float*)(newframe + 0x418) = FOV; // Update FOV
+	float* newFovPtr = (float*)(newframe + 0x418);
+	float originalFov = *newFovPtr;
+
+	if (AutoFOV && isWiderThan4By3)
+	{
+		bool shouldScale = !oldframe; // Scale first frame
+
+		if (oldframe)
+		{
+			float* oldFovPtr = (float*)(oldframe + 0x418);
+			shouldScale = (*newFovPtr != *oldFovPtr);
+		}
+
+		if (shouldScale)
+		{
+			float verticalFovRad = 2.0f * atan(tan(originalFov * (M_PI / 180.0f) * 0.5f) / ASPECT_RATIO_4_3);
+			*newFovPtr = 2.0f * atan(tan(verticalFovRad * 0.5f) * currentAspectRatio) * (180.0f / M_PI);
+		}
+	}
 
 	if (DisableLetterbox)
 	{
 		*(int*)(newframe + 0x10C) = 0; // No letterbox
 
-		if (AutoFOV && *(int*)(newframe + 0x104)) // isCinematic
+		bool isCinematic = *(int*)(newframe + 0x104);
+		bool wasCinematic = oldframe ? *(int*)(oldframe + 0x104) : false;
+
+		if (isCinematic != wasCinematic) // Cutscene state changed
 		{
-			*(float*)(newframe + 0x418) = FOV / 1.18f; // Cinematic zoom
+			if (isCinematic) // Entering cutscene
+			{
+				*newFovPtr = *newFovPtr / 1.11f;
+			}
+			else // Exiting cutscene, default FOV is 90 during gameplay
+			{
+				float verticalFovRad = 2.0f * atan(tan(90.0f * (M_PI / 180.0f) * 0.5f) / ASPECT_RATIO_4_3);
+				*newFovPtr = 2.0f * atan(tan(verticalFovRad * 0.5f) * currentAspectRatio) * (180.0f / M_PI);
+			}
+		}
+		else if (isCinematic && oldframe) // During cutscene, check for FOV changes
+		{
+			float* oldFovPtr = (float*)(oldframe + 0x418);
+			if (*newFovPtr != *oldFovPtr) // FOV changed during cutscene
+			{
+				*newFovPtr = *newFovPtr / 1.11f;
+			}
 		}
 	}
 
@@ -1181,26 +1215,26 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 	// Right Stick Pressed + A
 	if ((xinput_state & 0x1080) == 0x1080)
 	{
-		int totalFrameTime = MemoryHelper::ReadMemory<int>(TOTAL_FRAME_TIME);
+		static auto lastQuickActionTime = std::chrono::steady_clock::now() - std::chrono::milliseconds(1000);
+		auto now = std::chrono::steady_clock::now();
 
-		// Don't accidentally spam the command every frames
-		if ((totalFrameTime - lastQuickSaveFrame) >= 50)
+		if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastQuickActionTime).count() >= 1000)
 		{
 			CallCmd("loadgame quicksave\n", 0);
-			lastQuickSaveFrame = totalFrameTime;
+			lastQuickActionTime = now;
 		}
 	}
 
 	// Right Stick Pressed + B
 	if ((xinput_state & 0x2080) == 0x2080)
 	{
-		int totalFrameTime = MemoryHelper::ReadMemory<int>(TOTAL_FRAME_TIME);
+		static auto lastQuickActionTime = std::chrono::steady_clock::now() - std::chrono::milliseconds(1000);
+		auto now = std::chrono::steady_clock::now();
 
-		// Don't accidentally spam the command every frames
-		if ((totalFrameTime - lastQuickSaveFrame) >= 50)
+		if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastQuickActionTime).count() >= 1000)
 		{
 			CallCmd("savegame quicksave\n", 0);
-			lastQuickSaveFrame = totalFrameTime;
+			lastQuickActionTime = now;
 		}
 	}
 
@@ -1246,13 +1280,6 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 		scaleFactor = scaledWidth / currentWidth;
 		widthDifference = ((currentWidth - scaledWidth) / 2.0f);
 		consoleHudAdjustmentDivisor = 17.0f * (16.0f / 9.0f) / currentAspectRatio;
-	}
-
-	// Scale the FOV for non-4:3 aspect ratios
-	if (AutoFOV)
-	{
-		float vFOV = 2.0 * atan(tan(90.0 * M_PI / 180.0 / 2.0) / ASPECT_RATIO_4_3);
-		FOV = 2.0 * atan(tan(vFOV / 2.0) * currentAspectRatio) * 180.0 / M_PI;
 	}
 
 	// If we are going to update how the width is read during a save screenshot
@@ -1375,13 +1402,16 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 		if (!isMainMenuShown)
 		{
 			// Scale and center legalplate
-			if (strstr(ShaderName, "legalplate") && currentWidth > 1280)
+			if (strstr(ShaderName, "legalplate"))
 			{
-				float scale_factor = (float)currentHeight / 720.0f;
-				resolution_width *= scale_factor;
-				resolution_height *= scale_factor;
-				x_position = (currentWidth - resolution_width) / 2.0f;
-				y_position = (currentHeight - resolution_height) / 2.0f;
+				if (currentWidth > 1280)
+				{
+					float scale_factor = (float)currentHeight / 720.0f;
+					resolution_width *= scale_factor;
+					resolution_height *= scale_factor;
+					x_position = (currentWidth - resolution_width) / 2.0f;
+					y_position = (currentHeight - resolution_height) / 2.0f;
+				}
 
 				return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 			}
