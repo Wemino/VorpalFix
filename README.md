@@ -85,8 +85,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
       <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/Menu_VF.jpg"></td>
     </tr>
     <tr>
-      <td align="center">Original Menu (16:9)</td>
-      <td align="center">Corrected Menu</td>
+      <td align="center">Before</td>
+      <td align="center">After</td>
     </tr>
   </table>
 </div>
@@ -101,8 +101,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
       <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/HUD_VF.jpg"></td>
     </tr>
     <tr>
-      <td align="center">HUD Stretching</td>
-      <td align="center">HUD Corrected</td>
+      <td align="center">Before</td>
+      <td align="center">After</td>
     </tr>
   </table>
 </div>
@@ -117,8 +117,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
       <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/FMV_VF.jpg"></td>
     </tr>
     <tr>
-      <td align="center">Original FMV (16:9)</td>
-      <td align="center">Corrected FMV</td>
+      <td align="center">Before</td>
+      <td align="center">After</td>
     </tr>
   </table>
 </div>
@@ -256,8 +256,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
       <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/FOV_VF.jpg"></td>
     </tr>
     <tr>
-      <td align="center">Vanilla 16:9 FOV</td>
-      <td align="center">Corrected 16:9 FOV</td>
+      <td align="center">Before</td>
+      <td align="center">After</td>
     </tr>
   </table>
 </div>
