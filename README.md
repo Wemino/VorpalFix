@@ -24,60 +24,31 @@ A patch that addresses various technical issues and adds quality-of-life improve
 
 ## General Fixes and Stability
 
-- **Sound Effects Restored**  
-  Restored missing weapon sounds and re-enabled Cheshire Cat summon lost in the 2011 remaster.
+- Fixed missing weapon sounds and Cheshire Cat summon that were broken in the 2011 remaster due to a bug affecting randomized sound effects.
 
-- **Fix "Hard Disk Full"**  
-  Fixed the "Hard Disk Full" error message incorrectly appearing when the game is installed on a disk with more than 2TB of free space.
+- Fixed the "Hard Disk Full" error message incorrectly appearing when the game is installed on a disk with more than 2TB of free space.
 
-- **Crash Fixes**  
-  Fixed a crash that occurred when saving at resolutions where the width is not a multiple of 4 (e.g., 1366x768), as well as another crash that could happen while fetching the resolution list.
+- Fixed a crash that occurred when saving at resolutions where the width is not a multiple of 4 (e.g., 1366x768), as well as another crash that could happen while fetching the resolution list.
 
-- **Particle Effect Fixes**  
-  Fixed missing re-materialization visuals for Alice’s throwable weapons.
+- Fixed missing particle effects for re-materialization visuals of Alice's throwable weapons.
 
-- **High Frame Rate Fix**  
-  Fixed an issue where Alice's blinking animation played too quickly at high frame rates.
+- Fixed an issue where Alice's blinking animation in the menu played too quickly at high frame rates.
 
-- **Fullscreen Setting Fix**  
-  Fullscreen selection now persists after restarting.
+- Fullscreen selection now persists after restarting.
 
-- **Menu Fixes**  
-  Fixed texture bleeding, corrected the back button animation, and resolved minor UI issues.
+- Fixed menu texture bleeding, corrected the back button animation that played faster at higher resolutions, and resolved other minor menu UI issues.
 
-- **Script Path Corrections**  
-  Corrected typos in texture and sound paths to prevent missing assets.
+- Fixed typos in script files affecting texture and sound paths to prevent missing assets.
 
-- **Workaround for a Proton specific issue related to the menus when playing on Linux**  
-  Set `FixProton = 1` in `VorpalFix.ini` (https://github.com/ValveSoftware/Proton/issues/8179)
+- Fixed menu-related issues when playing on Linux via Proton (set `FixProton = 1` in `VorpalFix.ini`, see https://github.com/ValveSoftware/Proton/issues/8179)
   
-- **High‑DPI Scaling Fix**  
-  Corrected display scaling on high‑DPI monitors.
+- Corrected display scaling on high‑DPI monitors.
 
 ---
 
-## Texture and UI Fixes
-
-- **Fix remastered character textures not loading**  
-  Fixed an issue where multiple typos in the archive containing the remastered textures prevented them from loading.  
-  Affects **Cheshire Cat**, **Card Guards** and **Mock Turtle**.
-
-<div align="center">
-  <table>
-    <tr>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/pak5_Vanilla.jpg"></td>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/pak5_VF.jpg"></td>
-    </tr>
-    <tr>
-      <td align="center">Original Textures</td>
-      <td align="center">Remastered Textures</td>
-    </tr>
-  </table>
-</div>
-
-- **Menu & Screenshot Aspect Ratio**  
+## Widescreen Fixes
+- **Menu Aspect Ratio**  
   Maintains correct aspect ratio for in‑game menus and save‑file thumbnails in widescreen resolutions.
-
 <div align="center">
   <table>
     <tr>
@@ -85,24 +56,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
       <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/Menu_VF.jpg"></td>
     </tr>
     <tr>
-      <td align="center">Before</td>
-      <td align="center">After</td>
-    </tr>
-  </table>
-</div>
-
-- **HUD Aspect Ratio**  
-  Prevents HUD elements from stretching in any widescreen format.
-
-<div align="center">
-  <table style="width: 130%; max-width: 1200px;">
-    <tr>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/HUD_Vanilla.jpg"></td>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/HUD_VF.jpg"></td>
-    </tr>
-    <tr>
-      <td align="center">Before</td>
-      <td align="center">After</td>
+      <td align="center">Vanilla</td>
+      <td align="center">VorpalFix</td>
     </tr>
   </table>
 </div>
@@ -117,8 +72,42 @@ A patch that addresses various technical issues and adds quality-of-life improve
       <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/FMV_VF.jpg"></td>
     </tr>
     <tr>
-      <td align="center">Before</td>
-      <td align="center">After</td>
+      <td align="center">Vanilla</td>
+      <td align="center">VorpalFix</td>
+    </tr>
+  </table>
+</div>
+
+- **HUD Aspect Ratio**  
+  Prevents HUD elements from stretching in any widescreen format.
+
+<div align="center">
+  <table style="width: 130%; max-width: 1200px;">
+    <tr>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/HUD_Vanilla.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/HUD_VF.jpg"></td>
+    </tr>
+    <tr>
+      <td align="center">Vanilla</td>
+      <td align="center">VorpalFix</td>
+    </tr>
+  </table>
+</div>
+
+---
+
+## Fix Remastered Character Textures
+- **Fixed an issue where multiple typos in the archive containing the remastered textures prevented them from loading.**  
+  Affects **Cheshire Cat**, **Card Guards** and **Mock Turtle**.
+<div align="center">
+  <table>
+    <tr>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/pak5_Vanilla.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/pak5_VF.jpg"></td>
+    </tr>
+    <tr>
+      <td align="center">Original Textures</td>
+      <td align="center">Remastered Textures</td>
     </tr>
   </table>
 </div>
@@ -165,16 +154,16 @@ A patch that addresses various technical issues and adds quality-of-life improve
 </div>
 
 - **Original Title Screen Restored**  
-  Re-added the "American McGee's Alice" title screen from the Xbox 360/PS3 version.
+  Restored the "American McGee's Alice" title screen from the Xbox 360/PS3 version that was missing in the PC remaster.
 
 - **Language Options**  
   Select English, German, French, or Spanish from the menu.
 
 - **Original Intro Videos**  
-  Restore EA and Rogue Entertainment intros with `UseOriginalIntroVideos = 1`.
-
+  Restore the EA and Rogue Entertainment intro videos by setting `UseOriginalIntroVideos = 1`.
+  
 - **Developer Console Re-enabled**  
-  Restore access to the original game’s console. Default key: F2
+  Restores access to the original game's console (can be enabled in the game's settings). Default key: F2
 
 - **Custom Save Path**  
   Redirect save files via `CustomSavePath` in `VorpalFix.ini`.
@@ -256,8 +245,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
       <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/FOV_VF.jpg"></td>
     </tr>
     <tr>
-      <td align="center">Before</td>
-      <td align="center">After</td>
+      <td align="center">Vanilla</td>
+      <td align="center">VorpalFix</td>
     </tr>
   </table>
 </div>
