@@ -16,6 +16,9 @@ A patch that addresses various technical issues and adds quality-of-life improve
 > 
 > This patch allows the game to launch independently (by executing `alice.exe`), so it is not necessary to install it alongside Alice: Madness Returns.
 
+> [!TIP]  
+> If you own *Alice: Madness Returns*, check out [MadnessPatch](https://github.com/Wemino/MadnessPatch)!
+
 ### Steam Deck/Linux Specific Instructions (Windows users can skip this)
 > [!WARNING]
 > To launch the game on Steam Deck or Linux, open the game’s properties in Steam and include `WINEDLLOVERRIDES="winmm.dll=n,b" %command%` in the launch options.
