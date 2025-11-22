@@ -641,6 +641,12 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	if (StringHelper::stricmp(var_name, "s_Alice2URL"))
 	{
 		value = Alice2Path;
+
+		// File doesn't exist, don't try to launch it
+		if (!std::filesystem::exists(value))
+		{
+			MemoryHelper::WriteMemory<int>(0x559A08, 0, false);
+		}
 	}
 
 	if (CustomFPSLimit != 60 && StringHelper::stricmp(var_name, "com_maxfps"))
