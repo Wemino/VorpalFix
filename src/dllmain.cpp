@@ -77,9 +77,9 @@ bool isRenderingConsole = false;
 bool isLoadingSaveFromMenuButton = false;
 
 // Misc (read-only)
-const float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
-const int LEFT_BORDER_X_ID = 0x1000000;
-const int RIGHT_BORDER_X_ID = 0x2000000;
+constexpr float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
+constexpr int LEFT_BORDER_X_ID = 0x1000000;
+constexpr int RIGHT_BORDER_X_ID = 0x2000000;
 const char* ALICE2_DEFAULT_PATH = "..\\..\\Alice2\\Binaries\\Win32\\AliceMadnessReturns.exe";
 
 // Scaling
@@ -219,6 +219,7 @@ bool FixProton = false;
 
 // General
 bool CustomControllerBindings = false;
+float CameraSmoothingFactor = 0;
 bool LaunchWithoutAlice2 = false;
 bool PreventAlice2OnExit = false;
 bool DisableWinsockInitialization = false;
@@ -279,6 +280,7 @@ static void ReadConfig()
 
 	// General
 	LaunchWithoutAlice2 = IniHelper::ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
+	CameraSmoothingFactor = IniHelper::ReadFloat("General", "CameraSmoothingFactor", 0.8);
 	CustomControllerBindings = IniHelper::ReadInteger("General", "CustomControllerBindings", 1) == 1;
 	PreventAlice2OnExit = IniHelper::ReadInteger("General", "PreventAlice2OnExit", 0) == 1;
 	DisableWinsockInitialization = IniHelper::ReadInteger("General", "DisableWinsockInitialization", 1) == 1;
@@ -331,6 +333,9 @@ static void ReadConfig()
 	{
 		UseConsoleTitleScreen = false;
 	}
+
+	// Clamp CameraSmoothingFactor
+	CameraSmoothingFactor = std::clamp(CameraSmoothingFactor, 0.0f, 1.0f);
 
 	// Check if the user has specified a custom save directory
 	isUsingCustomSaveDir = (CustomSavePath != NULL) && (CustomSavePath[0] != '\0');
@@ -652,6 +657,11 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	if (CustomFPSLimit != 60 && StringHelper::stricmp(var_name, "com_maxfps"))
 	{
 		value = StringHelper::IntegerToCString(CustomFPSLimit);
+	}
+
+	if (CameraSmoothingFactor != 0.8f && StringHelper::stricmp(var_name, "cg_camerascale"))
+	{
+		value = StringHelper::FloatToCString(1.0f - CameraSmoothingFactor);
 	}
 
 	// Read settings from "base" folder, skip it
@@ -1513,7 +1523,6 @@ static void __cdecl UpdateRenderContext_Hook(int x, int y, int width, int height
 			}
 
 			int adjusted_x = x * scaleFactor;
-
 			UpdateRenderContext(adjusted_x, y, width, height, a5, a6, a7, a8, a9, a10);
 		}
 	}
@@ -1544,7 +1553,6 @@ static void __cdecl ConfigureScissor_Hook(int x, int y, int width, int height)
 			}
 
 			int adjusted_x = x * scaleFactor;
-
 			ConfigureScissor(adjusted_x, y, width, height);
 		}
 	}

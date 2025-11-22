@@ -415,7 +415,7 @@ namespace StringHelper
 	const char* FloatToCString(float value) 
 	{
 		static thread_local char buffer[32];
-		snprintf(buffer, sizeof(buffer), "%.0f", value);
+		snprintf(buffer, sizeof(buffer), "%.5f", value);
 		return buffer;
 	}
 
