@@ -448,8 +448,8 @@ static int __cdecl Bind_Hook(int keyId, char* cmd_name)
 		uint8_t cmpInstruction[] = { 0x81, 0xFF };
 
 		// cmp toggleConsoleKeyId instead of hardcoded cmp 96 and cmp 126 (` and ~)
-		MemoryHelper::WriteMemoryRaw(0x40823A, cmpInstruction, sizeof(cmpInstruction), true);
-		MemoryHelper::WriteMemory<int>(0x40823C, keyId, true);
+		MemoryHelper::WriteMemoryRaw(0x40823A, cmpInstruction, sizeof(cmpInstruction));
+		MemoryHelper::WriteMemory<int>(0x40823C, keyId);
 		MemoryHelper::MakeNOP(0x408240, 6);
 	}
 
@@ -1085,7 +1085,7 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 		{
 			// Fix stack pointer after the CALL
 			uint8_t opCodeArray[] = { 0x83, 0xEC, 0x0C };
-			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
+			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray));
 
 			// Loop back to 4615F0 for every files
 			MemoryHelper::MakeCALL(0x41CB4E, 0x41CB32);
@@ -1106,7 +1106,7 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 		{
 			// No more files, restore original instructions
 			uint8_t opCodeArray[] = { 0x33, 0xFF, 0x39, 0x7C, 0x24, 0x0C, 0x7E, 0x3F };
-			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray), true);
+			MemoryHelper::WriteMemoryRaw(0x41CB4B, opCodeArray, sizeof(opCodeArray));
 		}
 
 		// Return the file path
@@ -1295,13 +1295,13 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 		}
 
 		// Write the new width to a safe location
-		MemoryHelper::WriteMemory<int>(CODE_CAVE_WIDTH, screenshotWidth, true);
+		MemoryHelper::WriteMemory<int>(CODE_CAVE_WIDTH, screenshotWidth);
 
 		// Redirect the width read by sub_46D280 to the safe width
-		MemoryHelper::WriteMemory<int>(0x46D28B, CODE_CAVE_WIDTH, true);
-		MemoryHelper::WriteMemory<int>(0x46D307, CODE_CAVE_WIDTH, true);
-		MemoryHelper::WriteMemory<int>(0x46D321, CODE_CAVE_WIDTH, true);
-		MemoryHelper::WriteMemory<int>(0x46D3B7, CODE_CAVE_WIDTH, true);
+		MemoryHelper::WriteMemory<int>(0x46D28B, CODE_CAVE_WIDTH);
+		MemoryHelper::WriteMemory<int>(0x46D307, CODE_CAVE_WIDTH);
+		MemoryHelper::WriteMemory<int>(0x46D321, CODE_CAVE_WIDTH);
+		MemoryHelper::WriteMemory<int>(0x46D3B7, CODE_CAVE_WIDTH);
 	}
 
 	// Update the cursor size
@@ -1682,7 +1682,7 @@ static void UpdateBlinkTimer()
 
 	if (elapsed >= 50ms) 
 	{
-		MemoryHelper::WriteMemory<int>(BLINK_TIMER, MemoryHelper::ReadMemory<int>(BLINK_TIMER) + 1);
+		MemoryHelper::WriteMemory<int>(BLINK_TIMER, MemoryHelper::ReadMemory<int>(BLINK_TIMER) + 1, false);
 		lastUpdate = now;
 	}
 }
@@ -1781,7 +1781,7 @@ static void ApplyFixSoundRandomization()
 		0x83, 0xC4, 0x0C, 0xC3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90
 	};
 
-	MemoryHelper::WriteMemoryRaw(CODE_CAVE_SOUND, portedInstructions, sizeof(portedInstructions), true);
+	MemoryHelper::WriteMemoryRaw(CODE_CAVE_SOUND, portedInstructions, sizeof(portedInstructions));
 
 	MemoryHelper::MakeCALL(0x402131, CODE_CAVE_SOUND + 0x310);
 	MemoryHelper::MakeJMP(0x4348BF, CODE_CAVE_SOUND + 0x310);
@@ -1810,7 +1810,7 @@ static void ApplyFixBlinkingAnimationSpeed()
 	uint8_t originalCode[] = { 0x8B, 0x0D, 0xEC, 0x35, 0x1C, 0x01 };
 
 	// Step 1: Copy original code to trampoline
-	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK, originalCode, sizeof(originalCode), true);
+	MemoryHelper::WriteMemoryRaw(CODE_CAVE_BLINK, originalCode, sizeof(originalCode));
 
 	// Step 2: Add a jump back to the original code + 8 (0x4C6364), skipping 'add ecx, ebx' as we will handle that ourselves
 	MemoryHelper::MakeJMP(CODE_CAVE_BLINK + sizeof(originalCode), 0x4C6364);
@@ -1820,7 +1820,7 @@ static void ApplyFixBlinkingAnimationSpeed()
 	MemoryHelper::MakeJMP(0x4C635C, reinterpret_cast<uintptr_t>(BlinkAnimationHookStub));
 
 	// Make sure Alice's eyes aren't closed for too long
-	MemoryHelper::WriteMemory<uint8_t>(0x4C6394, 0x01, true);
+	MemoryHelper::WriteMemory<uint8_t>(0x4C6394, 0x01);
 }
 
 static void ApplyFixStretchedHUD()
@@ -1832,11 +1832,11 @@ static void ApplyFixStretchedHUD()
 	if (FixStretchedHUD)
 	{
 		// Show more of the switching animation
-		MemoryHelper::WriteMemory<float>(0x5218A8, 258.6f, true); // hud_item_foldout
-		MemoryHelper::WriteMemory<float>(0x5218F8, -258.6f, true); // hud_weapon_foldout
+		MemoryHelper::WriteMemory<float>(0x5218A8, 258.6f); // hud_item_foldout
+		MemoryHelper::WriteMemory<float>(0x5218F8, -258.6f); // hud_weapon_foldout
 		// Show more of both bars
-		MemoryHelper::WriteMemory<float>(0x521878, 311.85f, true); // mana
-		MemoryHelper::WriteMemory<float>(0x521964, -311.85f, true); // health
+		MemoryHelper::WriteMemory<float>(0x521878, 311.85f); // mana
+		MemoryHelper::WriteMemory<float>(0x521964, -311.85f); // health
 	}
 }
 
@@ -1912,7 +1912,7 @@ static void ApplyFixParticleDistanceRatio()
 	if (!FixParticleDistanceRatio) return;
 
 	// cg_particledistanceratio "150" -> "0"
-	MemoryHelper::WriteMemory<int>(0x417A1F, 0x5151BC, true);
+	MemoryHelper::WriteMemory<int>(0x417A1F, 0x5151BC);
 }
 
 static void ApplyFixMenuAnimationSpeed()
@@ -1920,10 +1920,10 @@ static void ApplyFixMenuAnimationSpeed()
 	if (!FixMenuAnimationSpeed) return;
 
 	// Read 640x480 instead of the current resolution
-	MemoryHelper::WriteMemory<int>(0x4B5B56, 0x561358, true);
-	MemoryHelper::WriteMemory<int>(0x4B5BC4, 0x561354, true);
-	MemoryHelper::WriteMemory<int>(0x4B5D20, 0x561358, true);
-	MemoryHelper::WriteMemory<int>(0x4B5E41, 0x561354, true);
+	MemoryHelper::WriteMemory<int>(0x4B5B56, 0x561358);
+	MemoryHelper::WriteMemory<int>(0x4B5BC4, 0x561354);
+	MemoryHelper::WriteMemory<int>(0x4B5D20, 0x561358);
+	MemoryHelper::WriteMemory<int>(0x4B5E41, 0x561354);
 }
 
 static void ApplyFixMenuTransitionTiming()
@@ -1936,7 +1936,7 @@ static void ApplyFixMenuTransitionTiming()
 	if (!FixMenuTransitionTiming) return;
 
 	// Increase the time allowed to skip the intro so that the game can load properly
-	MemoryHelper::WriteMemory<int>(0x4082FC, 0x3200, true);
+	MemoryHelper::WriteMemory<int>(0x4082FC, 0x3200);
 }
 
 static void ApplyFixCutsceneJumpSound()
@@ -1994,7 +1994,7 @@ static void ApplyDisableWinsockInitialization()
 
 static void ApplyLanguageId()
 {
-	MemoryHelper::WriteMemory<int>(0x461A90, LanguageId, true);
+	MemoryHelper::WriteMemory<int>(0x461A90, LanguageId);
 }
 
 static void ApplyUseConsoleTitleScreen()
@@ -2057,7 +2057,7 @@ static void ApplyUseOriginalIntroVideos()
 	MemoryHelper::WriteMemoryRaw(CODE_CAVE_INTRO, portedIntroData, sizeof(portedIntroData), true);
 
 	MemoryHelper::MakeJMP(0x44D91F, CODE_CAVE_INTRO);
-	MemoryHelper::WriteMemory(0x44E409, CODE_CAVE_INTRO, true);
+	MemoryHelper::WriteMemory(0x44E409, CODE_CAVE_INTRO);
 }
 
 static void ApplyDisable8BitAudioAsDefault()
@@ -2065,7 +2065,7 @@ static void ApplyDisable8BitAudioAsDefault()
 	if (!Disable8BitAudioAsDefault) return;
 
 	// s_loadas8bit "1" -> "0"
-	MemoryHelper::WriteMemory<int>(0x427607, 0x5151BC, true);
+	MemoryHelper::WriteMemory<int>(0x427607, 0x5151BC);
 }
 
 static void ApplyDisableRemasteredModels()
@@ -2101,7 +2101,7 @@ static void ApplyHideConsoleAtLaunch()
 	if (!HideConsoleAtLaunch) return;
 
 	// ShowWindow(hWndParent, 10) -> ShowWindow(hWndParent, 0)
-	MemoryHelper::WriteMemory<uint8_t>(0x46C28F, 0x00, true);
+	MemoryHelper::WriteMemory<uint8_t>(0x46C28F, 0x00);
 }
 
 static void ApplyForceBorderlessFullscreen()
@@ -2130,7 +2130,7 @@ static void ApplyTrilinearTextureFiltering()
 	if (!TrilinearTextureFiltering) return;
 
 	// r_textureMode "GL_LINEAR_MIPMAP_NEAREST" -> "GL_LINEAR_MIPMAP_LINEAR"
-	MemoryHelper::WriteMemory<int>(0x46E5A7, 0x52A32C, true);
+	MemoryHelper::WriteMemory<int>(0x46E5A7, 0x52A32C);
 }
 
 static void ApplyAnisotropicTextureFiltering()
@@ -2148,7 +2148,7 @@ static void ApplyEnableVsyncAsDefault()
 	if (!EnableVsyncAsDefault) return;
 
 	// r_swapInterval "0" -> "1"
-	MemoryHelper::WriteMemory<int>(0x46E5BE, 0x515C1C, true);
+	MemoryHelper::WriteMemory<int>(0x46E5BE, 0x515C1C);
 }
 
 static void ApplyCvarTweaks()
