@@ -73,7 +73,6 @@ bool skipAutoResolution = false;
 bool isAnisotropyRetrieved = false;
 bool isInSettingMenu = false;
 bool isTakingSaveScreenshot = false;
-bool isInCredits = false;
 bool isRenderingConsole = false;
 bool isLoadingSaveFromMenuButton = false;
 
@@ -971,8 +970,6 @@ static int __cdecl IsGameStarted_Hook()
 // Hook of the "pushmenu" command
 static int __cdecl PushMenu_Hook(const char* menu_name)
 {
-	isInCredits = (FixStretchedGUI && strcmp(menu_name, "credits") == 0);
-
 	if (FixMenuTransitionTiming && strcmp(menu_name, "newgame") == 0)
 	{
 		// Clicking too fast and one time on any difficulty won't remove the menu from the FMV, add a delay
@@ -1007,9 +1004,6 @@ static int __cdecl PushMenu_Hook(const char* menu_name)
 // Hook of the "forcemenu" command
 static int __cdecl ForceMenu_Hook(const char* menu_name)
 {
-	// Indicate when the credits start after the final boss
-	isInCredits = (FixStretchedGUI && strcmp(menu_name, "credits") == 0);
-
 	// Check if the start screen is skipped
 	if (MemoryHelper::ReadMemory<int>(STARTUP_STATE_ADDR) == 1)
 	{
@@ -1432,7 +1426,7 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 		}
 
 		// Full screen effects
-		if (strcmp(ShaderName, "textures/special/drugfade") == 0 || strcmp(ShaderName, "textures/special/icefade") == 0)
+		if (strcmp(ShaderName, "textures/special/drugfade") == 0)
 		{
 			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
@@ -1450,18 +1444,9 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 		}
 
 		// Credits
-		if (isInCredits)
+		if (strcmp(ShaderName, "ui/bar") == 0 || strcmp(ShaderName, "ui/credits/alice") == 0 || strcmp(ShaderName, "ui/credits/bill") == 0)
 		{
-			// Don't check for credits when in-game
-			if (MemoryHelper::ReadMemory<int>(IS_IN_MENU) == 0)
-			{
-				isInCredits = false;
-			}
-
-			if (strcmp(ShaderName, "ui/bar") == 0 || strcmp(ShaderName, "ui/credits/alice") == 0 || strcmp(ShaderName, "ui/credits/bill") == 0)
-			{
-				return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-			}
+			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
 
 		// Scale the UI
@@ -1506,7 +1491,7 @@ static void __cdecl UpdateRenderContext_Hook(int x, int y, int width, int height
 {
 	if (isWiderThan4By3 && x != 0 && !isRenderingConsole)
 	{
-		if (isInCredits)
+		if (MemoryHelper::ReadMemory<int>(IS_IN_MENU)) // Autoscroll
 		{
 			int adjusted_x = (x * scaleFactor) + widthDifference;
 			int adjusted_width = width * scaleFactor;
@@ -1535,9 +1520,9 @@ static void __cdecl UpdateRenderContext_Hook(int x, int y, int width, int height
 // Used right after 'UpdateRenderContext', do the same adjustements
 static void __cdecl ConfigureScissor_Hook(int x, int y, int width, int height)
 {
-	if (isWiderThan4By3 && x != 0 && !isRenderingConsole)
+	if (isWiderThan4By3 && x != 0 && !isRenderingConsole) // Autoscroll
 	{
-		if (isInCredits)
+		if (MemoryHelper::ReadMemory<int>(IS_IN_MENU))
 		{
 			int adjusted_x = (x * scaleFactor) + widthDifference;
 			int adjusted_width = width * scaleFactor;
