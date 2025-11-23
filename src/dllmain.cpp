@@ -100,10 +100,11 @@ std::vector<std::string> pk3LocFiles;
 // Additional commands
 bool isHoldingLeftStick = false;
 int lastQuickSaveFrame = 0;
-char* lastWeaponIdUp = nullptr;
-char* lastWeaponIdDown = nullptr;
-char* lastWeaponIdLeft = nullptr;
-char* lastWeaponIdRight = nullptr;
+static std::string lastWeaponIdUp;
+static std::string lastWeaponIdDown;
+static std::string lastWeaponIdLeft;
+static std::string lastWeaponIdRight;
+static std::unordered_map<int, std::string> weaponCommandCache;
 const char* weaponCommands[] =
 {
 	"use watch",
@@ -661,7 +662,7 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 
 	if (CameraSmoothingFactor != 0.8f && StringHelper::stricmp(var_name, "cg_camerascale"))
 	{
-		value = StringHelper::FloatToCString(1.0f - CameraSmoothingFactor);
+		value = StringHelper::FloatToCString(1.0f - CameraSmoothingFactor, 5);
 	}
 
 	// Read settings from "base" folder, skip it
@@ -727,18 +728,72 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 // Hook to redirect texture file reads to correct paths in 'pak5_mod.pk3'
 static int __cdecl FS_FOpenFileRead_Hook(char* Source, int* a2, int a3, int a4)
 {
-	// Fast check for "s/ch" substring in the file path and if the character name start with either 'c' or 'm'
-	if (*reinterpret_cast<uint32_t*>(Source + 5) == 0x68632F73 && (Source[18] == 'c' || Source[18] == 'm'))
+	// Fast check for "s/ch" substring in the file path
+	if (*reinterpret_cast<uint32_t*>(Source + 5) != 0x68632F73)
 	{
-		for (int i = 0; i < 9; i++)
+		return FS_FOpenFileRead(Source, a2, a3, a4);
+	}
+
+	// Length check: shortest is 37, longest is 46
+	size_t len = strlen(Source);
+	if (len < 37 || len > 46)
+	{
+		return FS_FOpenFileRead(Source, a2, a3, a4);
+	}
+
+	// Character name must start with 'c' or 'm'
+	if (Source[18] != 'c' && Source[18] != 'm')
+	{
+		return FS_FOpenFileRead(Source, a2, a3, a4);
+	}
+
+	if (memcmp(Source + 18, "cheshire/skin", 13) == 0) 
+	{
+		if (strcmp(Source + 31, "01.ftx") == 0) 
 		{
-			// Check if the provided file path matches a known incorrect path
-			if (strcmp(Source, correctPaths[i]) == 0)
-			{
-				// If a match is found, redirect to the corresponding correct texture path
-				Source = (char*)pak5BrokenPaths[i];
+			Source = (char*)pak5BrokenPaths[0];
+		}
+		else if (strcmp(Source + 31, "02.ftx") == 0) 
+		{
+			Source = (char*)pak5BrokenPaths[1];
+		}
+		else if (strcmp(Source + 31, "02g.ftx") == 0) 
+		{
+			Source = (char*)pak5BrokenPaths[2];
+		}
+	}
+	else if (memcmp(Source + 18, "cardguard_", 10) == 0) 
+	{
+		char suit = Source[28];
+		switch (suit) 
+		{
+			case 'c': // club
+				if (strcmp(Source + 33, "/skin01.ftx") == 0)
+					Source = (char*)pak5BrokenPaths[3];
 				break;
-			}
+			case 'd': // diamond
+				if (strcmp(Source + 36, "/skin02.ftx") == 0)
+					Source = (char*)pak5BrokenPaths[4];
+				break;
+			case 'h': // heart
+				if (strcmp(Source + 34, "/skin04.ftx") == 0)
+					Source = (char*)pak5BrokenPaths[5];
+				break;
+			case 's': // spade
+				if (strcmp(Source + 34, "/skin03.ftx") == 0)
+					Source = (char*)pak5BrokenPaths[6];
+				break;
+		}
+	}
+	else if (memcmp(Source + 18, "mock_turtle/", 12) == 0) 
+	{
+		if (strcmp(Source + 30, "mshell.ftx") == 0) 
+		{
+			Source = (char*)pak5BrokenPaths[7];
+		}
+		else if (strcmp(Source + 30, "mturt.ftx") == 0) 
+		{
+			Source = (char*)pak5BrokenPaths[8];
 		}
 	}
 
@@ -1159,8 +1214,7 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 		int currentWeaponId = MemoryHelper::ReadMemory<int>(CURRENT_WEAPON_ID);
 		if (dpadId != -1 && currentWeaponId != -1) // If dpad is pressed and if holding a weapon
 		{
-			char** lastWeaponSet = nullptr;
-
+			std::string* lastWeaponSet = nullptr;
 			switch (dpadId)
 			{
 				case 1:
@@ -1178,41 +1232,30 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 			}
 
 			char* currentWeaponName = GameHelper::GetWeaponName(currentWeaponId);
-
 			// If holding a different weapon
-			if (*lastWeaponSet == nullptr || strcmp(currentWeaponName, *lastWeaponSet) != 0)
+			if (lastWeaponSet->empty() || *lastWeaponSet != currentWeaponName)
 			{
 				// Build the command
-				char* weaponCommand = (char*)malloc(strlen("use ") + strlen(currentWeaponName) + 1);
-				if (weaponCommand != NULL)
+				weaponCommandCache[dpadId] = std::string("use ") + currentWeaponName;
+
+				// Remember the last weapon name
+				*lastWeaponSet = currentWeaponName;
+
+				// Bind the new command
+				switch (dpadId)
 				{
-					sprintf(weaponCommand, "use %s", currentWeaponName);
-
-					// Free the old weapon name
-					if (*lastWeaponSet != nullptr)
-					{
-						free(*lastWeaponSet);
-					}
-
-					// Remember the last weapon name
-					*lastWeaponSet = strdup(currentWeaponName);
-
-					// Bind the new command
-					switch (dpadId)
-					{
-						case 1:
-							Bind(GameHelper::GetKeyId("JOY5"), weaponCommand);
-							break;
-						case 2:
-							Bind(GameHelper::GetKeyId("JOY7"), weaponCommand);
-							break;
-						case 3:
-							Bind(GameHelper::GetKeyId("JOY8"), weaponCommand);
-							break;
-						case 4:
-							Bind(GameHelper::GetKeyId("JOY6"), weaponCommand);
-							break;
-					}
+					case 1:
+						Bind(GameHelper::GetKeyId("JOY5"), const_cast<char*>(weaponCommandCache[dpadId].c_str()));
+						break;
+					case 2:
+						Bind(GameHelper::GetKeyId("JOY7"), const_cast<char*>(weaponCommandCache[dpadId].c_str()));
+						break;
+					case 3:
+						Bind(GameHelper::GetKeyId("JOY8"), const_cast<char*>(weaponCommandCache[dpadId].c_str()));
+						break;
+					case 4:
+						Bind(GameHelper::GetKeyId("JOY6"), const_cast<char*>(weaponCommandCache[dpadId].c_str()));
+						break;
 				}
 			}
 		}
@@ -1459,7 +1502,7 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
 
-		// Credits
+		// Credits (already scaled by scaling the viewport of the "AutoScroll")
 		if (strcmp(ShaderName, "ui/bar") == 0 || strcmp(ShaderName, "ui/credits/alice") == 0 || strcmp(ShaderName, "ui/credits/bill") == 0)
 		{
 			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
@@ -1535,9 +1578,9 @@ static void __cdecl UpdateRenderContext_Hook(int x, int y, int width, int height
 // Used right after 'UpdateRenderContext', do the same adjustements
 static void __cdecl ConfigureScissor_Hook(int x, int y, int width, int height)
 {
-	if (isWiderThan4By3 && x != 0 && !isRenderingConsole) // Autoscroll
+	if (isWiderThan4By3 && x != 0 && !isRenderingConsole)
 	{
-		if (MemoryHelper::ReadMemory<int>(IS_IN_MENU))
+		if (MemoryHelper::ReadMemory<int>(IS_IN_MENU)) // Autoscroll
 		{
 			int adjusted_x = (x * scaleFactor) + widthDifference;
 			int adjusted_width = width * scaleFactor;
@@ -1611,42 +1654,45 @@ static DWORD __fastcall LoadUI_Hook(DWORD* thisPtr, int*, char* ui_path)
 	}
 
 	// Use the proper title screen file
-	if (UseConsoleTitleScreen && ui_path != NULL && strcmp(ui_path, "ui/title.urc") == 0)
+	if (UseConsoleTitleScreen && ui_path != nullptr && strcmp(ui_path, "ui/title.urc") == 0)
 	{
-		ui_path = StringHelper::ConstructPath(langPrefix, isUsingControllerMenu ? "/title_console.urc" : "/title.urc");
+		ui_path = const_cast<char*>(StringHelper::ConstructPath(langPrefix, isUsingControllerMenu ? "/title_console.urc" : "/title.urc"));
 	}
 
 	// Override using the menus located inside 'pak6_VorpalFix.pk3'
-	if (isUsingControllerMenu) 
+	if (isUsingControllerMenu)
 	{
-		if (UsePS3ControllerIcons) 
+		std::string langPrefixStr = langPrefix;
+		if (UsePS3ControllerIcons)
 		{
-			langPrefix = StringHelper::ConstructPath(langPrefix, "_ps3");
+			langPrefixStr += "_ps3";
 		}
 
-		if (ui_path && strcmp(ui_path, "ui/controls.urc") == 0) 
+		const char* finalPrefix = langPrefixStr.c_str();
+
+		if (ui_path && strcmp(ui_path, "ui/controls.urc") == 0)
 		{
-			ui_path = StringHelper::ConstructPath(langPrefix, "/controls2.urc");
+			ui_path = const_cast<char*>(StringHelper::ConstructPath(finalPrefix, "/controls2.urc"));
 		}
-		else if (ui_path && strcmp(ui_path, "ui/credits.urc") == 0) 
+		else if (ui_path && strcmp(ui_path, "ui/credits.urc") == 0)
 		{
-			ui_path = StringHelper::ConstructPath(langPrefix, "/credits2.urc");
+			ui_path = const_cast<char*>(StringHelper::ConstructPath(finalPrefix, "/credits2.urc"));
 		}
-		else if (ui_path && strcmp(ui_path, "ui/loadsave.urc") == 0) 
+		else if (ui_path && strcmp(ui_path, "ui/loadsave.urc") == 0)
 		{
-			ui_path = StringHelper::ConstructPath(langPrefix, "/loadsave2.urc");
+			ui_path = const_cast<char*>(StringHelper::ConstructPath(finalPrefix, "/loadsave2.urc"));
 		}
-		else if (ui_path && strcmp(ui_path, "ui/main.urc") == 0) 
+		else if (ui_path && strcmp(ui_path, "ui/main.urc") == 0)
 		{
-			ui_path = StringHelper::ConstructPath(langPrefix, "/main2.urc");
+			ui_path = const_cast<char*>(StringHelper::ConstructPath(finalPrefix, "/main2.urc"));
 		}
-		else if (ui_path && strcmp(ui_path, "ui/newgame.urc") == 0) 
+		else if (ui_path && strcmp(ui_path, "ui/newgame.urc") == 0)
 		{
-			ui_path = StringHelper::ConstructPath(langPrefix, "/newgame2.urc");
+			ui_path = const_cast<char*>(StringHelper::ConstructPath(finalPrefix, "/newgame2.urc"));
 		}
-		else if (ui_path && strcmp(ui_path, "ui/quit.urc") == 0) 
+		else if (ui_path && strcmp(ui_path, "ui/quit.urc") == 0)
 		{
-			ui_path = StringHelper::ConstructPath(langPrefix, "/quit2.urc");
+			ui_path = const_cast<char*>(StringHelper::ConstructPath(finalPrefix, "/quit2.urc"));
 		}
 	}
 

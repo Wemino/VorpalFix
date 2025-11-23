@@ -412,10 +412,10 @@ namespace StringHelper
 		return buffer;
 	}
 
-	const char* FloatToCString(float value) 
+	const char* FloatToCString(float value, int precision = 0)
 	{
 		static thread_local char buffer[32];
-		snprintf(buffer, sizeof(buffer), "%.5f", value);
+		snprintf(buffer, sizeof(buffer), "%.*f", precision, value);
 		return buffer;
 	}
 
@@ -444,14 +444,19 @@ namespace StringHelper
 		return *str1 == '\0' && *str2 == '\0';
 	}
 
-	char* ConstructPath(const char* prefix, const char* suffix) 
+	static std::unordered_map<std::string, std::string> pathCache;
+
+	const char* ConstructPath(const char* prefix, const char* suffix)
 	{
-		size_t len = strlen(prefix) + strlen(suffix) + 1;
-		char* path = (char*)malloc(len);
-		if (path) 
+		std::string key = std::string(prefix) + suffix;
+
+		auto it = pathCache.find(key);
+		if (it != pathCache.end())
 		{
-			snprintf(path, len, "%s%s", prefix, suffix);
+			return it->second.c_str();
 		}
-		return path;
+
+		pathCache[key] = key;
+		return pathCache[key].c_str();
 	}
 };
