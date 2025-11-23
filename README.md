@@ -182,6 +182,9 @@ A patch that addresses various technical issues and adds quality-of-life improve
   - Pressing the Left Stick while pressing any D-pad button will save the current weapon to that D-pad key.
   - Pressing the Right Stick + 'A' will execute a quick load.
   - Pressing the Right Stick + 'B' will execute a quick save.
+
+- **Camera Responsiveness**  
+  Adjust camera smoothing via `CameraSmoothingFactor` for improved responsiveness with high-DPI mouse.
  
 - **Console-Style HUD Layout**  
   Position the HUD as in the Xbox 360/PS3 versions.
