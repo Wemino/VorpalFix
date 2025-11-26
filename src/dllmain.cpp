@@ -216,7 +216,7 @@ bool FixMenuTransitionTiming = false;
 bool FixCutsceneJumpSound = false;
 bool FixResolutionModeOOB = false;
 bool FixLocalizationFiles = false;
-int FixProton = false;
+int FixProton = 0;
 
 // General
 bool CustomControllerBindings = false;
@@ -236,7 +236,7 @@ char* CustomSavePath = nullptr;
 bool ConsolePortHUD = false;
 bool EnableControllerIcons = false;
 bool UsePS3ControllerIcons = false;
-int WindowConsoleMode = false;
+int WindowConsoleMode = 0;
 bool DisableLetterbox = false;
 bool ForceBorderlessFullscreen = false;
 bool FirstAutoResolution = false;
