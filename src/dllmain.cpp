@@ -236,7 +236,7 @@ char* CustomSavePath = nullptr;
 bool ConsolePortHUD = false;
 bool EnableControllerIcons = false;
 bool UsePS3ControllerIcons = false;
-bool HideConsoleAtLaunch = false;
+int WindowConsoleMode = false;
 bool DisableLetterbox = false;
 bool ForceBorderlessFullscreen = false;
 bool FirstAutoResolution = false;
@@ -297,7 +297,7 @@ static void ReadConfig()
 	ConsolePortHUD = IniHelper::ReadInteger("Display", "ConsolePortHUD", 0) == 1;
 	EnableControllerIcons = IniHelper::ReadInteger("Display", "EnableControllerIcons", 1) == 1;
 	UsePS3ControllerIcons = IniHelper::ReadInteger("Display", "UsePS3ControllerIcons", 0) == 1;
-	HideConsoleAtLaunch = IniHelper::ReadInteger("Display", "HideConsoleAtLaunch", 1) == 1;
+	WindowConsoleMode = IniHelper::ReadInteger("Display", "WindowConsoleMode", 1);
 	DisableLetterbox = IniHelper::ReadInteger("Display", "DisableLetterbox", 0) == 1;
 	GameHelper::DisableCursorScaling = IniHelper::ReadInteger("Display", "DisableCursorScaling", 0) == 1;
 	ForceBorderlessFullscreen = IniHelper::ReadInteger("Display", "ForceBorderlessFullscreen", 0) == 1;
@@ -2156,10 +2156,17 @@ static void ApplyEnableControllerIcons()
 
 static void ApplyHideConsoleAtLaunch()
 {
-	if (!HideConsoleAtLaunch) return;
+	if (!WindowConsoleMode) return;
 
-	// ShowWindow(hWndParent, 10) -> ShowWindow(hWndParent, 0)
-	MemoryHelper::WriteMemory<uint8_t>(0x46C28F, 0x00);
+	if (WindowConsoleMode == 1)
+	{
+		// ShowWindow(hWndParent, 10) -> ShowWindow(hWndParent, 0)
+		MemoryHelper::WriteMemory<uint8_t>(0x46C28F, 0x00);
+	}
+	else if (WindowConsoleMode == 2)
+	{
+		MemoryHelper::MakeNOP(0x465612, 5);
+	}
 }
 
 static void ApplyForceBorderlessFullscreen()
