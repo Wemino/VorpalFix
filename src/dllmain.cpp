@@ -281,7 +281,7 @@ static void ReadConfig()
 
 	// General
 	LaunchWithoutAlice2 = IniHelper::ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
-	CameraSmoothingFactor = IniHelper::ReadFloat("General", "CameraSmoothingFactor", 0.8);
+	CameraSmoothingFactor = IniHelper::ReadFloat("General", "CameraSmoothingFactor", 0.7);
 	CustomControllerBindings = IniHelper::ReadInteger("General", "CustomControllerBindings", 1) == 1;
 	PreventAlice2OnExit = IniHelper::ReadInteger("General", "PreventAlice2OnExit", 0) == 1;
 	DisableWinsockInitialization = IniHelper::ReadInteger("General", "DisableWinsockInitialization", 1) == 1;
