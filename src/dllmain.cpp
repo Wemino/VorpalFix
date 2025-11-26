@@ -216,7 +216,7 @@ bool FixMenuTransitionTiming = false;
 bool FixCutsceneJumpSound = false;
 bool FixResolutionModeOOB = false;
 bool FixLocalizationFiles = false;
-bool FixProton = false;
+int FixProton = false;
 
 // General
 bool CustomControllerBindings = false;
@@ -277,7 +277,7 @@ static void ReadConfig()
 	FixResolutionModeOOB = IniHelper::ReadInteger("Fixes", "FixResolutionModeOOB", 1) == 1;
 	FixCutsceneJumpSound = IniHelper::ReadInteger("Fixes", "FixCutsceneJumpSound", 1) == 1;
 	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
-	FixProton = IniHelper::ReadInteger("Fixes", "FixProton", 0) == 1;
+	FixProton = IniHelper::ReadInteger("Fixes", "FixProton", 1);
 
 	// General
 	LaunchWithoutAlice2 = IniHelper::ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
@@ -2009,7 +2009,11 @@ static void ApplyFixLocalizationFiles()
 
 static void ApplyFixProton()
 {
-	if (!FixProton) return;
+	if (FixProton == 1 && SystemHelper::IsNative())
+		return;
+
+	if (FixProton != 2 && FixProton != 1)
+		return;
 
 	HookHelper::ApplyHook((void*)0x409FD0, &CL_InitRef_Hook, (LPVOID*)&CL_InitRef);
 }

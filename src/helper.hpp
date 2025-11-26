@@ -267,6 +267,44 @@ namespace GameHelper
 
 namespace SystemHelper
 {
+	static bool IsNative()
+	{
+		// env check
+		const char* protonEnvVars[] = 
+		{
+			"STEAM_COMPAT_DATA_PATH",
+			"STEAM_COMPAT_TOOL_PATHS",
+			"STEAM_COMPAT_PROTON",
+			"STEAM_COMPAT_MOUNTS",
+			"PROTON_CRASH_REPORT_DIR",
+			"PROTON_USE_XALIA",
+			"SteamVirtualGamepadInfo_Proton",
+			"SteamDeck",
+			"SteamOS"
+		};
+
+		for (const char* var : protonEnvVars)
+		{
+			if (std::getenv(var))
+				return false;
+		}
+
+		// Fallback: dll check
+		HMODULE hntdll = GetModuleHandleA("ntdll.dll");
+		if (hntdll && GetProcAddress(hntdll, "wine_get_version"))
+			return false;
+
+		// Fallback: registry check
+		HKEY hKey;
+		if (RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\Wine", 0, KEY_READ, &hKey) == ERROR_SUCCESS) 
+		{
+			RegCloseKey(hKey);
+			return false;
+		}
+
+		return true;
+	}
+
 	static DWORD GetCurrentDisplayFrequency()
 	{
 		DEVMODE devMode = {};
