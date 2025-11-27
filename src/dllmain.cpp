@@ -40,6 +40,9 @@ const int BLINK_TIMER = 0x11C35EC;
 const int UI_WAIT_TIMER = 0x12EF948;
 const int IS_CINEMATIC = 0x12F3CE8;
 const int CURRENT_WEAPON_ID = 0x12F3D60;
+const int MOUSE_YAW_BUFFER = 0x12F986C;
+const int MOUSE_PITCH_BUFFER = 0x12F9874;
+const int MOUSE_BUFFER_INDEX = 0x12F987C;
 const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
 const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
 const int DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
@@ -49,34 +52,37 @@ const int CURRENT_HEIGHT_ADDR = 0x1C47990;
 // =============================
 // VorpalFix Menu
 // =============================
-int VF_LANGUAGE_PTR;
-int VF_REMASTERED_MODELS_PTR;
-int VF_UI_CONSOLE_HUD_PTR;
-int VF_UI_PS3_PTR;
-int VF_UI_LETTERBOX_PTR;
-int VF_R_EXT_MAX_ANISOTROPY_PTR;
-int VF_COM_MAXFPS_PTR;
+static int VF_LANGUAGE_PTR;
+static int VF_REMASTERED_MODELS_PTR;
+static int VF_UI_CONSOLE_HUD_PTR;
+static int VF_UI_PS3_PTR;
+static int VF_UI_LETTERBOX_PTR;
+static int VF_R_EXT_MAX_ANISOTROPY_PTR;
+static int VF_COM_MAXFPS_PTR;
 
-bool isScreenRateFps = false;
-bool isVFMenuUsed = false;
+static bool isScreenRateFps = false;
+static bool isVFMenuUsed = false;
 
 // =============================
 // Variables 
 // =============================
 
 // Misc
-bool isCursorResized = false;
-bool isDefaultFullscreenSettingSkipped = false;
-bool isUsingControllerMenu = false;
-bool isMainMenuShown = false;
-bool isTitleBgSet = false;
-bool isUsingCustomSaveDir = false;
-bool skipAutoResolution = false;
-bool isAnisotropyRetrieved = false;
-bool isInSettingMenu = false;
-bool isTakingSaveScreenshot = false;
-bool isRenderingConsole = false;
-bool isLoadingSaveFromMenuButton = false;
+static bool isCursorResized = false;
+static bool isDefaultFullscreenSettingSkipped = false;
+static bool isUsingControllerMenu = false;
+static bool isMainMenuShown = false;
+static bool isTitleBgSet = false;
+static bool isUsingCustomSaveDir = false;
+static bool skipAutoResolution = false;
+static bool isAnisotropyRetrieved = false;
+static bool isInSettingMenu = false;
+static bool isTakingSaveScreenshot = false;
+static bool isRenderingConsole = false;
+static bool isLoadingSaveFromMenuButton = false;
+static bool isRawInputRegistered = false;
+static std::atomic<LONG> rawMouseDeltaX { 0 };
+static std::atomic<LONG> rawMouseDeltaY { 0 };
 
 // Misc (read-only)
 constexpr float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
@@ -85,29 +91,29 @@ constexpr int RIGHT_BORDER_X_ID = 0x2000000;
 const char* ALICE2_DEFAULT_PATH = "..\\..\\Alice2\\Binaries\\Win32\\AliceMadnessReturns.exe";
 
 // Scaling
-int currentWidth = 0;
-int currentHeight = 0;
-float currentAspectRatio = 0;
-bool isWiderThan4By3 = false;
-float scaleFactor = 0;
-float scaledWidth = 0;
-float widthDifference = 0;
-float consoleHudAdjustmentDivisor = 0;
+static int currentWidth = 0;
+static int currentHeight = 0;
+static float currentAspectRatio = 0;
+static bool isWiderThan4By3 = false;
+static float scaleFactor = 0;
+static float scaledWidth = 0;
+static float widthDifference = 0;
+static float consoleHudAdjustmentDivisor = 0;
 
 // Localization pk3
-bool hasLookedForLocalizationFiles = false;
-size_t localizationFilesToLoad = 0;
-std::vector<std::string> pk3LocFiles;
+static bool hasLookedForLocalizationFiles = false;
+static size_t localizationFilesToLoad = 0;
+static std::vector<std::string> pk3LocFiles;
 
 // Additional commands
-bool isHoldingLeftStick = false;
-int lastQuickSaveFrame = 0;
+static bool isHoldingLeftStick = false;
+static int lastQuickSaveFrame = 0;
 static std::string lastWeaponIdUp;
 static std::string lastWeaponIdDown;
 static std::string lastWeaponIdLeft;
 static std::string lastWeaponIdRight;
 static std::unordered_map<int, std::string> weaponCommandCache;
-const char* weaponCommands[] =
+static const char* weaponCommands[] =
 {
 	"use watch",
 	"use knife",
@@ -122,7 +128,7 @@ const char* weaponCommands[] =
 };
 
 // pak5 fix
-bool isUsingBrokenPak5 = false;
+static bool isUsingBrokenPak5 = false;
 static const char* correctPaths[] =
 {
 	"models/characters/cheshire/skin01.ftx",
@@ -153,6 +159,7 @@ static const char* const pak5BrokenPaths[] =
 // Original Function Pointers
 // =============================
 int(__cdecl* JumpCommand)() = nullptr; // 0x4061D0
+void(__cdecl* UpdateCamera)(char* a1) = nullptr; // 0x4069A0
 int(__cdecl* Bind)(int, char*) = nullptr; // 0x407870
 int(__cdecl* HandleKeyboardInput)(int, int, int) = nullptr; // 0x4081B0
 void(__cdecl* CL_InitRef)() = nullptr; // 0x409FD0
@@ -223,6 +230,7 @@ int FixProton = 0;
 
 // General
 bool CustomControllerBindings = false;
+bool UseMouseRawInput = false;
 float CameraSmoothingFactor = 0;
 bool LaunchWithoutAlice2 = false;
 bool PreventAlice2OnExit = false;
@@ -284,7 +292,8 @@ static void ReadConfig()
 
 	// General
 	LaunchWithoutAlice2 = IniHelper::ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
-	CameraSmoothingFactor = IniHelper::ReadFloat("General", "CameraSmoothingFactor", 0.7);
+	UseMouseRawInput = IniHelper::ReadInteger("General", "UseMouseRawInput", 1) == 1;
+	CameraSmoothingFactor = IniHelper::ReadFloat("General", "CameraSmoothingFactor", 0.685);
 	CustomControllerBindings = IniHelper::ReadInteger("General", "CustomControllerBindings", 1) == 1;
 	PreventAlice2OnExit = IniHelper::ReadInteger("General", "PreventAlice2OnExit", 0) == 1;
 	DisableWinsockInitialization = IniHelper::ReadInteger("General", "DisableWinsockInitialization", 1) == 1;
@@ -370,7 +379,7 @@ static void ReadConfig()
 static HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
 {
 	// Style of the main window
-	if (dwStyle == 0x10C80000)
+	if (ForceBorderlessFullscreen && dwStyle == 0x10C80000)
 	{
 		auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
 
@@ -383,7 +392,20 @@ static HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 		Y = 0;
 	}
 
-	return ori_CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+	HWND hwnd = ori_CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+
+	if (hwnd && lpWindowName && strcmp(lpWindowName, "American McGee's Alice") == 0)
+	{
+		RAWINPUTDEVICE rid = {};
+		rid.usUsagePage = 0x01;
+		rid.usUsage = 0x02;
+		rid.dwFlags = 0;
+		rid.hwndTarget = hwnd;
+
+		isRawInputRegistered = RegisterRawInputDevices(&rid, 1, sizeof(rid)) != FALSE;
+	}
+
+	return hwnd;
 }
 
 // Hook glTexParameterf to perform anisotropy filtering
@@ -441,6 +463,27 @@ static int __cdecl JumpCommand_Hook()
 	}
 
 	return JumpCommand();
+}
+
+// Override game's mouse input with accumulated raw input deltas
+static void __cdecl UpdateCamera_Hook(char* a1)
+{
+	if (isRawInputRegistered)
+	{
+		// Atomically swap accumulated deltas
+		LONG frameRawX = rawMouseDeltaX.exchange(0);
+		LONG frameRawY = rawMouseDeltaY.exchange(0);
+
+		// Write to game's mouse input buffers
+		int bufferIndex = MemoryHelper::ReadMemory<int>(MOUSE_BUFFER_INDEX);
+		int* mouseXBuffer = (int*)MOUSE_YAW_BUFFER;
+		int* mouseYBuffer = (int*)MOUSE_PITCH_BUFFER;
+
+		mouseXBuffer[bufferIndex] = frameRawX;
+		mouseYBuffer[bufferIndex] = frameRawY;
+	}
+
+	UpdateCamera(a1);
 }
 
 // Hook of the function used by the "bind" command
@@ -1231,9 +1274,31 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, int wParam, LPARAM lParam)
 {
 	// Alt+F4
-	if (Msg == WM_SYSKEYDOWN && wParam == VK_F4)
+	if (EnableAltF4Close && Msg == WM_SYSKEYDOWN && wParam == VK_F4)
 	{
 		Msg = WM_CLOSE;
+	}
+
+	// Raw Input
+	if (isRawInputRegistered && Msg == WM_INPUT)
+	{
+		// Don't accumulate while in menu
+		if (!MemoryHelper::ReadMemory<int>(IS_IN_MENU))
+		{
+			UINT dwSize = sizeof(RAWINPUT);
+			BYTE buffer[sizeof(RAWINPUT)]{};
+
+			if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, buffer, &dwSize, sizeof(RAWINPUTHEADER)) != (UINT)-1)
+			{
+				RAWINPUT* raw = (RAWINPUT*)buffer;
+				if (raw->header.dwType == RIM_TYPEMOUSE &&
+					(raw->data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) == 0)
+				{
+					rawMouseDeltaX += raw->data.mouse.lLastX;
+					rawMouseDeltaY += raw->data.mouse.lLastY;
+				}
+			}
+		}
 	}
 
 	return lpfnWndProc_MSG(hWnd, Msg, wParam, lParam);
@@ -1965,6 +2030,13 @@ static void ApplyCustomControllerBindings()
 	HookHelper::ApplyHook((void*)0x417530, &CVAR_Init_Hook, (LPVOID*)&CVAR_Init);
 }
 
+static void ApplyRawInput()
+{
+	if (!UseMouseRawInput) return;
+
+	HookHelper::ApplyHook((void*)0x4069A0, &UpdateCamera_Hook, (LPVOID*)&UpdateCamera);
+}
+
 static void ApplyPreventAlice2OnExit()
 {
 	if (!PreventAlice2OnExit) return;
@@ -2100,9 +2172,9 @@ static void ApplyHideConsoleAtLaunch()
 	}
 }
 
-static void ApplyForceBorderlessFullscreen()
+static void ApplyCreateWindowHook()
 {
-	if (!ForceBorderlessFullscreen) return;
+	if (!ForceBorderlessFullscreen && !UseMouseRawInput) return;
 
 	HookHelper::ApplyHookAPI(L"user32.dll", "CreateWindowExA", &CreateWindowExA_Hook, (LPVOID*)&ori_CreateWindowExA);
 }
@@ -2114,9 +2186,9 @@ static void ApplyCustomResolution()
 	HookHelper::ApplyHook((void*)0x47ABE0, &QGL_Init_Hook, (LPVOID*)&QGL_Init);
 }
 
-static void ApplyEnableAltF4Close()
+static void ApplyWndProcHook()
 {
-	if (!EnableAltF4Close) return;
+	if (!EnableAltF4Close && !UseMouseRawInput) return;
 
 	HookHelper::ApplyHook((void*)0x46C600, &lpfnWndProc_MSG_Hook, (LPVOID*)&lpfnWndProc_MSG);
 }
@@ -2190,6 +2262,7 @@ static void Init()
 	// General
 	ApplyLaunchWithoutAlice2();
 	ApplyCustomControllerBindings();
+	ApplyRawInput();
 	ApplyPreventAlice2OnExit();
 	ApplyDisableWinsockInitialization();
 	ApplyLanguageId();
@@ -2202,9 +2275,9 @@ static void Init()
 	// Display
 	ApplyEnableControllerIcons();
 	ApplyHideConsoleAtLaunch();
-	ApplyForceBorderlessFullscreen();
+	ApplyCreateWindowHook();
 	ApplyCustomResolution();
-	ApplyEnableAltF4Close();
+	ApplyWndProcHook();
 	// Graphics
 	ApplyTrilinearTextureFiltering();
 	ApplyAnisotropicTextureFiltering();
