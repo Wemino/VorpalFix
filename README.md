@@ -43,7 +43,7 @@ A patch that addresses various technical issues and adds quality-of-life improve
 
 - Fixed typos in script files affecting texture and sound paths to prevent missing assets.
 
-- Fixed menu-related issues when playing on Linux via Proton (set `FixProton = 1` in `VorpalFix.ini`, see https://github.com/ValveSoftware/Proton/issues/8179)
+- Fixed menu-related issues when playing on Linux via Proton.
   
 - Corrected display scaling on high‑DPI monitors.
 
@@ -185,6 +185,9 @@ A patch that addresses various technical issues and adds quality-of-life improve
 
 - **Camera Responsiveness**  
   Adjust camera smoothing via `CameraSmoothingFactor` for improved responsiveness with high-DPI mouse.
+
+- **Raw Mouse Input**  
+  Improved precision by reading mouse movement directly, ignoring Windows sensitivity and acceleration.
  
 - **Console-Style HUD Layout**  
   Position the HUD as in the Xbox 360/PS3 versions.
