@@ -19,6 +19,8 @@
 
 #pragma comment(lib, "libMinHook.x86.lib")
 
+using GameHelper::ShaderType;
+
 // =============================
 // Memory Addresses 
 // =============================
@@ -29,6 +31,7 @@ const int CODE_CAVE_BLINK = 0x513E08;
 const int CODE_CAVE_WIDTH = 0x513E40;
 const int STARTUP_STATE_ADDR = 0x7CCA20;
 const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
+const int IS_IN_MENU = 0x7CCA64;
 const int CURRENT_LANG = 0x7CF868;
 const int DISPLAY_MODE_IDX = 0x7D40C4;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
@@ -37,7 +40,6 @@ const int BLINK_TIMER = 0x11C35EC;
 const int UI_WAIT_TIMER = 0x12EF948;
 const int IS_CINEMATIC = 0x12F3CE8;
 const int CURRENT_WEAPON_ID = 0x12F3D60;
-const int IS_IN_MENU = 0x14EB498;
 const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
 const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
 const int DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
@@ -121,7 +123,7 @@ const char* weaponCommands[] =
 
 // pak5 fix
 bool isUsingBrokenPak5 = false;
-const char* correctPaths[] =
+static const char* correctPaths[] =
 {
 	"models/characters/cheshire/skin01.ftx",
 	"models/characters/cheshire/skin02.ftx",
@@ -134,7 +136,7 @@ const char* correctPaths[] =
 	"models/characters/mock_turtle/mturt.ftx"
 };
 
-const char* pak5BrokenPaths[] =
+static const char* const pak5BrokenPaths[] = 
 {
 	"models/characters/cheshire_cat/skin01.ftx",
 	"models/characters/cheshire_cat/skin02.ftx",
@@ -180,6 +182,7 @@ int(__cdecl* SetupOpenGLParameters)() = nullptr; // 0x46E0D0
 void(__cdecl* FetchDisplayResolutions)() = nullptr; // 0x46F850
 int(__cdecl* GLW_CreatePFD)(void*, unsigned __int8, char, unsigned __int8, int) = nullptr; // 0x46FC70
 int(__cdecl* QGL_Init)(LPCSTR) = nullptr; // 0x47ABE0
+void(__cdecl* CreateInternalShaders)() = nullptr; // 0x4873C0
 void(__cdecl* RE_StretchFont)(int, BYTE, float, float, float, float, float, float, float, int) = nullptr; // 0x48F1E0
 int(__cdecl* RE_StretchPic)(float, float, float, float, float, float, float, float, int) = nullptr; // 0x48FC00
 int(__cdecl* RE_StretchRaw)(int, int, int, int, int, int, int) = nullptr; // 0x490130
@@ -498,22 +501,17 @@ static void __cdecl CL_InitRef_Hook()
 static void __cdecl CL_ParsePacketEntities_Hook(int msg, int oldframe, int newframe)
 {
 	float* newFovPtr = (float*)(newframe + 0x418);
-	float originalFov = *newFovPtr;
+	float* oldFovPtr = oldframe ? (float*)(oldframe + 0x418) : nullptr;
+	float newFov = *newFovPtr;
 
 	if (AutoFOV && isWiderThan4By3)
 	{
-		bool shouldScale = !oldframe; // Scale first frame
-
-		if (oldframe)
-		{
-			float* oldFovPtr = (float*)(oldframe + 0x418);
-			shouldScale = (*newFovPtr != *oldFovPtr);
-		}
+		bool shouldScale = !oldFovPtr || (newFov != *oldFovPtr);
 
 		if (shouldScale)
 		{
-			float verticalFovRad = 2.0f * atan(tan(originalFov * (M_PI / 180.0f) * 0.5f) / ASPECT_RATIO_4_3);
-			*newFovPtr = 2.0f * atan(tan(verticalFovRad * 0.5f) * currentAspectRatio) * (180.0f / M_PI);
+			float verticalFovRad = 2.0f * atanf(tanf(newFov * (float)(M_PI / 180.0) * 0.5f) / ASPECT_RATIO_4_3);
+			*newFovPtr = 2.0f * atanf(tanf(verticalFovRad * 0.5f) * currentAspectRatio) * (float)(180.0 / M_PI);
 		}
 	}
 
@@ -521,28 +519,24 @@ static void __cdecl CL_ParsePacketEntities_Hook(int msg, int oldframe, int newfr
 	{
 		*(int*)(newframe + 0x10C) = 0; // No letterbox
 
-		bool isCinematic = *(int*)(newframe + 0x104);
-		bool wasCinematic = oldframe ? *(int*)(oldframe + 0x104) : false;
+		bool isCinematic = *(int*)(newframe + 0x104) != 0;
+		bool wasCinematic = oldframe && *(int*)(oldframe + 0x104) != 0;
 
 		if (isCinematic != wasCinematic) // Cutscene state changed
 		{
 			if (isCinematic) // Entering cutscene
 			{
-				*newFovPtr = *newFovPtr / 1.11f;
+				*newFovPtr /= 1.11f;
 			}
 			else // Exiting cutscene, default FOV is 90 during gameplay
 			{
-				float verticalFovRad = 2.0f * atan(tan(90.0f * (M_PI / 180.0f) * 0.5f) / ASPECT_RATIO_4_3);
-				*newFovPtr = 2.0f * atan(tan(verticalFovRad * 0.5f) * currentAspectRatio) * (180.0f / M_PI);
+				float verticalFovRad = 2.0f * atanf(tanf(90.0f * (float)(M_PI / 180.0) * 0.5f) / ASPECT_RATIO_4_3);
+				*newFovPtr = 2.0f * atanf(tanf(verticalFovRad * 0.5f) * currentAspectRatio) * (float)(180.0 / M_PI);
 			}
 		}
-		else if (isCinematic && oldframe) // During cutscene, check for FOV changes
+		else if (isCinematic && oldFovPtr && newFov != *oldFovPtr) // Update cutscene FOV
 		{
-			float* oldFovPtr = (float*)(oldframe + 0x418);
-			if (*newFovPtr != *oldFovPtr) // FOV changed during cutscene
-			{
-				*newFovPtr = *newFovPtr / 1.11f;
-			}
+			*newFovPtr /= 1.11f;
 		}
 	}
 
@@ -734,70 +728,51 @@ static int __cdecl FS_FOpenFileRead_Hook(char* Source, int* a2, int a3, int a4)
 		return FS_FOpenFileRead(Source, a2, a3, a4);
 	}
 
-	// Length check: shortest is 37, longest is 46
-	size_t len = strlen(Source);
-	if (len < 37 || len > 46)
+	const char* name = Source + 18;
+	const char* redirect = nullptr;
+
+	switch (name[0]) 
 	{
-		return FS_FOpenFileRead(Source, a2, a3, a4);
+		case 'c':
+			if (name[1] == 'h' && memcmp(name, "cheshire/skin0", 14) == 0) 
+			{
+				if (name[14] == '1')
+					redirect = pak5BrokenPaths[0];
+				else if (name[14] == '2')
+					redirect = pak5BrokenPaths[name[15] == 'g' ? 2 : 1];
+			}
+			else if (name[1] == 'a' && memcmp(name, "cardguard_", 10) == 0) 
+			{
+				switch (name[10]) 
+				{
+					case 'c': // club
+						if (memcmp(name + 14, "/skin01.ftx", 11) == 0)
+							redirect = pak5BrokenPaths[3];
+						break;
+					case 'd': // diamond
+						if (memcmp(name + 17, "/skin02.ftx", 11) == 0)
+							redirect = pak5BrokenPaths[4];
+						break;
+					case 'h': // heart
+						if (memcmp(name + 15, "/skin04.ftx", 11) == 0)
+							redirect = pak5BrokenPaths[5];
+						break;
+					case 's': // spade
+						if (memcmp(name + 15, "/skin03.ftx", 11) == 0)
+							redirect = pak5BrokenPaths[6];
+						break;
+				}
+			}
+			break;
+		case 'm':
+			if (memcmp(name, "mock_turtle/m", 13) == 0) 
+			{
+				redirect = pak5BrokenPaths[name[13] == 's' ? 7 : 8];
+			}
+			break;
 	}
 
-	// Character name must start with 'c' or 'm'
-	if (Source[18] != 'c' && Source[18] != 'm')
-	{
-		return FS_FOpenFileRead(Source, a2, a3, a4);
-	}
-
-	if (memcmp(Source + 18, "cheshire/skin", 13) == 0) 
-	{
-		if (strcmp(Source + 31, "01.ftx") == 0) 
-		{
-			Source = (char*)pak5BrokenPaths[0];
-		}
-		else if (strcmp(Source + 31, "02.ftx") == 0) 
-		{
-			Source = (char*)pak5BrokenPaths[1];
-		}
-		else if (strcmp(Source + 31, "02g.ftx") == 0) 
-		{
-			Source = (char*)pak5BrokenPaths[2];
-		}
-	}
-	else if (memcmp(Source + 18, "cardguard_", 10) == 0) 
-	{
-		char suit = Source[28];
-		switch (suit) 
-		{
-			case 'c': // club
-				if (strcmp(Source + 33, "/skin01.ftx") == 0)
-					Source = (char*)pak5BrokenPaths[3];
-				break;
-			case 'd': // diamond
-				if (strcmp(Source + 36, "/skin02.ftx") == 0)
-					Source = (char*)pak5BrokenPaths[4];
-				break;
-			case 'h': // heart
-				if (strcmp(Source + 34, "/skin04.ftx") == 0)
-					Source = (char*)pak5BrokenPaths[5];
-				break;
-			case 's': // spade
-				if (strcmp(Source + 34, "/skin03.ftx") == 0)
-					Source = (char*)pak5BrokenPaths[6];
-				break;
-		}
-	}
-	else if (memcmp(Source + 18, "mock_turtle/", 12) == 0) 
-	{
-		if (strcmp(Source + 30, "mshell.ftx") == 0) 
-		{
-			Source = (char*)pak5BrokenPaths[7];
-		}
-		else if (strcmp(Source + 30, "mturt.ftx") == 0) 
-		{
-			Source = (char*)pak5BrokenPaths[8];
-		}
-	}
-
-	return FS_FOpenFileRead(Source, a2, a3, a4);
+	return FS_FOpenFileRead(redirect ? (char*)redirect : Source, a2, a3, a4);
 }
 
 // Reimplementation of 'sub_41D1E0' to fix free space reporting and ensure accurate target disk
@@ -1187,75 +1162,33 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 	int xinput_state = MemoryHelper::ReadMemory<int>(0x7CF880);
 
 	// Save current weapon to d-pad
-	if (xinput_state & 0x40) // If left stick is pressed
+	if (xinput_state & 0x40) // Left stick pressed
 	{
 		isHoldingLeftStick = true;
 
-		int dpadId = -1;
-		switch (xinput_state & 0x0F)
+		static const struct { int mask; int dpadId; const char* joyKey; std::string* lastWeapon; } dpadMap[] = 
 		{
-			case 0x01: // D-Pad Up
-				dpadId = 1;
-				break;
-			case 0x02: // D-Pad Down
-				dpadId = 2;
-				break;
-			case 0x04: // D-Pad Left
-				dpadId = 3;
-				break;
-			case 0x08: // D-Pad Right
-				dpadId = 4;
-				break;
-			default:
-				dpadId = -1; // No matching D-Pad button pressed
-				break;
-		}
+			{ 0x01, 1, "JOY5", &lastWeaponIdUp },
+			{ 0x02, 2, "JOY7", &lastWeaponIdDown },
+			{ 0x04, 3, "JOY8", &lastWeaponIdLeft },
+			{ 0x08, 4, "JOY6", &lastWeaponIdRight },
+		};
 
 		int currentWeaponId = MemoryHelper::ReadMemory<int>(CURRENT_WEAPON_ID);
-		if (dpadId != -1 && currentWeaponId != -1) // If dpad is pressed and if holding a weapon
+		if (currentWeaponId != -1)
 		{
-			std::string* lastWeaponSet = nullptr;
-			switch (dpadId)
+			for (const auto& d : dpadMap)
 			{
-				case 1:
-					lastWeaponSet = &lastWeaponIdUp;
-					break;
-				case 2:
-					lastWeaponSet = &lastWeaponIdDown;
-					break;
-				case 3:
-					lastWeaponSet = &lastWeaponIdLeft;
-					break;
-				case 4:
-					lastWeaponSet = &lastWeaponIdRight;
-					break;
-			}
-
-			char* currentWeaponName = GameHelper::GetWeaponName(currentWeaponId);
-			// If holding a different weapon
-			if (lastWeaponSet->empty() || *lastWeaponSet != currentWeaponName)
-			{
-				// Build the command
-				weaponCommandCache[dpadId] = std::string("use ") + currentWeaponName;
-
-				// Remember the last weapon name
-				*lastWeaponSet = currentWeaponName;
-
-				// Bind the new command
-				switch (dpadId)
+				if ((xinput_state & 0x0F) == d.mask)
 				{
-					case 1:
-						Bind(GameHelper::GetKeyId("JOY5"), const_cast<char*>(weaponCommandCache[dpadId].c_str()));
-						break;
-					case 2:
-						Bind(GameHelper::GetKeyId("JOY7"), const_cast<char*>(weaponCommandCache[dpadId].c_str()));
-						break;
-					case 3:
-						Bind(GameHelper::GetKeyId("JOY8"), const_cast<char*>(weaponCommandCache[dpadId].c_str()));
-						break;
-					case 4:
-						Bind(GameHelper::GetKeyId("JOY6"), const_cast<char*>(weaponCommandCache[dpadId].c_str()));
-						break;
+					char* weaponName = GameHelper::GetWeaponName(currentWeaponId);
+					if (d.lastWeapon->empty() || *d.lastWeapon != weaponName)
+					{
+						weaponCommandCache[d.dpadId] = std::string("use ") + weaponName;
+						*d.lastWeapon = weaponName;
+						Bind(GameHelper::GetKeyId(d.joyKey), const_cast<char*>(weaponCommandCache[d.dpadId].c_str()));
+					}
+					break;
 				}
 			}
 		}
@@ -1391,6 +1324,13 @@ static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 	return QGL_Init(lpLibFileName);
 }
 
+// Initialize the shaders list
+static void __cdecl CreateInternalShaders_Hook()
+{
+	GameHelper::ResetShaderCache();
+	CreateInternalShaders();
+}
+
 // Scale the font
 static void __cdecl RE_StretchFont_Hook(int a1, BYTE a2, float font_x_position, float font_y_position, float a5, float a6, float font_spacing, float font_scale_width, float font_scale_height, int a10)
 {
@@ -1418,116 +1358,109 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 	{
 		float scale_factor = currentHeight / 720.0f;
 		resolution_width = 320.0f * scale_factor;
-		resolution_height = currentHeight;
+		resolution_height = static_cast<float>(currentHeight);
 
-		x_position = (x_position == LEFT_BORDER_X_ID) ? widthDifference - resolution_width : currentWidth - widthDifference;
+		x_position = (x_position == LEFT_BORDER_X_ID)? widthDifference - resolution_width : currentWidth - widthDifference;
 
 		return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 	}
-	else
+
+	char* ShaderName = *(char**)(SHADERS_CACHE_ADDR + 0x4 * ShaderHandle);
+    GameHelper::ShaderType shaderType = GameHelper::ClassifyShader(ShaderHandle, ShaderName);
+
+	auto isConsoleEnabled = []() -> BYTE 
+	{ 
+		BYTE** ptr = (BYTE**)CONSOLE_THREAD_PTR_ADDR;
+		return (*ptr && *(*ptr + 0xCC)) ? *(*ptr + 0xCC) : 0;
+	};
+
+	// Pre-main menu handling
+	if (!isMainMenuShown)
 	{
-		char* ShaderName = *(char**)(SHADERS_CACHE_ADDR + 0x4 * ShaderHandle);
-		BYTE isConsoleOpen = (*(BYTE**)CONSOLE_THREAD_PTR_ADDR && *(*(BYTE**)CONSOLE_THREAD_PTR_ADDR + 0xCC)) ? *(*(BYTE**)CONSOLE_THREAD_PTR_ADDR + 0xCC) : 0;
-
-		// Resize the mouse when needed
-		if (!isCursorResized && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
+		if (strstr(ShaderName, "main"))
 		{
-			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
-			GameHelper::ResizePopupMessage(currentWidth, currentHeight); // Does not scale well with this function
-			isCursorResized = true;
-		}
-
-		// Workaround to be able to use the console
-		if (isConsoleOpen == 1 && strcmp(ShaderName, "gfx/2d/mouse_arrow") == 0)
-		{
-			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-		}
-
-		// Once we get to the main menu
-		if (!isMainMenuShown && strstr(ShaderName, "main"))
-		{
-			// Resize the cursor if hidden for the title screen
 			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
 			isMainMenuShown = true;
 		}
-
-		// Handle pre-main menu elements that need scaling and centering
-		if (!isMainMenuShown)
+		else if (strstr(ShaderName, "legalplate"))
 		{
-			// Scale and center legalplate
-			if (strstr(ShaderName, "legalplate"))
+			if (currentWidth > 1280)
 			{
-				if (currentWidth > 1280)
-				{
-					float scale_factor = (float)currentHeight / 720.0f;
-					resolution_width *= scale_factor;
-					resolution_height *= scale_factor;
-					x_position = (currentWidth - resolution_width) / 2.0f;
-					y_position = (currentHeight - resolution_height) / 2.0f;
-				}
-
-				return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-			}
-
-			// Scale and center title screen background
-			if (strcmp(ShaderName, "title_bg") == 0)
-			{
-				float titlebg_aspect_ratio = 1280.0f / 720.0f;
-				float scale_factor = (currentAspectRatio > titlebg_aspect_ratio) ? (float)currentWidth / 1280.0f : (float)currentHeight / 720.0f;
-
-				resolution_width = 1280 * scale_factor;
-				resolution_height = 720 * scale_factor;
+				float scale_factor = static_cast<float>(currentHeight) / 720.0f;
+				resolution_width *= scale_factor;
+				resolution_height *= scale_factor;
 				x_position = (currentWidth - resolution_width) / 2.0f;
 				y_position = (currentHeight - resolution_height) / 2.0f;
-
-				return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 			}
-		}
-
-		// Full screen effects
-		if (strcmp(ShaderName, "textures/special/drugfade") == 0)
-		{
 			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
+	}
 
-		// Pop-up message that does not scale well with this function
-		if (strcmp(ShaderName, "ui/control/press_any_key") == 0)
-		{
-			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-		}
-
-		// Console Elements
-		if (isConsoleOpen && x_position == 0 && (strcmp(ShaderName, "ui/control/slider2_bar") == 0 || strcmp(ShaderName, "ui/control/slider2_top") == 0 || strcmp(ShaderName, "ui/control/slider2_indicator") == 0))
-		{
-			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-		}
-
-		// Credits (already scaled by scaling the viewport of the "AutoScroll")
-		if (strcmp(ShaderName, "ui/bar") == 0 || strcmp(ShaderName, "ui/credits/alice") == 0 || strcmp(ShaderName, "ui/credits/bill") == 0)
-		{
-			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-		}
-
-		// Scale the UI
-		if (isWiderThan4By3)
-		{
-			resolution_width *= scaleFactor;
-
-			// Save camera position similar to the console version
-			if (strcmp(ShaderName, "ui/quicksavecam/quicksavecam") == 0)
+	switch (shaderType)
+	{
+		case ShaderType::MouseArrow:
+			if (!isCursorResized)
 			{
+				GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
+				GameHelper::ResizePopupMessage(currentWidth, currentHeight);
+				isCursorResized = true;
+			}
+			if (isConsoleEnabled())
+				return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+			break;
+
+		// Scale and center title screen background
+		case ShaderType::TitleBg:
+			if (!isMainMenuShown)
+			{
+				constexpr float titlebg_aspect_ratio = 1280.0f / 720.0f;
+				float scale_factor = (currentAspectRatio > titlebg_aspect_ratio) ? static_cast<float>(currentWidth) / 1280.0f : static_cast<float>(currentHeight) / 720.0f;
+
+				resolution_width = 1280.0f * scale_factor;
+				resolution_height = 720.0f * scale_factor;
+				x_position = (currentWidth - resolution_width) / 2.0f;
+				y_position = (currentHeight - resolution_height) / 2.0f;
+			}
+			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+
+		// Special cases (skip)
+		case ShaderType::DrugFade:
+		case ShaderType::IceFade:
+		case ShaderType::PressAnyKey:
+			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+
+		// Console elements
+		case ShaderType::Slider2Bar:
+		case ShaderType::Slider2Top:
+		case ShaderType::Slider2Indicator:
+			if (isConsoleEnabled() && x_position == 0)
+				return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+			break;
+
+		// Credits (scaled with AutoScroll)
+		case ShaderType::UiBar:
+		case ShaderType::CreditsAlice:
+		case ShaderType::CreditsBill:
+			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+
+		case ShaderType::QuicksaveCam:
+			if (isWiderThan4By3)
+			{
+				resolution_width *= scaleFactor;
 				if (ConsolePortHUD)
 				{
 					x_position = currentWidth / 6.0f;
 					y_position = currentHeight / 14.25f;
 				}
 			}
-			else
-			{
-				// Don't change the x position of the save camera
-				x_position = (x_position * scaleFactor) + widthDifference;
-			}
-		}
+			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+	}
+
+	// Default widescreen scaling
+	if (isWiderThan4By3)
+	{
+		resolution_width *= scaleFactor;
+		x_position = (x_position * scaleFactor) + widthDifference;
 	}
 
 	return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
@@ -1653,46 +1586,43 @@ static DWORD __fastcall LoadUI_Hook(DWORD* thisPtr, int*, char* ui_path)
 		}
 	}
 
+	if (ui_path == nullptr)
+		return LoadUI(thisPtr, ui_path);
+
 	// Use the proper title screen file
-	if (UseConsoleTitleScreen && ui_path != nullptr && strcmp(ui_path, "ui/title.urc") == 0)
+	if (UseConsoleTitleScreen && strcmp(ui_path, "ui/title.urc") == 0)
 	{
-		ui_path = const_cast<char*>(StringHelper::ConstructPath(langPrefix, isUsingControllerMenu ? "/title_console.urc" : "/title.urc"));
+		ui_path = const_cast<char*>(StringHelper::ConstructPath(langPrefix,
+			isUsingControllerMenu ? "/title_console.urc" : "/title.urc"));
+		return LoadUI(thisPtr, ui_path);
 	}
 
 	// Override using the menus located inside 'pak6_VorpalFix.pk3'
 	if (isUsingControllerMenu)
 	{
-		std::string langPrefixStr = langPrefix;
+		static char prefixBuffer[16];
 		if (UsePS3ControllerIcons)
-		{
-			langPrefixStr += "_ps3";
-		}
+			snprintf(prefixBuffer, sizeof(prefixBuffer), "%s_ps3", langPrefix);
+		else
+			strncpy(prefixBuffer, langPrefix, sizeof(prefixBuffer));
 
-		const char* finalPrefix = langPrefixStr.c_str();
+		static const struct { const char* from; const char* to; } uiRemaps[] = 
+		{
+			{ "ui/controls.urc", "/controls2.urc" },
+			{ "ui/credits.urc",  "/credits2.urc" },
+			{ "ui/loadsave.urc", "/loadsave2.urc" },
+			{ "ui/main.urc",     "/main2.urc" },
+			{ "ui/newgame.urc",  "/newgame2.urc" },
+			{ "ui/quit.urc",     "/quit2.urc" },
+		};
 
-		if (ui_path && strcmp(ui_path, "ui/controls.urc") == 0)
+		for (const auto& remap : uiRemaps)
 		{
-			ui_path = const_cast<char*>(StringHelper::ConstructPath(finalPrefix, "/controls2.urc"));
-		}
-		else if (ui_path && strcmp(ui_path, "ui/credits.urc") == 0)
-		{
-			ui_path = const_cast<char*>(StringHelper::ConstructPath(finalPrefix, "/credits2.urc"));
-		}
-		else if (ui_path && strcmp(ui_path, "ui/loadsave.urc") == 0)
-		{
-			ui_path = const_cast<char*>(StringHelper::ConstructPath(finalPrefix, "/loadsave2.urc"));
-		}
-		else if (ui_path && strcmp(ui_path, "ui/main.urc") == 0)
-		{
-			ui_path = const_cast<char*>(StringHelper::ConstructPath(finalPrefix, "/main2.urc"));
-		}
-		else if (ui_path && strcmp(ui_path, "ui/newgame.urc") == 0)
-		{
-			ui_path = const_cast<char*>(StringHelper::ConstructPath(finalPrefix, "/newgame2.urc"));
-		}
-		else if (ui_path && strcmp(ui_path, "ui/quit.urc") == 0)
-		{
-			ui_path = const_cast<char*>(StringHelper::ConstructPath(finalPrefix, "/quit2.urc"));
+			if (strcmp(ui_path, remap.from) == 0)
+			{
+				ui_path = const_cast<char*>(StringHelper::ConstructPath(prefixBuffer, remap.to));
+				break;
+			}
 		}
 	}
 
@@ -1800,7 +1730,7 @@ static void ApplyFixSoundRandomization()
 		0x44, 0x24, 0x40, 0x85, 0xC0, 0x74, 0x12, 0xD9, 0x44, 0x24, 0x10, 0x8B, 0x54, 0x24, 0x4C, 0x5F,
 		0x5E, 0x5D, 0xD9, 0x1A, 0x5B, 0x83, 0xC4, 0x28, 0xC3, 0x8B, 0x44, 0x24, 0x44, 0x8B, 0x4C, 0x24,
 		0x48, 0xC7, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xC7, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x5F, 0x5E, 0x5D,
-		0x5B, 0x83, 0xC4, 0x28, 0xC3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+		0x5B, 0x83, 0xC4, 0x28, 0xC3, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
 
 		// sub_423200
 		0x51, 0x8D, 0x44, 0x24, 0x00, 0x56, 0x8B, 0x74, 0x24, 0x0C, 0x8D, 0x4C, 0x24, 0x0C, 0x50, 0x8B,
@@ -1809,7 +1739,7 @@ static void ApplyFixSoundRandomization()
 		0x75, 0x38, 0x8B, 0x4E, 0x28, 0x8B, 0x14, 0x81, 0x8A, 0x44, 0x24, 0x18, 0x88, 0x82, 0xB4, 0x00,
 		0x00, 0x00, 0x8B, 0x4E, 0x28, 0x8B, 0x54, 0x24, 0x10, 0x8B, 0x04, 0x91, 0x8B, 0x4C, 0x24, 0x1C,
 		0x89, 0x88, 0xB8, 0x00, 0x00, 0x00, 0x8B, 0x56, 0x28, 0x8B, 0x44, 0x24, 0x10, 0x8B, 0x0C, 0x82,
-		0x8B, 0x54, 0x24, 0x14, 0x89, 0x91, 0xB0, 0x00, 0x00, 0x00, 0x5E, 0x59, 0xC3, 0x90, 0x90, 0x90,
+		0x8B, 0x54, 0x24, 0x14, 0x89, 0x91, 0xB0, 0x00, 0x00, 0x00, 0x5E, 0x59, 0xC3, 0xCC, 0xCC, 0xCC,
 
 		// sub_423270
 		0x51, 0x8D, 0x44, 0x24, 0x00, 0x57, 0x8B, 0x7C, 0x24, 0x0C, 0x8D, 0x4C, 0x24, 0x0C, 0x50, 0x8B,
@@ -1819,7 +1749,7 @@ static void ApplyFixSoundRandomization()
 		0x0C, 0xDC, 0xEE, 0xFF, 0x83, 0xC4, 0x08, 0x85, 0xC0, 0x75, 0x14, 0x8B, 0x47, 0x28, 0x8B, 0x4C,
 		0x24, 0x14, 0x56, 0x8B, 0x14, 0x88, 0x52, 0xE8, 0x24, 0xDC, 0xEE, 0xFF, 0x83, 0xC4, 0x08, 0x8A,
 		0x4C, 0x24, 0x20, 0x8B, 0x54, 0x24, 0x24, 0x88, 0x48, 0x08, 0x8B, 0x4C, 0x24, 0x1C, 0x89, 0x30,
-		0x89, 0x50, 0x0C, 0x89, 0x48, 0x04, 0x5E, 0x5F, 0x59, 0xC3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+		0x89, 0x50, 0x0C, 0x89, 0x48, 0x04, 0x5E, 0x5F, 0x59, 0xC3, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
 
 		// sub_4236C0
 		0x83, 0xEC, 0x0C, 0x8D, 0x44, 0x24, 0x00, 0x8D, 0x4C, 0x24, 0x10, 0x8D, 0x54, 0x24, 0x14, 0x53,
@@ -1832,7 +1762,7 @@ static void ApplyFixSoundRandomization()
 		0x00, 0x00, 0x00, 0xD9, 0x44, 0x24, 0x14, 0xD8, 0xD9, 0xDF, 0xE0, 0xF6, 0xC4, 0x01, 0x75, 0x13,
 		0x41, 0x83, 0xC2, 0x04, 0x3B, 0xCE, 0x7C, 0xE3, 0xDD, 0xD8, 0x5F, 0x5E, 0x33, 0xC0, 0x5B, 0x83,
 		0xC4, 0x0C, 0xC3, 0x03, 0xCB, 0xDD, 0xD8, 0x8B, 0x04, 0x8F, 0x5F, 0x5E, 0x83, 0xC0, 0x20, 0x5B,
-		0x83, 0xC4, 0x0C, 0xC3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90
+		0x83, 0xC4, 0x0C, 0xC3, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC
 	};
 
 	MemoryHelper::WriteMemoryRaw(CODE_CAVE_SOUND, portedInstructions, sizeof(portedInstructions));
@@ -1910,6 +1840,7 @@ static void ApplyFixStretchedGUI()
 	HookHelper::ApplyHook((void*)0x48F1E0, &RE_StretchFont_Hook, (LPVOID*)&RE_StretchFont); // Font Scaling
 	HookHelper::ApplyHook((void*)0x4C5D30, &SetAliceMirrorViewportParams_Hook, (LPVOID*)&SetAliceMirrorViewportParams); // Scale Alice's 3D model in the settings menu
 	HookHelper::ApplyHook((void*)0x452CF0, &ShowDialogBoxText_Hook, (LPVOID*)&ShowDialogBoxText);
+	HookHelper::ApplyHook((void*)0x4873C0, &CreateInternalShaders_Hook, (LPVOID*)&CreateInternalShaders);
 	MemoryHelper::MakeNOP(0x4D2AB1, 7); // Dark rectangle when reassigning a control
 
 	// Save screenshot

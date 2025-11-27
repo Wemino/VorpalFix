@@ -167,6 +167,26 @@ namespace IniHelper
 
 namespace GameHelper
 {
+	enum class ShaderType : int8_t
+	{
+		Unknown = -1,
+		Generic = 0,
+		MouseArrow,
+		TitleBg,
+		DrugFade,
+		IceFade,
+		PressAnyKey,
+		Slider2Bar,
+		Slider2Top,
+		Slider2Indicator,
+		UiBar,
+		CreditsAlice,
+		CreditsBill,
+		QuicksaveCam,
+	};
+
+	static std::vector<ShaderType> shaderTypeCache;
+
 	bool DisableCursorScaling = false;
 
 	int(__cdecl* GetKeyId)(const char*) = (int(__cdecl*)(const char*))0x4076F0;
@@ -262,6 +282,50 @@ namespace GameHelper
 		image_width = static_cast<int>(image_width * scale_factor);
 
 		MemoryHelper::WriteMemory<int>(ImageIndex + 0x48, image_width, false);
+	}
+
+	void ResetShaderCache()
+	{
+		shaderTypeCache.clear();
+	}
+
+	ShaderType ClassifyShader(int handle, const char* name)
+	{
+		if (handle >= static_cast<int>(shaderTypeCache.size()))
+			shaderTypeCache.resize(handle + 128, ShaderType::Unknown);
+
+		ShaderType& cached = shaderTypeCache[handle];
+		if (cached != ShaderType::Unknown)
+			return cached;
+
+		if (strcmp(name, "gfx/2d/mouse_arrow") == 0)
+			cached = ShaderType::MouseArrow;
+		else if (strcmp(name, "ui/quicksavecam/quicksavecam") == 0)
+			cached = ShaderType::QuicksaveCam;
+		else if (strcmp(name, "textures/special/drugfade") == 0)
+			cached = ShaderType::DrugFade;
+		else if (strcmp(name, "textures/special/icefade") == 0)
+			cached = ShaderType::IceFade;
+		else if (strcmp(name, "ui/control/press_any_key") == 0)
+			cached = ShaderType::PressAnyKey;
+		else if (strcmp(name, "ui/control/slider2_bar") == 0)
+			cached = ShaderType::Slider2Bar;
+		else if (strcmp(name, "ui/control/slider2_top") == 0)
+			cached = ShaderType::Slider2Top;
+		else if (strcmp(name, "ui/control/slider2_indicator") == 0)
+			cached = ShaderType::Slider2Indicator;
+		else if (strcmp(name, "ui/bar") == 0)
+			cached = ShaderType::UiBar;
+		else if (strcmp(name, "ui/credits/alice") == 0)
+			cached = ShaderType::CreditsAlice;
+		else if (strcmp(name, "ui/credits/bill") == 0)
+			cached = ShaderType::CreditsBill;
+		else if (strcmp(name, "title_bg") == 0)
+			cached = ShaderType::TitleBg;
+		else
+			cached = ShaderType::Generic;
+
+		return cached;
 	}
 };
 
