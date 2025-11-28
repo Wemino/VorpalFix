@@ -167,6 +167,8 @@ namespace IniHelper
 
 namespace GameHelper
 {
+	constexpr float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
+
 	enum class ShaderType : int8_t
 	{
 		Unknown = -1,
@@ -277,19 +279,19 @@ namespace GameHelper
 		float current_width = static_cast<float>(width);
 		float current_height = static_cast<float>(height);
 
-		float target_width = current_height * 4.0f / 3.0f;
+		float target_width = current_height * ASPECT_RATIO_4_3;
 		float scale_factor = target_width / current_width;
 		image_width = static_cast<int>(image_width * scale_factor);
 
 		MemoryHelper::WriteMemory<int>(ImageIndex + 0x48, image_width, false);
 	}
 
-	void ResetShaderCache()
+	static void ResetShaderCache()
 	{
 		shaderTypeCache.clear();
 	}
 
-	ShaderType ClassifyShader(int handle, const char* name)
+	static ShaderType ClassifyShader(int handle, const char* name)
 	{
 		if (handle >= static_cast<int>(shaderTypeCache.size()))
 			shaderTypeCache.resize(handle + 128, ShaderType::Unknown);

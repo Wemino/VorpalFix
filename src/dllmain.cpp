@@ -31,7 +31,7 @@ const int CODE_CAVE_BLINK = 0x513E08;
 const int CODE_CAVE_WIDTH = 0x513E40;
 const int STARTUP_STATE_ADDR = 0x7CCA20;
 const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
-const int IS_IN_MENU = 0x7CCA64;
+const int IS_PAUSED = 0x7CCA64;
 const int CURRENT_LANG = 0x7CF868;
 const int DISPLAY_MODE_IDX = 0x7D40C4;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
@@ -43,6 +43,7 @@ const int CURRENT_WEAPON_ID = 0x12F3D60;
 const int MOUSE_YAW_BUFFER = 0x12F986C;
 const int MOUSE_PITCH_BUFFER = 0x12F9874;
 const int MOUSE_BUFFER_INDEX = 0x12F987C;
+const int IS_IN_MENU = 0x14EB498;
 const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
 const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
 const int DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
@@ -85,7 +86,7 @@ static std::atomic<LONG> rawMouseDeltaX { 0 };
 static std::atomic<LONG> rawMouseDeltaY { 0 };
 
 // Misc (read-only)
-constexpr float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
+using GameHelper::ASPECT_RATIO_4_3;
 constexpr int LEFT_BORDER_X_ID = 0x1000000;
 constexpr int RIGHT_BORDER_X_ID = 0x2000000;
 const char* ALICE2_DEFAULT_PATH = "..\\..\\Alice2\\Binaries\\Win32\\AliceMadnessReturns.exe";
@@ -235,6 +236,7 @@ float CameraSmoothingFactor = 0;
 bool LaunchWithoutAlice2 = false;
 bool PreventAlice2OnExit = false;
 bool DisableWinsockInitialization = false;
+bool DisableLegacyJoystickInitialization = false;
 char* Alice2Path = nullptr;
 int LanguageId = 0;
 bool UseConsoleTitleScreen = false;
@@ -297,6 +299,7 @@ static void ReadConfig()
 	CustomControllerBindings = IniHelper::ReadInteger("General", "CustomControllerBindings", 1) == 1;
 	PreventAlice2OnExit = IniHelper::ReadInteger("General", "PreventAlice2OnExit", 0) == 1;
 	DisableWinsockInitialization = IniHelper::ReadInteger("General", "DisableWinsockInitialization", 1) == 1;
+	DisableLegacyJoystickInitialization = IniHelper::ReadInteger("General", "DisableLegacyJoystickInitialization", 1) == 1;
 	Alice2Path = IniHelper::ReadString("General", "Alice2Path", ALICE2_DEFAULT_PATH);
 	LanguageId = IniHelper::ReadInteger("General", "LanguageId", 0);
 	UseOriginalIntroVideos = IniHelper::ReadInteger("General", "UseOriginalIntroVideos", 0) == 1;
@@ -1282,7 +1285,7 @@ static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, int wParam, LPARA
 	// Raw Input
 	if (isRawInputRegistered && Msg == WM_INPUT)
 	{
-		// Don't accumulate while in menu
+		// Don't accumulate while in menu or console is active
 		if (!MemoryHelper::ReadMemory<int>(IS_IN_MENU))
 		{
 			UINT dwSize = sizeof(RAWINPUT);
@@ -1291,8 +1294,7 @@ static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, int wParam, LPARA
 			if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, buffer, &dwSize, sizeof(RAWINPUTHEADER)) != (UINT)-1)
 			{
 				RAWINPUT* raw = (RAWINPUT*)buffer;
-				if (raw->header.dwType == RIM_TYPEMOUSE &&
-					(raw->data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) == 0)
+				if (raw->header.dwType == RIM_TYPEMOUSE && (raw->data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) == 0)
 				{
 					rawMouseDeltaX += raw->data.mouse.lLastX;
 					rawMouseDeltaY += raw->data.mouse.lLastY;
@@ -1433,8 +1435,8 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 	char* ShaderName = *(char**)(SHADERS_CACHE_ADDR + 0x4 * ShaderHandle);
     GameHelper::ShaderType shaderType = GameHelper::ClassifyShader(ShaderHandle, ShaderName);
 
-	auto isConsoleEnabled = []() -> BYTE 
-	{ 
+	auto isConsoleEnabled = []() -> BYTE
+	{
 		BYTE** ptr = (BYTE**)CONSOLE_THREAD_PTR_ADDR;
 		return (*ptr && *(*ptr + 0xCC)) ? *(*ptr + 0xCC) : 0;
 	};
@@ -1548,7 +1550,7 @@ static void __cdecl UpdateRenderContext_Hook(int x, int y, int width, int height
 {
 	if (isWiderThan4By3 && x != 0 && !isRenderingConsole)
 	{
-		if (MemoryHelper::ReadMemory<int>(IS_IN_MENU)) // Autoscroll
+		if (MemoryHelper::ReadMemory<int>(IS_PAUSED)) // Autoscroll
 		{
 			int adjusted_x = (x * scaleFactor) + widthDifference;
 			int adjusted_width = width * scaleFactor;
@@ -1578,7 +1580,7 @@ static void __cdecl ConfigureScissor_Hook(int x, int y, int width, int height)
 {
 	if (isWiderThan4By3 && x != 0 && !isRenderingConsole)
 	{
-		if (MemoryHelper::ReadMemory<int>(IS_IN_MENU)) // Autoscroll
+		if (MemoryHelper::ReadMemory<int>(IS_PAUSED)) // Autoscroll
 		{
 			int adjusted_x = (x * scaleFactor) + widthDifference;
 			int adjusted_width = width * scaleFactor;
@@ -2053,6 +2055,14 @@ static void ApplyDisableWinsockInitialization()
 	MemoryHelper::MakeNOP(0x46562E, 5);
 }
 
+static void ApplyDisableLegacyJoystickInitialization()
+{
+	if (!DisableLegacyJoystickInitialization) return;
+
+	// Disable call to IN_StartupJoystick
+	MemoryHelper::MakeNOP(0x4640CF, 5);
+}
+
 static void ApplyLanguageId()
 {
 	MemoryHelper::WriteMemory<int>(0x461A90, LanguageId);
@@ -2191,6 +2201,12 @@ static void ApplyWndProcHook()
 	if (!EnableAltF4Close && !UseMouseRawInput) return;
 
 	HookHelper::ApplyHook((void*)0x46C600, &lpfnWndProc_MSG_Hook, (LPVOID*)&lpfnWndProc_MSG);
+
+	if (UseMouseRawInput)
+	{
+		// Prevent double input
+		MemoryHelper::MakeNOP(0x4067B9, 32);
+	}
 }
 
 static void ApplyTrilinearTextureFiltering()
@@ -2265,6 +2281,7 @@ static void Init()
 	ApplyRawInput();
 	ApplyPreventAlice2OnExit();
 	ApplyDisableWinsockInitialization();
+	ApplyDisableLegacyJoystickInitialization();
 	ApplyLanguageId();
 	ApplyUseConsoleTitleScreen();
 	ApplyUseOriginalIntroVideos();
