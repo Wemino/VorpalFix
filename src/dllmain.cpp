@@ -813,7 +813,10 @@ static int __cdecl FS_FOpenFileRead_Hook(char* Source, int* a2, int a3, int a4)
 		case 'm':
 			if (memcmp(name, "mock_turtle/m", 13) == 0) 
 			{
-				redirect = pak5BrokenPaths[name[13] == 's' ? 7 : 8];
+				if (name[13] == 's')
+					redirect = pak5BrokenPaths[7];
+				else if (name[13] == 't')
+					redirect = pak5BrokenPaths[8];
 			}
 			break;
 	}
