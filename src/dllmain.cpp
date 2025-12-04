@@ -6,6 +6,7 @@
 #include <ShellScalingAPI.h>
 #include <VersionHelpers.h>
 #include <shlobj.h>
+#include <Xinput.h>
 
 #include <string>
 #include <filesystem>
@@ -16,8 +17,10 @@
 #include "ini.hpp"
 #include "dllmain.hpp"
 #include "helper.hpp"
+#include <SDL3/SDL.h>
 
 #pragma comment(lib, "libMinHook.x86.lib")
+#pragma comment(lib, "SDL3-static.lib")
 
 using GameHelper::ShaderType;
 
@@ -204,6 +207,7 @@ int(__thiscall* UpdateHeadOrientationFromMouse)(int, float*, int, float*, float*
 HWND(WINAPI* ori_CreateWindowExA)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
 void(WINAPI* ori_glTexParameterf)(GLenum, GLenum, GLfloat);
 void(WINAPI* ori_glReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*);
+DWORD(WINAPI* ori_XInputGetState)(DWORD, XINPUT_STATE*);
 
 // =============================
 // Ini Variables
@@ -237,6 +241,7 @@ bool LaunchWithoutAlice2 = false;
 bool PreventAlice2OnExit = false;
 bool DisableWinsockInitialization = false;
 bool DisableLegacyJoystickInitialization = false;
+bool UseSDLControllerInput = false;
 char* Alice2Path = nullptr;
 int LanguageId = 0;
 bool UseConsoleTitleScreen = false;
@@ -248,7 +253,7 @@ char* CustomSavePath = nullptr;
 // Display
 bool ConsolePortHUD = false;
 bool EnableControllerIcons = false;
-bool UsePS3ControllerIcons = false;
+int UsePS3ControllerIcons = 0;
 int WindowConsoleMode = 0;
 bool DisableLetterbox = false;
 bool ForceBorderlessFullscreen = false;
@@ -300,6 +305,7 @@ static void ReadConfig()
 	PreventAlice2OnExit = IniHelper::ReadInteger("General", "PreventAlice2OnExit", 0) == 1;
 	DisableWinsockInitialization = IniHelper::ReadInteger("General", "DisableWinsockInitialization", 1) == 1;
 	DisableLegacyJoystickInitialization = IniHelper::ReadInteger("General", "DisableLegacyJoystickInitialization", 1) == 1;
+	UseSDLControllerInput = IniHelper::ReadInteger("General", "UseSDLControllerInput", 1) == 1;
 	Alice2Path = IniHelper::ReadString("General", "Alice2Path", ALICE2_DEFAULT_PATH);
 	LanguageId = IniHelper::ReadInteger("General", "LanguageId", 0);
 	UseOriginalIntroVideos = IniHelper::ReadInteger("General", "UseOriginalIntroVideos", 0) == 1;
@@ -311,7 +317,7 @@ static void ReadConfig()
 	// Display
 	ConsolePortHUD = IniHelper::ReadInteger("Display", "ConsolePortHUD", 0) == 1;
 	EnableControllerIcons = IniHelper::ReadInteger("Display", "EnableControllerIcons", 1) == 1;
-	UsePS3ControllerIcons = IniHelper::ReadInteger("Display", "UsePS3ControllerIcons", 0) == 1;
+	UsePS3ControllerIcons = IniHelper::ReadInteger("Display", "UsePS3ControllerIcons", 0);
 	WindowConsoleMode = IniHelper::ReadInteger("Display", "WindowConsoleMode", 1);
 	DisableLetterbox = IniHelper::ReadInteger("Display", "DisableLetterbox", 0) == 1;
 	GameHelper::DisableCursorScaling = IniHelper::ReadInteger("Display", "DisableCursorScaling", 0) == 1;
@@ -453,6 +459,12 @@ static void WINAPI glReadPixels_Hook(GLint x, GLint y, GLsizei width, GLsizei he
 	}
 
 	ori_glReadPixels(x, y, width, height, format, type, data);
+}
+
+// Hook XInputGetState to override it with SDL
+static DWORD WINAPI XInputGetState_Hook(DWORD dwUserIndex, XINPUT_STATE* pState)
+{
+	return ControllerHelper::PollController(pState);
 }
 
 // Hook of the function used by the "+moveup" command
@@ -877,7 +889,7 @@ static int __cdecl SetupOpenGLParameters_Hook()
 	VF_LANGUAGE_PTR = Cvar_Set("vf_language", StringHelper::IntegerToCString(lang), 0);
 	VF_REMASTERED_MODELS_PTR = Cvar_Set("vf_remastered_models", StringHelper::BoolToCString(!DisableRemasteredModels), 0);
 	VF_UI_CONSOLE_HUD_PTR = Cvar_Set("vf_ui_console_hud", StringHelper::BoolToCString(ConsolePortHUD), 0);
-	VF_UI_PS3_PTR = Cvar_Set("vf_ui_ps3", StringHelper::BoolToCString(UsePS3ControllerIcons), 0);
+	VF_UI_PS3_PTR = Cvar_Set("vf_ui_ps3", StringHelper::IntegerToCString(UsePS3ControllerIcons), 0);
 	VF_UI_LETTERBOX_PTR = Cvar_Set("vf_ui_letterbox", StringHelper::BoolToCString(!DisableLetterbox), 0);
 	VF_R_EXT_MAX_ANISOTROPY_PTR = Cvar_Set("vf_r_ext_max_anisotropy", StringHelper::FloatToCString(MaxAnisotropy), 0);
 	VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", isScreenRateFps ? "-1" : StringHelper::IntegerToCString(CustomFPSLimit), 0);
@@ -1639,6 +1651,8 @@ static DWORD __fastcall LoadUI_Hook(DWORD* thisPtr, int*, char* ui_path)
 		case 3: langPrefix = "ESN"; break;
 	}
 
+	static bool usePS3Icons = false;
+
 	// Check if a controller is connected
 	if (EnableControllerIcons && !isUsingControllerMenu)
 	{
@@ -1653,6 +1667,12 @@ static DWORD __fastcall LoadUI_Hook(DWORD* thisPtr, int*, char* ui_path)
 			// For Alice's 3d model in the settings
 			HookHelper::ApplyHook((void*)0x423740, &UpdateHeadOrientation_Hook, (LPVOID*)&UpdateHeadOrientation);
 			HookHelper::ApplyHook((void*)0x4C6050, &UpdateHeadOrientationFromMouse_Hook, (LPVOID*)&UpdateHeadOrientationFromMouse);
+
+			// Check if we use PS3 icons
+			if (UsePS3ControllerIcons == 2 || (UsePS3ControllerIcons == 0 && ControllerHelper::GetGamepadStyle() == ControllerHelper::GamepadStyle::PlayStation))
+			{
+				usePS3Icons = true;
+			}
 		}
 	}
 
@@ -1662,8 +1682,7 @@ static DWORD __fastcall LoadUI_Hook(DWORD* thisPtr, int*, char* ui_path)
 	// Use the proper title screen file
 	if (UseConsoleTitleScreen && strcmp(ui_path, "ui/title.urc") == 0)
 	{
-		ui_path = const_cast<char*>(StringHelper::ConstructPath(langPrefix,
-			isUsingControllerMenu ? "/title_console.urc" : "/title.urc"));
+		ui_path = const_cast<char*>(StringHelper::ConstructPath(langPrefix, isUsingControllerMenu ? "/title_console.urc" : "/title.urc"));
 		return LoadUI(thisPtr, ui_path);
 	}
 
@@ -1671,10 +1690,10 @@ static DWORD __fastcall LoadUI_Hook(DWORD* thisPtr, int*, char* ui_path)
 	if (isUsingControllerMenu)
 	{
 		static char prefixBuffer[16];
-		if (UsePS3ControllerIcons)
+		if (usePS3Icons)
 			snprintf(prefixBuffer, sizeof(prefixBuffer), "%s_ps3", langPrefix);
 		else
-			strncpy(prefixBuffer, langPrefix, sizeof(prefixBuffer));
+			strncpy_s(prefixBuffer, langPrefix, sizeof(prefixBuffer));
 
 		static const struct { const char* from; const char* to; } uiRemaps[] = 
 		{
@@ -2066,6 +2085,14 @@ static void ApplyDisableLegacyJoystickInitialization()
 	MemoryHelper::MakeNOP(0x4640CF, 5);
 }
 
+static void ApplyUseSDLControllerInput()
+{
+	if (!UseSDLControllerInput) return;
+
+	ControllerHelper::InitializeSDLGamepad();
+	HookHelper::ApplyHookAPI(L"XINPUT1_3", "XInputGetState", &XInputGetState_Hook, (LPVOID*)&ori_XInputGetState);
+}
+
 static void ApplyLanguageId()
 {
 	MemoryHelper::WriteMemory<int>(0x461A90, LanguageId);
@@ -2285,6 +2312,7 @@ static void Init()
 	ApplyPreventAlice2OnExit();
 	ApplyDisableWinsockInitialization();
 	ApplyDisableLegacyJoystickInitialization();
+	ApplyUseSDLControllerInput();
 	ApplyLanguageId();
 	ApplyUseConsoleTitleScreen();
 	ApplyUseOriginalIntroVideos();

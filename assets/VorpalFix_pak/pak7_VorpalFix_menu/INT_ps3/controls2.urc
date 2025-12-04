@@ -1723,8 +1723,9 @@ List
 	ordernumber		30
 
 	linkcvar		"vf_ui_ps3"
-	additem			0 "Xbox 360"
-	additem			1 "PlayStation 3"
+	additem			0 "Auto"
+	additem			1 "Xbox 360"
+	additem			2 "PlayStation 3"
 }
 
 // LETTERBOX
