@@ -176,6 +176,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\Controller.hpp" />
+    <ClInclude Include="..\include\ini.hpp" />
+    <ClInclude Include="..\include\MinHook.hpp" />
     <ClInclude Include="..\src\dllmain.hpp" />
     <ClInclude Include="..\src\helper.hpp" />
   </ItemGroup>

@@ -4,9 +4,6 @@
 
 #include <Windows.h>
 #include <ShellScalingAPI.h>
-#include <VersionHelpers.h>
-#include <shlobj.h>
-#include <Xinput.h>
 
 #include <string>
 #include <filesystem>
@@ -15,9 +12,9 @@
 
 #include "MinHook.hpp"
 #include "ini.hpp"
+#include "Controller.hpp"
 #include "dllmain.hpp"
 #include "helper.hpp"
-#include <SDL3/SDL.h>
 
 #pragma comment(lib, "libMinHook.x86.lib")
 #pragma comment(lib, "SDL3-static.lib")
@@ -46,6 +43,8 @@ const int CURRENT_WEAPON_ID = 0x12F3D60;
 const int MOUSE_YAW_BUFFER = 0x12F986C;
 const int MOUSE_PITCH_BUFFER = 0x12F9874;
 const int MOUSE_BUFFER_INDEX = 0x12F987C;
+const int CAMERA_YAW_ADDR = 0x12F9F28;
+const int CAMERA_PITCH_ADDR = 0x12F9F2C;
 const int IS_IN_MENU = 0x14EB498;
 const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
 const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
@@ -163,7 +162,8 @@ static const char* const pak5BrokenPaths[] =
 // Original Function Pointers
 // =============================
 int(__cdecl* JumpCommand)() = nullptr; // 0x4061D0
-void(__cdecl* UpdateCamera)(char* a1) = nullptr; // 0x4069A0
+void(__cdecl* CL_JoystickMove)(int) = nullptr; // 0x406870
+void(__cdecl* CL_MouseMove)(char*) = nullptr; // 0x4069A0
 int(__cdecl* Bind)(int, char*) = nullptr; // 0x407870
 int(__cdecl* HandleKeyboardInput)(int, int, int) = nullptr; // 0x4081B0
 void(__cdecl* CL_InitRef)() = nullptr; // 0x409FD0
@@ -242,6 +242,7 @@ bool PreventAlice2OnExit = false;
 bool DisableWinsockInitialization = false;
 bool DisableLegacyJoystickInitialization = false;
 bool UseSDLControllerInput = false;
+bool GyroEnabled = false;
 char* Alice2Path = nullptr;
 int LanguageId = 0;
 bool UseConsoleTitleScreen = false;
@@ -306,6 +307,7 @@ static void ReadConfig()
 	DisableWinsockInitialization = IniHelper::ReadInteger("General", "DisableWinsockInitialization", 1) == 1;
 	DisableLegacyJoystickInitialization = IniHelper::ReadInteger("General", "DisableLegacyJoystickInitialization", 1) == 1;
 	UseSDLControllerInput = IniHelper::ReadInteger("General", "UseSDLControllerInput", 1) == 1;
+	GyroEnabled = IniHelper::ReadInteger("General", "GyroEnabled", 0) == 1;
 	Alice2Path = IniHelper::ReadString("General", "Alice2Path", ALICE2_DEFAULT_PATH);
 	LanguageId = IniHelper::ReadInteger("General", "LanguageId", 0);
 	UseOriginalIntroVideos = IniHelper::ReadInteger("General", "UseOriginalIntroVideos", 0) == 1;
@@ -380,6 +382,9 @@ static void ReadConfig()
 
 		CustomSavePath = formattedSavePath;
 	}
+
+	// If we should get gyro data
+	ControllerHelper::SetGyroEnabled(GyroEnabled);
 }
 
 #pragma region
@@ -480,8 +485,42 @@ static int __cdecl JumpCommand_Hook()
 	return JumpCommand();
 }
 
+static void __cdecl CL_JoystickMove_Hook(int a1)
+{
+	CL_JoystickMove(a1);
+
+	// Add gyro to camera angles
+	if (ControllerHelper::IsGyroEnabled())
+	{
+		float gyroYaw, gyroPitch;
+		ControllerHelper::GetProcessedGyroDelta(gyroYaw, gyroPitch);
+
+		if (gyroYaw != 0.0f || gyroPitch != 0.0f)
+		{
+			float* cameraYaw = (float*)CAMERA_YAW_ADDR;
+			float* cameraPitch = (float*)CAMERA_PITCH_ADDR;
+
+			int ptr_sensitivity = MemoryHelper::ReadMemory<int>(0x148BC3C);
+			int ptr_cl_yawspeed = MemoryHelper::ReadMemory<int>(0x14EB3B8);
+			int ptr_cl_pitchspeed = MemoryHelper::ReadMemory<int>(0x14EB4D8);
+			int ptr_m_invert_pitch = MemoryHelper::ReadMemory<int>(0x14E8A5C);
+
+			float baseSens = MemoryHelper::ReadMemory<float>(ptr_sensitivity + 28) / 5.0f;
+			float pitchSens = MemoryHelper::ReadMemory<float>(ptr_cl_yawspeed + 28);
+			float yawSens = MemoryHelper::ReadMemory<float>(ptr_cl_pitchspeed + 28);
+			bool invertPitch = MemoryHelper::ReadMemory<int>(ptr_m_invert_pitch + 32) != 0;
+
+			const float gyroScale = 0.7f;
+			float pitchDir = invertPitch ? -1.0f : 1.0f;
+
+			*cameraYaw += gyroPitch * gyroScale * yawSens * baseSens * pitchDir;
+			*cameraPitch -= gyroYaw * gyroScale * pitchSens * baseSens;
+		}
+	}
+}
+
 // Override game's mouse input with accumulated raw input deltas
-static void __cdecl UpdateCamera_Hook(char* a1)
+static void __cdecl CL_MouseMove_Hook(char* a1)
 {
 	if (isRawInputRegistered)
 	{
@@ -498,7 +537,7 @@ static void __cdecl UpdateCamera_Hook(char* a1)
 		mouseYBuffer[bufferIndex] = frameRawY;
 	}
 
-	UpdateCamera(a1);
+	CL_MouseMove(a1);
 }
 
 // Hook of the function used by the "bind" command
@@ -680,23 +719,23 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 
 	if (EnhancedLOD)
 	{
-		if (StringHelper::stricmp(var_name, "r_lodbias"))
+		if (_stricmp(var_name, "r_lodbias") == 0)
 		{
 			value = "-2";
 		}
-		else if (StringHelper::stricmp(var_name, "r_lodCurveError"))
+		else if (_stricmp(var_name, "r_lodCurveError") == 0)
 		{
 			value = "10000";
 		}
 	}
 
-	if (ForceBorderlessFullscreen && StringHelper::stricmp(var_name, "r_fullscreen"))
+	if (ForceBorderlessFullscreen && _stricmp(var_name, "r_fullscreen") == 0)
 	{
 		value = "0";
 		flag = 0x10; // read-only
 	}
 
-	if (StringHelper::stricmp(var_name, "s_Alice2URL"))
+	if (_stricmp(var_name, "s_Alice2URL") == 0)
 	{
 		value = Alice2Path;
 
@@ -707,24 +746,24 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		}
 	}
 
-	if (CustomFPSLimit != 60 && StringHelper::stricmp(var_name, "com_maxfps"))
+	if (CustomFPSLimit != 60 && _stricmp(var_name, "com_maxfps") == 0)
 	{
 		value = StringHelper::IntegerToCString(CustomFPSLimit);
 	}
 
-	if (CameraSmoothingFactor != 0.8f && StringHelper::stricmp(var_name, "cg_camerascale"))
+	if (CameraSmoothingFactor != 0.8f && _stricmp(var_name, "cg_camerascale") == 0)
 	{
 		value = StringHelper::FloatToCString(1.0f - CameraSmoothingFactor, 5);
 	}
 
 	// Read settings from "base" folder, skip it
-	if (FixFullscreenSetting && !isDefaultFullscreenSettingSkipped && StringHelper::stricmp(var_name, "r_fullscreen"))
+	if (FixFullscreenSetting && !isDefaultFullscreenSettingSkipped && _stricmp(var_name, "r_fullscreen") == 0)
 	{
 		isDefaultFullscreenSettingSkipped = true;
 		return 0;
 	}
 
-	if (!skipAutoResolution && (FirstAutoResolution || AutoResolution || FixResolutionModeOOB || ForceBorderlessFullscreen) && StringHelper::stricmp(var_name, "r_mode"))
+	if (!skipAutoResolution && (FirstAutoResolution || AutoResolution || FixResolutionModeOOB || ForceBorderlessFullscreen) && _stricmp(var_name, "r_mode") == 0)
 	{
 		// Prevent re-entering this condition
 		skipAutoResolution = true;
@@ -966,14 +1005,14 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int*, char* group_name)
 static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
 {
 	// Check if using the original 'pak5_mod.pk3' with broken paths
-	if (!isUsingBrokenPak5 && FixPak5 && StringHelper::stricmp(Buffer, pak5BrokenPaths[0]))
+	if (!isUsingBrokenPak5 && FixPak5 && _stricmp(Buffer, pak5BrokenPaths[0]) == 0)
 	{
 		HookHelper::ApplyHook((void*)0x41A590, &FS_FOpenFileRead_Hook, (LPVOID*)&FS_FOpenFileRead);
 		isUsingBrokenPak5 = true;
 	}
 
 	// Check if 'pak7_VorpalFix_menu.pk3' is used
-	if (!isVFMenuUsed && StringHelper::stricmp(Buffer, "ui/control/vf_options.tga"))
+	if (!isVFMenuUsed && _stricmp(Buffer, "ui/control/vf_options.tga") == 0)
 	{
 		HookHelper::ApplyHook((void*)0x46E0D0, &SetupOpenGLParameters_Hook, (LPVOID*)&SetupOpenGLParameters);
 		HookHelper::ApplyHook((void*)0x4B9FD0, &UISetCvars_Hook, (LPVOID*)&UISetCvars);
@@ -981,7 +1020,7 @@ static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
 	}
 
 	// Disable this hook, nothing else to check
-	if (StringHelper::stricmp(Buffer, "opengl32"))
+	if (_stricmp(Buffer, "opengl32") == 0)
 	{
 		MH_DisableHook((void*)0x4256E0);
 	}
@@ -2058,7 +2097,7 @@ static void ApplyRawInput()
 {
 	if (!UseMouseRawInput) return;
 
-	HookHelper::ApplyHook((void*)0x4069A0, &UpdateCamera_Hook, (LPVOID*)&UpdateCamera);
+	HookHelper::ApplyHook((void*)0x4069A0, &CL_MouseMove_Hook, (LPVOID*)&CL_MouseMove);
 }
 
 static void ApplyPreventAlice2OnExit()
@@ -2091,6 +2130,13 @@ static void ApplyUseSDLControllerInput()
 
 	ControllerHelper::InitializeSDLGamepad();
 	HookHelper::ApplyHookAPI(L"XINPUT1_3", "XInputGetState", &XInputGetState_Hook, (LPVOID*)&ori_XInputGetState);
+}
+
+static void ApplyGyroEnabled()
+{
+	if (!GyroEnabled) return;
+
+	HookHelper::ApplyHook((void*)0x406870, &CL_JoystickMove_Hook, (LPVOID*)&CL_JoystickMove);
 }
 
 static void ApplyLanguageId()
@@ -2313,6 +2359,7 @@ static void Init()
 	ApplyDisableWinsockInitialization();
 	ApplyDisableLegacyJoystickInitialization();
 	ApplyUseSDLControllerInput();
+	ApplyGyroEnabled();
 	ApplyLanguageId();
 	ApplyUseConsoleTitleScreen();
 	ApplyUseOriginalIntroVideos();
@@ -2366,6 +2413,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		case DLL_PROCESS_DETACH:
 		{
 			MH_Uninitialize();
+			if (UseSDLControllerInput)
+			{
+				ControllerHelper::ShutdownSDLGamepad();
+			}
 			break;
 		}
 	}
