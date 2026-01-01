@@ -206,6 +206,14 @@ namespace ControllerHelper
 		}
 	}
 
+	inline void ResetControllerState()
+	{
+		s_capabilities = GamepadCapabilities();
+		s_gyroState = GyroState();
+		s_gyroProcessing = GyroProcessingState();
+		s_gyroOffset = GyroAutoOffset();
+	}
+
 	// ==========================================================
 	// Initialization / Shutdown
 	// ==========================================================
@@ -234,10 +242,7 @@ namespace ControllerHelper
 			s_pGamepad = nullptr;
 		}
 
-		s_capabilities = GamepadCapabilities();
-		s_gyroState = GyroState();
-		s_gyroProcessing = GyroProcessingState();
-		s_gyroOffset = GyroAutoOffset();
+		ResetControllerState();
 		s_frameTiming = FrameTiming();
 
 		SDL_Quit();
@@ -763,11 +768,9 @@ namespace ControllerHelper
 		{
 			SDL_CloseGamepad(s_pGamepad);
 			s_pGamepad = nullptr;
-			s_capabilities = GamepadCapabilities();
-			s_gyroState = GyroState();
-			s_gyroProcessing = GyroProcessingState();
-			s_gyroOffset = GyroAutoOffset();
+			ResetControllerState();
 
+			// Try to connect to another available gamepad
 			int count = 0;
 			SDL_JoystickID* gamepads = SDL_GetGamepads(&count);
 			if (gamepads)
@@ -781,6 +784,7 @@ namespace ControllerHelper
 						break;
 					}
 				}
+
 				SDL_free(gamepads);
 			}
 		}
@@ -805,6 +809,49 @@ namespace ControllerHelper
 	}
 
 	// ==========================================================
+	// Button Mapping
+	// ==========================================================
+
+	struct ButtonMapping
+	{
+		SDL_GamepadButton sdlButton;
+		WORD xinputMask;
+	};
+
+	// Buttons that don't change based on controller style
+	inline constexpr ButtonMapping s_commonButtons[] =
+	{
+		{ SDL_GAMEPAD_BUTTON_DPAD_UP,        XINPUT_GAMEPAD_DPAD_UP },
+		{ SDL_GAMEPAD_BUTTON_DPAD_DOWN,      XINPUT_GAMEPAD_DPAD_DOWN },
+		{ SDL_GAMEPAD_BUTTON_DPAD_LEFT,      XINPUT_GAMEPAD_DPAD_LEFT },
+		{ SDL_GAMEPAD_BUTTON_DPAD_RIGHT,     XINPUT_GAMEPAD_DPAD_RIGHT },
+		{ SDL_GAMEPAD_BUTTON_START,          XINPUT_GAMEPAD_START },
+		{ SDL_GAMEPAD_BUTTON_BACK,           XINPUT_GAMEPAD_BACK },
+		{ SDL_GAMEPAD_BUTTON_LEFT_STICK,     XINPUT_GAMEPAD_LEFT_THUMB },
+		{ SDL_GAMEPAD_BUTTON_RIGHT_STICK,    XINPUT_GAMEPAD_RIGHT_THUMB },
+		{ SDL_GAMEPAD_BUTTON_LEFT_SHOULDER,  XINPUT_GAMEPAD_LEFT_SHOULDER },
+		{ SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, XINPUT_GAMEPAD_RIGHT_SHOULDER },
+	};
+
+	// Face buttons for standard layout (Xbox/PlayStation)
+	inline constexpr ButtonMapping s_standardFaceButtons[] =
+	{
+		{ SDL_GAMEPAD_BUTTON_SOUTH, XINPUT_GAMEPAD_A },
+		{ SDL_GAMEPAD_BUTTON_EAST,  XINPUT_GAMEPAD_B },
+		{ SDL_GAMEPAD_BUTTON_WEST,  XINPUT_GAMEPAD_X },
+		{ SDL_GAMEPAD_BUTTON_NORTH, XINPUT_GAMEPAD_Y },
+	};
+
+	// Face buttons for Nintendo layout (A/B and X/Y swapped)
+	inline constexpr ButtonMapping s_nintendoFaceButtons[] =
+	{
+		{ SDL_GAMEPAD_BUTTON_EAST,  XINPUT_GAMEPAD_A },
+		{ SDL_GAMEPAD_BUTTON_SOUTH, XINPUT_GAMEPAD_B },
+		{ SDL_GAMEPAD_BUTTON_NORTH, XINPUT_GAMEPAD_X },
+		{ SDL_GAMEPAD_BUTTON_WEST,  XINPUT_GAMEPAD_Y },
+	};
+
+	// ==========================================================
 	// Main Poll Function
 	// ==========================================================
 
@@ -826,53 +873,17 @@ namespace ControllerHelper
 
 		WORD buttons = 0;
 
-		if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_DPAD_UP))
-			buttons |= XINPUT_GAMEPAD_DPAD_UP;
-		if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_DPAD_DOWN))
-			buttons |= XINPUT_GAMEPAD_DPAD_DOWN;
-		if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_DPAD_LEFT))
-			buttons |= XINPUT_GAMEPAD_DPAD_LEFT;
-		if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_DPAD_RIGHT))
-			buttons |= XINPUT_GAMEPAD_DPAD_RIGHT;
-
-		if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_START))
-			buttons |= XINPUT_GAMEPAD_START;
-		if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_BACK))
-			buttons |= XINPUT_GAMEPAD_BACK;
-
-		if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_LEFT_STICK))
-			buttons |= XINPUT_GAMEPAD_LEFT_THUMB;
-		if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_RIGHT_STICK))
-			buttons |= XINPUT_GAMEPAD_RIGHT_THUMB;
-
-		if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER))
-			buttons |= XINPUT_GAMEPAD_LEFT_SHOULDER;
-		if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER))
-			buttons |= XINPUT_GAMEPAD_RIGHT_SHOULDER;
-
-		bool swapButtons = (s_capabilities.style == GamepadStyle::Nintendo);
-
-		if (swapButtons)
+		for (const auto& mapping : s_commonButtons)
 		{
-			if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_EAST))
-				buttons |= XINPUT_GAMEPAD_A;
-			if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_SOUTH))
-				buttons |= XINPUT_GAMEPAD_B;
-			if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_NORTH))
-				buttons |= XINPUT_GAMEPAD_X;
-			if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_WEST))
-				buttons |= XINPUT_GAMEPAD_Y;
+			if (SDL_GetGamepadButton(s_pGamepad, mapping.sdlButton))
+				buttons |= mapping.xinputMask;
 		}
-		else
+
+		const auto& faceButtons = (s_capabilities.style == GamepadStyle::Nintendo) ? s_nintendoFaceButtons : s_standardFaceButtons;
+		for (const auto& mapping : faceButtons)
 		{
-			if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_SOUTH))
-				buttons |= XINPUT_GAMEPAD_A;
-			if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_EAST))
-				buttons |= XINPUT_GAMEPAD_B;
-			if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_WEST))
-				buttons |= XINPUT_GAMEPAD_X;
-			if (SDL_GetGamepadButton(s_pGamepad, SDL_GAMEPAD_BUTTON_NORTH))
-				buttons |= XINPUT_GAMEPAD_Y;
+			if (SDL_GetGamepadButton(s_pGamepad, mapping.sdlButton))
+				buttons |= mapping.xinputMask;
 		}
 
 		pState->Gamepad.wButtons = buttons;
