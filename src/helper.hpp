@@ -191,6 +191,7 @@ namespace GameHelper
 
 	bool DisableCursorScaling = false;
 
+	void(__cdecl* CenterView)() = (void(__cdecl*)())0x406510;
 	int(__cdecl* GetKeyId)(const char*) = (int(__cdecl*)(const char*))0x4076F0;
 	int(__cdecl* Bind)(int, const char*) = (int(__cdecl*)(int, const char*))0x407870;
 	int(__cdecl* VidRestart)() = (int(__cdecl*)())0x40B2F0;

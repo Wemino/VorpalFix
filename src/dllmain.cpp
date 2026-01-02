@@ -109,6 +109,7 @@ static size_t localizationFilesToLoad = 0;
 static std::vector<std::string> pk3LocFiles;
 
 // Additional commands
+static bool wasRightStickPressed = false;
 static bool isHoldingLeftStick = false;
 static int lastQuickSaveFrame = 0;
 static std::string lastWeaponIdUp;
@@ -510,7 +511,7 @@ static void __cdecl CL_JoystickMove_Hook(int a1)
 			float yawSens = MemoryHelper::ReadMemory<float>(ptr_cl_pitchspeed + 28);
 			bool invertPitch = MemoryHelper::ReadMemory<int>(ptr_m_invert_pitch + 32) != 0;
 
-			const float gyroScale = 0.7f;
+			const float gyroScale = 0.6f;
 			float pitchDir = invertPitch ? -1.0f : 1.0f;
 
 			*cameraYaw += gyroPitch * gyroScale * yawSens * baseSens * pitchDir;
@@ -1260,6 +1261,14 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 static MMRESULT __cdecl UpdateControllerState_Hook()
 {
 	int xinput_state = MemoryHelper::ReadMemory<int>(0x7CF880);
+
+	// Center view on right stick press
+	bool isRightStickPressed = (xinput_state & 0x80) != 0;
+	if (isRightStickPressed && !wasRightStickPressed)
+	{
+		GameHelper::CenterView();
+	}
+	wasRightStickPressed = isRightStickPressed;
 
 	// Save current weapon to d-pad
 	if (xinput_state & 0x40) // Left stick pressed
