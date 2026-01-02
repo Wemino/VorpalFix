@@ -10,7 +10,7 @@ A patch that addresses various technical issues and adds quality-of-life improve
 >
 > **Download**: [VorpalFix.zip](https://github.com/Wemino/VorpalFix/releases/latest/download/VorpalFix.zip)
 >
-> Extract the contents of the zip file into the game’s folder, in the same directory as the `alice.exe` file.
+> Extract the contents of the zip file into the game's folder, in the same directory as the `alice.exe` file.
 > 
 > <img width="180" src="assets/vf_install.png">
 > 
@@ -21,7 +21,7 @@ A patch that addresses various technical issues and adds quality-of-life improve
 
 ### Steam Deck/Linux Specific Instructions (Windows users can skip this)
 > [!WARNING]
-> To launch the game on Steam Deck or Linux, open the game’s properties in Steam and include `WINEDLLOVERRIDES="winmm.dll=n,b" %command%` in the launch options.
+> To launch the game on Steam Deck or Linux, open the game's properties in Steam and include `WINEDLLOVERRIDES="winmm.dll=n,b" %command%` in the launch options.
 
 # Features
 
@@ -55,8 +55,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
 <div align="center">
   <table>
     <tr>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/Menu_Vanilla.jpg"></td>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/Menu_VF.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/Menu_Vanilla.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/Menu_VF.jpg"></td>
     </tr>
     <tr>
       <td align="center">Vanilla</td>
@@ -71,8 +71,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
 <div align="center">
   <table>
     <tr>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/FMV_Vanilla.jpg"></td>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/FMV_VF.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/FMV_Vanilla.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/FMV_VF.jpg"></td>
     </tr>
     <tr>
       <td align="center">Vanilla</td>
@@ -87,8 +87,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
 <div align="center">
   <table style="width: 130%; max-width: 1200px;">
     <tr>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/HUD_Vanilla.jpg"></td>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/HUD_VF.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/HUD_Vanilla.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/HUD_VF.jpg"></td>
     </tr>
     <tr>
       <td align="center">Vanilla</td>
@@ -105,8 +105,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
 <div align="center">
   <table>
     <tr>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/pak5_Vanilla.jpg"></td>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/pak5_VF.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/pak5_Vanilla.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/pak5_VF.jpg"></td>
     </tr>
     <tr>
       <td align="center">Original Textures</td>
@@ -132,7 +132,7 @@ A patch that addresses various technical issues and adds quality-of-life improve
 <div align="center">
   <table>
     <tr>
-      <td width="100%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/VF_Menu.jpg"></td>
+      <td width="100%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/VF_Menu.jpg"></td>
     </tr>
     <tr>
       <td align="center">VorpalFix Settings Menu</td>
@@ -146,8 +146,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
 <div align="center">
   <table>
     <tr>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/pak5_On.jpg"></td>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/pak5_Off.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/pak5_On.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/pak5_Off.jpg"></td>
     </tr>
     <tr>
       <td align="center">2011 Textures (Remastered)</td>
@@ -172,7 +172,7 @@ A patch that addresses various technical issues and adds quality-of-life improve
   Redirect save files via `CustomSavePath` in `VorpalFix.ini`.
 
 - **Disable Winsock Initialization**  
-  Turn off legacy Quake 3 network startup.
+  Turn off legacy Quake 3 network startup.
 
 ---
 
@@ -190,13 +190,13 @@ A patch that addresses various technical issues and adds quality-of-life improve
   Improved precision by reading mouse movement directly, ignoring Windows sensitivity and acceleration.
  
 - **Console-Style HUD Layout**  
-  Position the HUD as in the Xbox 360/PS3 versions.
+  Position the HUD as in the Xbox 360/PS3 versions.
 
 <div align="center">
   <table>
     <tr>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/HUD_PC.jpg"></td>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/HUD_Console.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/HUD_PC.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/HUD_Console.jpg"></td>
     </tr>
     <tr>
       <td align="center">PC HUD Position</td>
@@ -211,8 +211,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
 <div align="center">
   <table>
     <tr>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/Letterbox_On.jpg"></td>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/Letterbox_Off.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/Letterbox_On.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/Letterbox_Off.jpg"></td>
     </tr>
     <tr>
       <td align="center">Vanilla</td>
@@ -227,8 +227,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
 <div align="center">
   <table>
     <tr>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/Controller_Xbox.jpg"></td>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/Controller_PS3.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/Controller_Xbox.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/Controller_PS3.jpg"></td>
     </tr>
     <tr>
       <td align="center">Xbox 360 Controller Icons</td>
@@ -250,8 +250,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
 <div align="center">
   <table>
     <tr>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/FOV_Vanilla.jpg"></td>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/FOV_VF.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/FOV_Vanilla.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/FOV_VF.jpg"></td>
     </tr>
     <tr>
       <td align="center">Vanilla</td>
@@ -266,12 +266,12 @@ A patch that addresses various technical issues and adds quality-of-life improve
 <div align="center">
   <table>
     <tr>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/AF_Off.png"></a></td>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/AF_On.png"></a></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/AF_Off.png"></a></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/AF_On.png"></a></td>
     </tr>
     <tr>
-      <td align="center"><a href="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_off.png">Vanilla</a></td>
-      <td align="center"><a href="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/anisotropic_on.png">Anisotropic Filtering (16x)</a></td>
+      <td align="center"><a href="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/anisotropic_off.png">Vanilla</a></td>
+      <td align="center"><a href="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/anisotropic_on.png">Anisotropic Filtering (16x)</a></td>
     </tr>
   </table>
 </div>
@@ -282,8 +282,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
 <div align="center">
   <table>
     <tr>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/LOD_Off.png"></td>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/refs/heads/main/assets/LOD_On.png"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/LOD_Off.png"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/LOD_On.png"></td>
     </tr>
     <tr>
       <td align="center">Vanilla</td>
@@ -299,6 +299,6 @@ A patch that addresses various technical issues and adds quality-of-life improve
 - [CRASHARKI](https://github.com/CRASHARKI) help with fixing and improving the menu.
 
 ## Licensing Exception
-This project is licensed under the GNU General Public License (GPL) version 3.0. **However, Electronic Arts (EA)** and **any third parties explicitly authorized by EA** (including but not limited to GOG, Steam, or other distribution platforms) are hereby granted an irrevocable, perpetual, and worldwide exemption from all GPL 3.0 requirements. This exemption allows EA and authorized third parties to use, modify, distribute, sublicense, or bundle this codebase in any form (including proprietary/closed-source derivative works) for the purpose of re-releasing, preserving, maintaining, or commercially exploiting *American McGee’s Alice*, without any obligation to disclose source code, copyleft restrictions, or other GPL 3.0 terms.
+This project is licensed under the GNU General Public License (GPL) version 3.0. **However, Electronic Arts (EA)** and **any third parties explicitly authorized by EA** (including but not limited to GOG, Steam, or other distribution platforms) are hereby granted an irrevocable, perpetual, and worldwide exemption from all GPL 3.0 requirements. This exemption allows EA and authorized third parties to use, modify, distribute, sublicense, or bundle this codebase in any form (including proprietary/closed-source derivative works) for the purpose of re-releasing, preserving, maintaining, or commercially exploiting *American McGee's Alice*, without any obligation to disclose source code, copyleft restrictions, or other GPL 3.0 terms.
 
 This exception applies solely to EA and its authorized third parties. All other users remain subject to the terms of the GPL 3.0.
