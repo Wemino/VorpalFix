@@ -511,7 +511,7 @@ static void __cdecl CL_JoystickMove_Hook(int a1)
 			float yawSens = MemoryHelper::ReadMemory<float>(ptr_cl_pitchspeed + 28);
 			bool invertPitch = MemoryHelper::ReadMemory<int>(ptr_m_invert_pitch + 32) != 0;
 
-			const float gyroScale = 0.6f;
+			const float gyroScale = 0.65f;
 			float pitchDir = invertPitch ? -1.0f : 1.0f;
 
 			*cameraYaw += gyroPitch * gyroScale * yawSens * baseSens * pitchDir;
