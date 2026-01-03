@@ -178,17 +178,51 @@ A patch that addresses various technical issues and adds quality-of-life improve
 
 ## Gameplay Options
 
+### SDL Controller Support
+
+Adds support for PlayStation and Nintendo Switch controllers via SDL3.
+
 - **Additional controller commands:**
   - Pressing the Left Stick while pressing any D-pad button will save the current weapon to that D-pad key.
   - Pressing the Right Stick + 'A' will execute a quick load.
   - Pressing the Right Stick + 'B' will execute a quick save.
+  - Pressing the Right Stick will center the view.
+
+- **Gyro Aiming**  
+  Enables motion-controlled aiming using the controller's gyroscope for supported controllers (DualShock 4, DualSense, Switch Pro Controller).
+
+  Enable with `GyroEnabled = 1` in `VorpalFix.ini`.
+
+  > **Note**: If you experience gyro drift, place the controller on a stable surface for a few seconds to calibrate.
+
+  > **Tip**: Press the Right Stick to quickly recenter your view while using gyro aiming.
+
+- **Controller Icon Support**  
+  Xbox or PlayStation 3 controller icons are displayed in the menus when a controller is detected at startup.
+
+<div align="center">
+  <table>
+    <tr>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/Controller_Xbox.jpg"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/Controller_PS3.jpg"></td>
+    </tr>
+    <tr>
+      <td align="center">Xbox 360 Controller Icons</td>
+      <td align="center">PlayStation 3 Controller Icons</td>
+    </tr>
+  </table>
+</div>
+
+### Mouse Input
 
 - **Camera Responsiveness**  
   Adjust camera smoothing via `CameraSmoothingFactor` for improved responsiveness with high-DPI mouse.
 
 - **Raw Mouse Input**  
   Improved precision by reading mouse movement directly, ignoring Windows sensitivity and acceleration.
- 
+
+### Display Options
+
 - **Console-Style HUD Layout**  
   Position the HUD as in the Xbox 360/PS3 versions.
 
@@ -217,22 +251,6 @@ A patch that addresses various technical issues and adds quality-of-life improve
     <tr>
       <td align="center">Vanilla</td>
       <td align="center">Letterbox Disabled</td>
-    </tr>
-  </table>
-</div>
- 
-- **Controller Icon Support**  
-  Xbox or PlayStation 3 controller icons are displayed in the menus when a controller is detected at startup.
-  
-<div align="center">
-  <table>
-    <tr>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/Controller_Xbox.jpg"></td>
-      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/Controller_PS3.jpg"></td>
-    </tr>
-    <tr>
-      <td align="center">Xbox 360 Controller Icons</td>
-      <td align="center">PlayStation 3 Controller Icons</td>
     </tr>
   </table>
 </div>
@@ -293,6 +311,7 @@ A patch that addresses various technical issues and adds quality-of-life improve
 </div>
 
 ## Credits
+- [SDL3](https://www.libsdl.org/) for improved controller support.
 - [MinHook](https://github.com/TsudaKageyu/minhook) for hooking.
 - [mINI](https://github.com/metayeti/mINI) for INI file handling.
 - [Leanny](https://github.com/Leanny) help with some algorithms.
