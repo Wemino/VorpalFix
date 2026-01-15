@@ -234,16 +234,19 @@ bool FixResolutionModeOOB = false;
 bool FixLocalizationFiles = false;
 int FixProton = 0;
 
-// General
+// Input
 bool CustomControllerBindings = false;
 bool UseMouseRawInput = false;
 float CameraSmoothingFactor = 0;
-bool LaunchWithoutAlice2 = false;
-bool PreventAlice2OnExit = false;
-bool DisableWinsockInitialization = false;
 bool DisableLegacyJoystickInitialization = false;
 bool UseSDLControllerInput = false;
 bool GyroEnabled = false;
+bool InvertABXYButtons = false;
+
+// General
+bool LaunchWithoutAlice2 = false;
+bool PreventAlice2OnExit = false;
+bool DisableWinsockInitialization = false;
 char* Alice2Path = nullptr;
 int LanguageId = 0;
 bool UseConsoleTitleScreen = false;
@@ -269,6 +272,7 @@ bool EnableAltF4Close = 0;
 // Graphics
 float MaxAnisotropy = 0;
 bool TrilinearTextureFiltering = false;
+bool ForceBatchedRendering = false;
 bool EnhancedLOD = false;
 int CustomFPSLimit = 0;
 bool EnableVsyncAsDefault = false;
@@ -299,16 +303,19 @@ static void ReadConfig()
 	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
 	FixProton = IniHelper::ReadInteger("Fixes", "FixProton", 1);
 
+	// Input
+	CustomControllerBindings = IniHelper::ReadInteger("Input", "CustomControllerBindings", 1) == 1;
+	UseMouseRawInput = IniHelper::ReadInteger("Input", "UseMouseRawInput", 1) == 1;
+	CameraSmoothingFactor = IniHelper::ReadFloat("Input", "CameraSmoothingFactor", 0.685);
+	DisableLegacyJoystickInitialization = IniHelper::ReadInteger("Input", "DisableLegacyJoystickInitialization", 1) == 1;
+	UseSDLControllerInput = IniHelper::ReadInteger("Input", "UseSDLControllerInput", 1) == 1;
+	GyroEnabled = IniHelper::ReadInteger("Input", "GyroEnabled", 0) == 1;
+	InvertABXYButtons = IniHelper::ReadInteger("Input", "InvertABXYButtons", 1) == 1;
+
 	// General
 	LaunchWithoutAlice2 = IniHelper::ReadInteger("General", "LaunchWithoutAlice2", 1) == 1;
-	UseMouseRawInput = IniHelper::ReadInteger("General", "UseMouseRawInput", 1) == 1;
-	CameraSmoothingFactor = IniHelper::ReadFloat("General", "CameraSmoothingFactor", 0.685);
-	CustomControllerBindings = IniHelper::ReadInteger("General", "CustomControllerBindings", 1) == 1;
 	PreventAlice2OnExit = IniHelper::ReadInteger("General", "PreventAlice2OnExit", 0) == 1;
 	DisableWinsockInitialization = IniHelper::ReadInteger("General", "DisableWinsockInitialization", 1) == 1;
-	DisableLegacyJoystickInitialization = IniHelper::ReadInteger("General", "DisableLegacyJoystickInitialization", 1) == 1;
-	UseSDLControllerInput = IniHelper::ReadInteger("General", "UseSDLControllerInput", 1) == 1;
-	GyroEnabled = IniHelper::ReadInteger("General", "GyroEnabled", 0) == 1;
 	Alice2Path = IniHelper::ReadString("General", "Alice2Path", ALICE2_DEFAULT_PATH);
 	LanguageId = IniHelper::ReadInteger("General", "LanguageId", 0);
 	UseOriginalIntroVideos = IniHelper::ReadInteger("General", "UseOriginalIntroVideos", 0) == 1;
@@ -335,6 +342,7 @@ static void ReadConfig()
 	// Graphics
 	MaxAnisotropy = IniHelper::ReadFloat("Graphics", "MaxAnisotropy", 16);
 	TrilinearTextureFiltering = IniHelper::ReadInteger("Graphics", "TrilinearTextureFiltering", 1) == 1;
+	ForceBatchedRendering = IniHelper::ReadInteger("Graphics", "ForceBatchedRendering", 1) == 1;
 	EnhancedLOD = IniHelper::ReadInteger("Graphics", "EnhancedLOD", 1) == 1;
 	CustomFPSLimit = IniHelper::ReadInteger("Graphics", "CustomFPSLimit", 85);
 	EnableVsyncAsDefault = IniHelper::ReadInteger("Graphics", "EnableVsyncAsDefault", 1) == 1;
@@ -393,23 +401,31 @@ static void ReadConfig()
 // Used to force borderless fullscreen when the main window is initialized
 static HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
 {
-	// Style of the main window
-	if (ForceBorderlessFullscreen && dwStyle == 0x10C80000)
+	bool shouldForceBorderless = ForceBorderlessFullscreen && dwStyle == 0x10C80000;
+
+	if (shouldForceBorderless)
 	{
-		auto [screenWidth, screenHeight] = SystemHelper::GetScreenResolution();
-
-		dwStyle = WS_VISIBLE + WS_POPUP;
-
-		nWidth = screenWidth;
-		nHeight = screenHeight;
-
-		X = 0;
-		Y = 0;
+		dwStyle |= (WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	}
 
 	HWND hwnd = ori_CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
 
-	if (hwnd && lpWindowName && strcmp(lpWindowName, "American McGee's Alice") == 0)
+	if (hwnd && shouldForceBorderless)
+	{
+		// Strip decorations but keep CLIP flags (no WS_POPUP)
+		LONG style = GetWindowLong(hwnd, GWL_STYLE);
+		style &= ~(WS_CAPTION | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
+		style |= (WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
+		SetWindowLong(hwnd, GWL_STYLE, style);
+
+		HMONITOR hMon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+		MONITORINFO mi = { sizeof(mi) };
+		GetMonitorInfo(hMon, &mi);
+
+		SetWindowPos(hwnd, HWND_NOTOPMOST, mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right - mi.rcMonitor.left, mi.rcMonitor.bottom - mi.rcMonitor.top, SWP_FRAMECHANGED | SWP_NOOWNERZORDER | SWP_NOZORDER);
+	}
+
+	if (UseMouseRawInput && hwnd && lpWindowName && strcmp(lpWindowName, "American McGee's Alice") == 0)
 	{
 		RAWINPUTDEVICE rid = {};
 		rid.usUsagePage = 0x01;
@@ -470,7 +486,7 @@ static void WINAPI glReadPixels_Hook(GLint x, GLint y, GLsizei width, GLsizei he
 // Hook XInputGetState to override it with SDL
 static DWORD WINAPI XInputGetState_Hook(DWORD dwUserIndex, XINPUT_STATE* pState)
 {
-	return ControllerHelper::PollController(pState);
+	return ControllerHelper::PollController(pState, InvertABXYButtons);
 }
 
 // Hook of the function used by the "+moveup" command
@@ -728,6 +744,11 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		{
 			value = "10000";
 		}
+	}
+
+	if (ForceBatchedRendering && _stricmp(var_name, "r_primitives") == 0)
+	{
+		value = "2";
 	}
 
 	if (ForceBorderlessFullscreen && _stricmp(var_name, "r_fullscreen") == 0)

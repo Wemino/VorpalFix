@@ -855,7 +855,7 @@ namespace ControllerHelper
 	// Main Poll Function
 	// ==========================================================
 
-	inline DWORD PollController(XINPUT_STATE* pState)
+	inline DWORD PollController(XINPUT_STATE* pState, bool InvertABXYButtons)
 	{
 		ProcessSDLEvents();
 		UpdateFrameTiming();
@@ -879,7 +879,7 @@ namespace ControllerHelper
 				buttons |= mapping.xinputMask;
 		}
 
-		const auto& faceButtons = (s_capabilities.style == GamepadStyle::Nintendo) ? s_nintendoFaceButtons : s_standardFaceButtons;
+		const auto& faceButtons = (s_capabilities.style == GamepadStyle::Nintendo && InvertABXYButtons) ? s_nintendoFaceButtons : s_standardFaceButtons;
 		for (const auto& mapping : faceButtons)
 		{
 			if (SDL_GetGamepadButton(s_pGamepad, mapping.sdlButton))
