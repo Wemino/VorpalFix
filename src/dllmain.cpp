@@ -2158,7 +2158,8 @@ static void ApplyUseSDLControllerInput()
 {
 	if (!UseSDLControllerInput) return;
 
-	ControllerHelper::InitializeSDLGamepad();
+	// Replace IN_StartupJoystick
+	MemoryHelper::MakeCALL(0x4640CF, reinterpret_cast<uintptr_t>(&ControllerHelper::InitializeSDLGamepad));
 	HookHelper::ApplyHookAPI(L"XINPUT1_3", "XInputGetState", &XInputGetState_Hook, (LPVOID*)&ori_XInputGetState);
 }
 

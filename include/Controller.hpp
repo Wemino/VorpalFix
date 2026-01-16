@@ -218,7 +218,7 @@ namespace ControllerHelper
 	// Initialization / Shutdown
 	// ==========================================================
 
-	inline bool InitializeSDLGamepad()
+	static bool InitializeSDLGamepad()
 	{
 		if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD))
 		{
