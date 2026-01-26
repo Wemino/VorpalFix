@@ -241,6 +241,7 @@ float CameraSmoothingFactor = 0;
 bool DisableLegacyJoystickInitialization = false;
 bool UseSDLControllerInput = false;
 bool GyroEnabled = false;
+bool GyroCalibrationPersistence = false;
 bool InvertABXYButtons = false;
 
 // General
@@ -310,6 +311,7 @@ static void ReadConfig()
 	DisableLegacyJoystickInitialization = IniHelper::ReadInteger("Input", "DisableLegacyJoystickInitialization", 1) == 1;
 	UseSDLControllerInput = IniHelper::ReadInteger("Input", "UseSDLControllerInput", 1) == 1;
 	GyroEnabled = IniHelper::ReadInteger("Input", "GyroEnabled", 0) == 1;
+	GyroCalibrationPersistence = IniHelper::ReadInteger("Input", "GyroCalibrationPersistence", 1) == 1;
 	InvertABXYButtons = IniHelper::ReadInteger("Input", "InvertABXYButtons", 1) == 1;
 
 	// General
@@ -394,6 +396,7 @@ static void ReadConfig()
 
 	// If we should get gyro data
 	ControllerHelper::SetGyroEnabled(GyroEnabled);
+	ControllerHelper::SetGyroCalibrationPersistence(GyroCalibrationPersistence);
 }
 
 #pragma region

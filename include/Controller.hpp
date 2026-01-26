@@ -111,6 +111,90 @@ namespace ControllerHelper
 
 	inline FrameTiming s_frameTiming;
 
+	inline bool s_gyroCalibrationPersistenceEnabled = true;
+	inline bool s_gyroCalibrationSavedThisSession = false;
+	inline std::string s_currentControllerSerial;
+
+	// ==========================================================
+	// Gyro Calibration Persistence
+	// ==========================================================
+
+	static std::string GetGyroCalibrationFolder()
+	{
+		return "GyroCalibration\\";
+	}
+
+	static std::string GetGyroCalibrationFilePath(const char* serial)
+	{
+		if (!serial || serial[0] == '\0')
+			return "";
+
+		std::string sanitized;
+		for (const char* p = serial; *p; p++)
+		{
+			char c = *p;
+			if (isalnum(static_cast<unsigned char>(c)) || c == '-' || c == '_')
+				sanitized += c;
+		}
+
+		if (sanitized.empty())
+			return "";
+
+		return GetGyroCalibrationFolder() + sanitized + ".gyro";
+	}
+
+	static void SaveGyroCalibration()
+	{
+		if (s_currentControllerSerial.empty())
+			return;
+
+		std::string folderPath = GetGyroCalibrationFolder();
+		CreateDirectoryA(folderPath.c_str(), nullptr);
+
+		std::string filePath = GetGyroCalibrationFilePath(s_currentControllerSerial.c_str());
+		if (filePath.empty())
+			return;
+
+		std::ofstream file(filePath, std::ios::binary);
+		if (!file)
+			return;
+
+		file.write(reinterpret_cast<const char*>(&s_gyroOffset.offsetX), sizeof(float));
+		file.write(reinterpret_cast<const char*>(&s_gyroOffset.offsetY), sizeof(float));
+		file.write(reinterpret_cast<const char*>(&s_gyroOffset.offsetZ), sizeof(float));
+
+		s_gyroCalibrationSavedThisSession = true;
+	}
+
+	static bool LoadGyroCalibration(const char* serial)
+	{
+		if (!serial || serial[0] == '\0')
+			return false;
+
+		std::string filePath = GetGyroCalibrationFilePath(serial);
+		if (filePath.empty())
+			return false;
+
+		std::ifstream file(filePath, std::ios::binary);
+		if (!file)
+			return false;
+
+		float offsetX = 0.0, offsetY = 0.0, offsetZ = 0.0;
+		file.read(reinterpret_cast<char*>(&offsetX), sizeof(float));
+		file.read(reinterpret_cast<char*>(&offsetY), sizeof(float));
+		file.read(reinterpret_cast<char*>(&offsetZ), sizeof(float));
+
+		if (!file)
+			return false;
+
+		s_gyroOffset.offsetX = offsetX;
+		s_gyroOffset.offsetY = offsetY;
+		s_gyroOffset.offsetZ = offsetZ;
+		s_gyroOffset.hasInitialCalibration = true;
+
+		return true;
+	}
+
 	// ==========================================================
 	// Frame Timing
 	// ==========================================================
@@ -198,6 +282,23 @@ namespace ControllerHelper
 		if (s_capabilities.hasGyro)
 		{
 			SDL_SetGamepadSensorEnabled(pGamepad, SDL_SENSOR_GYRO, true);
+
+			const char* serial = SDL_GetGamepadSerial(pGamepad);
+			if (serial && serial[0] != '\0')
+			{
+				s_currentControllerSerial = serial;
+
+				if (s_gyroCalibrationPersistenceEnabled)
+				{
+					LoadGyroCalibration(serial);
+				}
+			}
+			else
+			{
+				s_currentControllerSerial.clear();
+			}
+
+			s_gyroCalibrationSavedThisSession = false;
 		}
 
 		if (s_capabilities.hasAccel)
@@ -212,6 +313,8 @@ namespace ControllerHelper
 		s_gyroState = GyroState();
 		s_gyroProcessing = GyroProcessingState();
 		s_gyroOffset = GyroAutoOffset();
+		s_gyroCalibrationSavedThisSession = false;
+		s_currentControllerSerial.clear();
 	}
 
 	// ==========================================================
@@ -299,6 +402,11 @@ namespace ControllerHelper
 	inline void SetGyroSmoothing(float smoothing)
 	{
 		s_gyroConfig.smoothing = std::clamp(smoothing, 0.001f, 0.1f);
+	}
+
+	void SetGyroCalibrationPersistence(bool enabled)
+	{
+		s_gyroCalibrationPersistenceEnabled = enabled;
 	}
 
 	inline void ResetGyroState()
@@ -678,6 +786,11 @@ namespace ControllerHelper
 				s_gyroOffset.offsetX += fmaxf(-maxStep, fminf(maxStep, diffX));
 				s_gyroOffset.offsetY += fmaxf(-maxStep, fminf(maxStep, diffY));
 				s_gyroOffset.offsetZ += fmaxf(-maxStep, fminf(maxStep, diffZ));
+			}
+
+			if (s_gyroCalibrationPersistenceEnabled && !s_gyroCalibrationSavedThisSession && !s_currentControllerSerial.empty())
+			{
+				SaveGyroCalibration();
 			}
 
 			s_gyroOffset.stillnessTimer = requiredTime * 0.5f;
