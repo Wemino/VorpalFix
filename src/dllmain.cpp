@@ -37,6 +37,7 @@ const int DISPLAY_MODE_IDX = 0x7D40C4;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
 const int IS_MENU_LOCKED = 0x11C2770;
 const int BLINK_TIMER = 0x11C35EC;
+const int SYS_EVENT_TIME = 0x11C50AC;
 const int UI_WAIT_TIMER = 0x12EF948;
 const int IS_CINEMATIC = 0x12F3CE8;
 const int CURRENT_WEAPON_ID = 0x12F3D60;
@@ -112,10 +113,7 @@ static std::vector<std::string> pk3LocFiles;
 static bool wasRightStickPressed = false;
 static bool isHoldingLeftStick = false;
 static int lastQuickSaveFrame = 0;
-static std::string lastWeaponIdUp;
-static std::string lastWeaponIdDown;
-static std::string lastWeaponIdLeft;
-static std::string lastWeaponIdRight;
+static int lastWeaponIdPerDpad[4] = { -1, -1, -1, -1 };
 static std::unordered_map<int, std::string> weaponCommandCache;
 static const char* weaponCommands[] =
 {
@@ -167,7 +165,6 @@ void(__cdecl* CL_JoystickMove)(int) = nullptr; // 0x406870
 void(__cdecl* CL_MouseMove)(char*) = nullptr; // 0x4069A0
 int(__cdecl* Bind)(int, char*) = nullptr; // 0x407870
 int(__cdecl* HandleKeyboardInput)(int, int, int) = nullptr; // 0x4081B0
-void(__cdecl* CL_InitRef)() = nullptr; // 0x409FD0
 void(__cdecl* CL_ParsePacketEntities)(int, int, int) = nullptr; // 0x40C1B0
 int(__cdecl* CallCmd)(const char*, char) = nullptr; // 0x4158F0
 char* (__cdecl* GetSavePath)() = nullptr; // 0x417400
@@ -232,11 +229,11 @@ bool FixMenuTransitionTiming = false;
 bool FixCutsceneJumpSound = false;
 bool FixResolutionModeOOB = false;
 bool FixLocalizationFiles = false;
-int FixProton = 0;
 
 // Input
 bool CustomControllerBindings = false;
 bool UseMouseRawInput = false;
+bool EnableMouse45 = false;
 float CameraSmoothingFactor = 0;
 bool DisableLegacyJoystickInitialization = false;
 bool UseSDLControllerInput = false;
@@ -302,12 +299,12 @@ static void ReadConfig()
 	FixResolutionModeOOB = IniHelper::ReadInteger("Fixes", "FixResolutionModeOOB", 1) == 1;
 	FixCutsceneJumpSound = IniHelper::ReadInteger("Fixes", "FixCutsceneJumpSound", 1) == 1;
 	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
-	FixProton = IniHelper::ReadInteger("Fixes", "FixProton", 1);
 
 	// Input
 	CustomControllerBindings = IniHelper::ReadInteger("Input", "CustomControllerBindings", 1) == 1;
 	UseMouseRawInput = IniHelper::ReadInteger("Input", "UseMouseRawInput", 1) == 1;
-	CameraSmoothingFactor = IniHelper::ReadFloat("Input", "CameraSmoothingFactor", 0.685);
+	EnableMouse45 = IniHelper::ReadInteger("Input", "EnableMouse45", 1) == 1;
+	CameraSmoothingFactor = IniHelper::ReadFloat("Input", "CameraSmoothingFactor", 0.685f);
 	DisableLegacyJoystickInitialization = IniHelper::ReadInteger("Input", "DisableLegacyJoystickInitialization", 1) == 1;
 	UseSDLControllerInput = IniHelper::ReadInteger("Input", "UseSDLControllerInput", 1) == 1;
 	GyroEnabled = IniHelper::ReadInteger("Input", "GyroEnabled", 0) == 1;
@@ -602,18 +599,6 @@ static int __cdecl HandleKeyboardInput_Hook(int keyId, int a2, int a3)
 	return HandleKeyboardInput(keyId, a2, a3);
 }
 
-// Restart the engine to show the menu correctly on Linux
-static void __cdecl CL_InitRef_Hook()
-{
-	// Only needed once, make sure that we are not stuck in a loop
-	MH_DisableHook((void*)0x409FD0);
-
-	CL_InitRef();
-
-	// Workaround for Linux, must be called after CL_InitRef()
-	GameHelper::VidRestart();
-}
-
 // Process the snapshot returned from the server (fgamex86.dll) and modify specific properties
 static void __cdecl CL_ParsePacketEntities_Hook(int msg, int oldframe, int newframe)
 {
@@ -762,10 +747,17 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 
 	if (_stricmp(var_name, "s_Alice2URL") == 0)
 	{
-		value = Alice2Path;
+		if (Alice2Path && Alice2Path[0] != '\0')
+		{
+			value = Alice2Path;
 
-		// File doesn't exist, don't try to launch it
-		if (!std::filesystem::exists(value))
+			// File doesn't exist, don't try to launch it
+			if (!std::filesystem::exists(value))
+			{
+				MemoryHelper::WriteMemory<int>(0x559A08, 0, false);
+			}
+		}
+		else
 		{
 			MemoryHelper::WriteMemory<int>(0x559A08, 0, false);
 		}
@@ -841,63 +833,67 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	return Cvar_Set(var_name, value, flag);
 }
 
-// Hook to redirect texture file reads to correct paths in 'pak5_mod.pk3'
 static int __cdecl FS_FOpenFileRead_Hook(char* Source, int* a2, int a3, int a4)
 {
 	// Fast check for "s/ch" substring in the file path
-	if (*reinterpret_cast<uint32_t*>(Source + 5) != 0x68632F73)
+	if (memcmp(Source + 5, "s/ch", 4) != 0)
 	{
 		return FS_FOpenFileRead(Source, a2, a3, a4);
 	}
 
-	const char* name = Source + 18;
-	const char* redirect = nullptr;
+    const char* name = Source + 18;
+    const char* redirect = nullptr;
 
-	switch (name[0]) 
-	{
-		case 'c':
-			if (name[1] == 'h' && memcmp(name, "cheshire/skin0", 14) == 0) 
-			{
-				if (name[14] == '1')
-					redirect = pak5BrokenPaths[0];
-				else if (name[14] == '2')
-					redirect = pak5BrokenPaths[name[15] == 'g' ? 2 : 1];
-			}
-			else if (name[1] == 'a' && memcmp(name, "cardguard_", 10) == 0) 
-			{
-				switch (name[10]) 
-				{
-					case 'c': // club
-						if (memcmp(name + 14, "/skin01.ftx", 11) == 0)
-							redirect = pak5BrokenPaths[3];
-						break;
-					case 'd': // diamond
-						if (memcmp(name + 17, "/skin02.ftx", 11) == 0)
-							redirect = pak5BrokenPaths[4];
-						break;
-					case 'h': // heart
-						if (memcmp(name + 15, "/skin04.ftx", 11) == 0)
-							redirect = pak5BrokenPaths[5];
-						break;
-					case 's': // spade
-						if (memcmp(name + 15, "/skin03.ftx", 11) == 0)
-							redirect = pak5BrokenPaths[6];
-						break;
-				}
-			}
-			break;
-		case 'm':
-			if (memcmp(name, "mock_turtle/m", 13) == 0) 
-			{
-				if (name[13] == 's')
-					redirect = pak5BrokenPaths[7];
-				else if (name[13] == 't')
-					redirect = pak5BrokenPaths[8];
-			}
-			break;
-	}
+    switch (name[0])
+    {
+        case 'c':
+            if (name[1] == 'h' && memcmp(name, "cheshire/skin0", 14) == 0)
+            {
+                if (name[14] == '1' && memcmp(name + 15, ".ftx", 5) == 0)
+                    redirect = pak5BrokenPaths[0];
+                else if (name[14] == '2')
+                {
+                    if (memcmp(name + 15, ".ftx", 5) == 0)
+                        redirect = pak5BrokenPaths[1];
+                    else if (memcmp(name + 15, "g.ftx", 6) == 0)
+                        redirect = pak5BrokenPaths[2];
+                }
+            }
+            else if (name[1] == 'a' && memcmp(name, "cardguard_", 10) == 0)
+            {
+                switch (name[10])
+                {
+                    case 'c':
+                        if (memcmp(name + 11, "lub/skin01.ftx", 15) == 0)
+                            redirect = pak5BrokenPaths[3];
+                        break;
+                    case 'd':
+                        if (memcmp(name + 11, "iamond/skin02.ftx", 18) == 0)
+                            redirect = pak5BrokenPaths[4];
+                        break;
+                    case 'h':
+                        if (memcmp(name + 11, "eart/skin04.ftx", 16) == 0)
+                            redirect = pak5BrokenPaths[5];
+                        break;
+                    case 's':
+                        if (memcmp(name + 11, "pade/skin03.ftx", 16) == 0)
+                            redirect = pak5BrokenPaths[6];
+                        break;
+                }
+            }
+            break;
+        case 'm':
+            if (memcmp(name, "mock_turtle/m", 13) == 0)
+            {
+                if (memcmp(name + 13, "shell.ftx", 10) == 0)
+                    redirect = pak5BrokenPaths[7];
+                else if (memcmp(name + 13, "turt.ftx", 9) == 0)
+                    redirect = pak5BrokenPaths[8];
+            }
+            break;
+    }
 
-	return FS_FOpenFileRead(redirect ? (char*)redirect : Source, a2, a3, a4);
+    return FS_FOpenFileRead(redirect ? (char*)redirect : Source, a2, a3, a4);
 }
 
 // Reimplementation of 'sub_41D1E0' to fix free space reporting and ensure accurate target disk
@@ -1056,11 +1052,23 @@ static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
 // Function used to open and load the pk3 files
 static FILE __cdecl FS_LoadZipFile_Hook(const char* FileName)
 {
-	// Skip pak5_mod.pk3 and disable the hook
-	if (strstr(FileName, "\pak5_mod.pk3\x00"))
+	if (FileName)
 	{
-		FileName = "\x00";
-		MH_DisableHook((void*)0x43E030);
+		constexpr const char target[] = "pak5_mod.pk3";
+		constexpr size_t targetLen = sizeof(target) - 1;
+
+		size_t len = strlen(FileName);
+		if (len >= targetLen)
+		{
+			const char* suffix = FileName + len - targetLen;
+			bool isWholeName = (suffix == FileName) || suffix[-1] == '\\' || suffix[-1] == '/';
+
+			if (isWholeName && strcmp(suffix, target) == 0)
+			{
+				FileName = "";
+				MH_DisableHook((void*)0x43E030);
+			}
+		}
 	}
 
 	return FS_LoadZipFile(FileName);
@@ -1295,34 +1303,41 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 	wasRightStickPressed = isRightStickPressed;
 
 	// Save current weapon to d-pad
-	if (xinput_state & 0x40) // Left stick pressed
+	if (xinput_state & XINPUT_GAMEPAD_LEFT_THUMB)
 	{
 		isHoldingLeftStick = true;
 
-		static const struct { int mask; int dpadId; const char* joyKey; std::string* lastWeapon; } dpadMap[] = 
+		static const struct { int mask; const char* joyKey; int slot; } dpadMap[] =
 		{
-			{ 0x01, 1, "JOY5", &lastWeaponIdUp },
-			{ 0x02, 2, "JOY7", &lastWeaponIdDown },
-			{ 0x04, 3, "JOY8", &lastWeaponIdLeft },
-			{ 0x08, 4, "JOY6", &lastWeaponIdRight },
+			{ XINPUT_GAMEPAD_DPAD_UP,    "JOY5", 0 },
+			{ XINPUT_GAMEPAD_DPAD_DOWN,  "JOY7", 1 },
+			{ XINPUT_GAMEPAD_DPAD_LEFT,  "JOY8", 2 },
+			{ XINPUT_GAMEPAD_DPAD_RIGHT, "JOY6", 3 },
 		};
 
 		int currentWeaponId = MemoryHelper::ReadMemory<int>(CURRENT_WEAPON_ID);
 		if (currentWeaponId != -1)
 		{
+			const int dpadBits = xinput_state & 0x0F;
+
 			for (const auto& d : dpadMap)
 			{
-				if ((xinput_state & 0x0F) == d.mask)
+				if (dpadBits != d.mask) continue;
+
+				if (lastWeaponIdPerDpad[d.slot] != currentWeaponId)
 				{
-					char* weaponName = GameHelper::GetWeaponName(currentWeaponId);
-					if (d.lastWeapon->empty() || *d.lastWeapon != weaponName)
+					auto [it, inserted] = weaponCommandCache.try_emplace(currentWeaponId);
+					if (inserted)
 					{
-						weaponCommandCache[d.dpadId] = std::string("use ") + weaponName;
-						*d.lastWeapon = weaponName;
-						Bind(GameHelper::GetKeyId(d.joyKey), const_cast<char*>(weaponCommandCache[d.dpadId].c_str()));
+						it->second = "use ";
+						it->second += GameHelper::GetWeaponName(currentWeaponId);
 					}
-					break;
+
+					Bind(GameHelper::GetKeyId(d.joyKey), const_cast<char*>(it->second.c_str()));
+					lastWeaponIdPerDpad[d.slot] = currentWeaponId;
 				}
+
+				break;
 			}
 		}
 	}
@@ -1331,8 +1346,11 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 		isHoldingLeftStick = false;
 	}
 
-	// Right Stick Pressed + A
-	if ((xinput_state & 0x1080) == 0x1080)
+	const WORD QUICK_LOAD_COMBO = XINPUT_GAMEPAD_RIGHT_THUMB | XINPUT_GAMEPAD_A;
+	const WORD QUICK_SAVE_COMBO = XINPUT_GAMEPAD_RIGHT_THUMB | XINPUT_GAMEPAD_B;
+
+	// Right Stick Pressed + A (Quick Load)
+	if ((xinput_state & QUICK_LOAD_COMBO) == QUICK_LOAD_COMBO)
 	{
 		static auto lastQuickActionTime = std::chrono::steady_clock::now() - std::chrono::milliseconds(1000);
 		auto now = std::chrono::steady_clock::now();
@@ -1344,8 +1362,8 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 		}
 	}
 
-	// Right Stick Pressed + B
-	if ((xinput_state & 0x2080) == 0x2080)
+	// Right Stick Pressed + B (Quick Save)
+	if ((xinput_state & QUICK_SAVE_COMBO) == QUICK_SAVE_COMBO)
 	{
 		static auto lastQuickActionTime = std::chrono::steady_clock::now() - std::chrono::milliseconds(1000);
 		auto now = std::chrono::steady_clock::now();
@@ -1360,7 +1378,6 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 	return UpdateControllerState();
 }
 
-// Force the game to exit if Alt+F4 is pressed
 static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, int wParam, LPARAM lParam)
 {
 	// Alt+F4
@@ -1372,7 +1389,6 @@ static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, int wParam, LPARA
 	// Raw Input
 	if (isRawInputRegistered && Msg == WM_INPUT)
 	{
-		// Don't accumulate while in menu or console is active
 		if (!MemoryHelper::ReadMemory<int>(IS_IN_MENU))
 		{
 			UINT dwSize = sizeof(RAWINPUT);
@@ -1388,6 +1404,24 @@ static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, int wParam, LPARA
 				}
 			}
 		}
+	}
+
+	// Mouse4/Mouse5
+	if (EnableMouse45 && Msg == WM_XBUTTONDOWN || Msg == WM_XBUTTONUP)
+	{
+		int key = 0;
+		switch (HIWORD(wParam))
+		{
+			case XBUTTON1: key = 181; break; // Mouse 4
+			case XBUTTON2: key = 182; break; // Mouse 5
+		}
+
+		if (key)
+		{
+			GameHelper::Sys_QueEvent(MemoryHelper::ReadMemory<int>(SYS_EVENT_TIME), 1, key, Msg == WM_XBUTTONDOWN ? 1 : 0, 0, nullptr);
+		}
+
+		return TRUE;
 	}
 
 	return lpfnWndProc_MSG(hWnd, Msg, wParam, lParam);
@@ -1713,75 +1747,68 @@ static DWORD __fastcall UpdateAndConfigureRenderContext_Hook(int thisPtr, int*)
 // Load the menu files from 'pak6_VorpalFix.pk3' when required
 static DWORD __fastcall LoadUI_Hook(DWORD* thisPtr, int*, char* ui_path)
 {
-	int lang = MemoryHelper::ReadMemory<int>(CURRENT_LANG);
+	// Check if a controller is connected
+	if (EnableControllerIcons && !isUsingControllerMenu && GameHelper::IsControllerConnected() == 1)
+	{
+		isUsingControllerMenu = true;
+
+		// Disable mouse navigation
+		MemoryHelper::MakeNOP(0x40675E, 2);
+		MemoryHelper::MakeNOP(0x40676E, 2);
+
+		// For Alice's 3d model in the settings
+		HookHelper::ApplyHook((void*)0x423740, &UpdateHeadOrientation_Hook, (LPVOID*)&UpdateHeadOrientation);
+		HookHelper::ApplyHook((void*)0x4C6050, &UpdateHeadOrientationFromMouse_Hook, (LPVOID*)&UpdateHeadOrientationFromMouse);
+	}
+
+	if (ui_path == nullptr)
+	{
+		return LoadUI(thisPtr, ui_path);
+	}
 
 	const char* langPrefix = "INT";
-	switch (lang)
+	switch (MemoryHelper::ReadMemory<int>(CURRENT_LANG))
 	{
 		case 1: langPrefix = "DEU"; break;
 		case 2: langPrefix = "FRA"; break;
 		case 3: langPrefix = "ESN"; break;
 	}
 
-	static bool usePS3Icons = false;
-
-	// Check if a controller is connected
-	if (EnableControllerIcons && !isUsingControllerMenu)
-	{
-		if (GameHelper::IsControllerConnected() == 1)
-		{
-			isUsingControllerMenu = true;
-
-			// Disable mouse navigation
-			MemoryHelper::MakeNOP(0x40675E, 2);
-			MemoryHelper::MakeNOP(0x40676E, 2);
-
-			// For Alice's 3d model in the settings
-			HookHelper::ApplyHook((void*)0x423740, &UpdateHeadOrientation_Hook, (LPVOID*)&UpdateHeadOrientation);
-			HookHelper::ApplyHook((void*)0x4C6050, &UpdateHeadOrientationFromMouse_Hook, (LPVOID*)&UpdateHeadOrientationFromMouse);
-
-			// Check if we use PS3 icons
-			if (UsePS3ControllerIcons == 2 || (UsePS3ControllerIcons == 0 && ControllerHelper::GetGamepadStyle() == ControllerHelper::GamepadStyle::PlayStation))
-			{
-				usePS3Icons = true;
-			}
-		}
-	}
-
-	if (ui_path == nullptr)
-		return LoadUI(thisPtr, ui_path);
+	static char pathBuffer[64];
 
 	// Use the proper title screen file
 	if (UseConsoleTitleScreen && strcmp(ui_path, "ui/title.urc") == 0)
 	{
-		ui_path = const_cast<char*>(StringHelper::ConstructPath(langPrefix, isUsingControllerMenu ? "/title_console.urc" : "/title.urc"));
-		return LoadUI(thisPtr, ui_path);
+		snprintf(pathBuffer, sizeof(pathBuffer), "%s%s", langPrefix, isUsingControllerMenu ? "/title_console.urc" : "/title.urc");
+		return LoadUI(thisPtr, pathBuffer);
 	}
 
 	// Override using the menus located inside 'pak6_VorpalFix.pk3'
 	if (isUsingControllerMenu)
 	{
-		static char prefixBuffer[16];
-		if (usePS3Icons)
-			snprintf(prefixBuffer, sizeof(prefixBuffer), "%s_ps3", langPrefix);
-		else
-			strncpy_s(prefixBuffer, langPrefix, sizeof(prefixBuffer));
+		// Check if we use PS3 icons
+		bool usePS3Icons = (UsePS3ControllerIcons == 2) || (UsePS3ControllerIcons == 0 && ControllerHelper::GetGamepadStyle() == ControllerHelper::GamepadStyle::PlayStation);
 
-		static const struct { const char* from; const char* to; } uiRemaps[] = 
+		static const struct { const char* from; const char* to; } uiRemaps[] =
 		{
 			{ "ui/controls.urc", "/controls2.urc" },
-			{ "ui/credits.urc",  "/credits2.urc" },
+			{ "ui/credits.urc",  "/credits2.urc"  },
 			{ "ui/loadsave.urc", "/loadsave2.urc" },
-			{ "ui/main.urc",     "/main2.urc" },
-			{ "ui/newgame.urc",  "/newgame2.urc" },
-			{ "ui/quit.urc",     "/quit2.urc" },
+			{ "ui/main.urc",     "/main2.urc"     },
+			{ "ui/newgame.urc",  "/newgame2.urc"  },
+			{ "ui/quit.urc",     "/quit2.urc"     },
 		};
 
 		for (const auto& remap : uiRemaps)
 		{
 			if (strcmp(ui_path, remap.from) == 0)
 			{
-				ui_path = const_cast<char*>(StringHelper::ConstructPath(prefixBuffer, remap.to));
+				if (usePS3Icons)
+					snprintf(pathBuffer, sizeof(pathBuffer), "%s_ps3%s", langPrefix, remap.to);
+				else
+					snprintf(pathBuffer, sizeof(pathBuffer), "%s%s", langPrefix, remap.to);
+
+				ui_path = pathBuffer;
 				break;
 			}
 		}
@@ -2099,17 +2126,6 @@ static void ApplyFixLocalizationFiles()
 	HookHelper::ApplyHook((void*)0x4615F0, &LoadLocalizationFile_Hook, (LPVOID*)&LoadLocalizationFile);
 }
 
-static void ApplyFixProton()
-{
-	if (FixProton == 1 && SystemHelper::IsNative())
-		return;
-
-	if (FixProton != 2 && FixProton != 1)
-		return;
-
-	HookHelper::ApplyHook((void*)0x409FD0, &CL_InitRef_Hook, (LPVOID*)&CL_InitRef);
-}
-
 static void ApplyLaunchWithoutAlice2()
 {
 	if (!LaunchWithoutAlice2) return;
@@ -2308,7 +2324,7 @@ static void ApplyCustomResolution()
 
 static void ApplyWndProcHook()
 {
-	if (!EnableAltF4Close && !UseMouseRawInput) return;
+	if (!EnableAltF4Close && !UseMouseRawInput && !EnableMouse45) return;
 
 	HookHelper::ApplyHook((void*)0x46C600, &lpfnWndProc_MSG_Hook, (LPVOID*)&lpfnWndProc_MSG);
 
@@ -2384,7 +2400,7 @@ static void Init()
 	ApplyFixMenuTransitionTiming();
 	ApplyFixCutsceneJumpSound();
 	ApplyFixLocalizationFiles();
-	ApplyFixProton();
+
 	// General
 	ApplyLaunchWithoutAlice2();
 	ApplyCustomControllerBindings();
@@ -2401,17 +2417,20 @@ static void Init()
 	ApplyDisableRemasteredModels();
 	ApplyEnableDevConsole();
 	ApplyCustomSavePath();
+
 	// Display
 	ApplyEnableControllerIcons();
 	ApplyHideConsoleAtLaunch();
 	ApplyCreateWindowHook();
 	ApplyCustomResolution();
 	ApplyWndProcHook();
+
 	// Graphics
 	ApplyTrilinearTextureFiltering();
 	ApplyAnisotropicTextureFiltering();
 	ApplyProcessAPIPacket();
 	ApplyEnableVsyncAsDefault();
+
 	// Misc
 	ApplyCvarTweaks();
 	ApplyResolutionChangeHook();

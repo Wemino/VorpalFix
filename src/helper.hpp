@@ -199,6 +199,7 @@ namespace GameHelper
 	char* (__cdecl* GetWeaponName)(int) = (char* (__cdecl*)(int))0x441D60;
 	int(__cdecl* UI_GetStaticMap)(unsigned int, const char*) = (int(__cdecl*)(unsigned int, const char*))0x44A300;
 	int(__cdecl* IsControllerConnected)() = (int(__cdecl*)())0x463130;
+	void(__cdecl* Sys_QueEvent)(int, int, int, int, int, void*) = (void(__cdecl*)(int, int, int, int, int, void*))0x464D00;
 
 	static void AssignCmdKeyId(int keyId, const char* cmd)
 	{
@@ -334,44 +335,6 @@ namespace GameHelper
 
 namespace SystemHelper
 {
-	static bool IsNative()
-	{
-		// env check
-		const char* protonEnvVars[] = 
-		{
-			"STEAM_COMPAT_DATA_PATH",
-			"STEAM_COMPAT_TOOL_PATHS",
-			"STEAM_COMPAT_PROTON",
-			"STEAM_COMPAT_MOUNTS",
-			"PROTON_CRASH_REPORT_DIR",
-			"PROTON_USE_XALIA",
-			"SteamVirtualGamepadInfo_Proton",
-			"SteamDeck",
-			"SteamOS"
-		};
-
-		for (const char* var : protonEnvVars)
-		{
-			if (std::getenv(var))
-				return false;
-		}
-
-		// Fallback: dll check
-		HMODULE hntdll = GetModuleHandleA("ntdll.dll");
-		if (hntdll && GetProcAddress(hntdll, "wine_get_version"))
-			return false;
-
-		// Fallback: registry check
-		HKEY hKey;
-		if (RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\Wine", 0, KEY_READ, &hKey) == ERROR_SUCCESS) 
-		{
-			RegCloseKey(hKey);
-			return false;
-		}
-
-		return true;
-	}
-
 	static DWORD GetCurrentDisplayFrequency()
 	{
 		DEVMODE devMode = {};
@@ -527,21 +490,5 @@ namespace StringHelper
 	const char* BoolToCString(bool value)
 	{
 		return value ? "1" : "0";
-	}
-
-	static std::unordered_map<std::string, std::string> pathCache;
-
-	const char* ConstructPath(const char* prefix, const char* suffix)
-	{
-		std::string key = std::string(prefix) + suffix;
-
-		auto it = pathCache.find(key);
-		if (it != pathCache.end())
-		{
-			return it->second.c_str();
-		}
-
-		pathCache[key] = key;
-		return pathCache[key].c_str();
 	}
 };
