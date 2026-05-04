@@ -42,8 +42,6 @@ A patch that addresses various technical issues and adds quality-of-life improve
 - Fixed menu texture bleeding, corrected the back button animation that played faster at higher resolutions, and resolved other minor menu UI issues.
 
 - Fixed typos in script files affecting texture and sound paths to prevent missing assets.
-
-- Fixed menu-related issues when playing on Linux via Proton.
   
 - Corrected display scaling on high‑DPI monitors.
 
@@ -220,6 +218,9 @@ Adds support for PlayStation and Nintendo Switch controllers via SDL3.
 
 - **Raw Mouse Input**  
   Improved precision by reading mouse movement directly, ignoring Windows sensitivity and acceleration.
+
+- **Mouse 4 / Mouse 5 Support**  
+  Adds support for side mouse buttons so they can be assigned from the game's menu.
 
 ### Display Options
 
