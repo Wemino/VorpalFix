@@ -175,6 +175,7 @@ int(__cdecl* FS_FOpenFileRead)(char*, int*, int, int) = nullptr; // 0x41A590
 int(__cdecl* CheckDiskFreeSpace)() = nullptr; // 0x41D1E0
 float(__cdecl* UpdateHeadOrientation)(DWORD*, float*) = nullptr; // 0x423740
 BYTE(__cdecl* Str_To_Lower)(char*) = nullptr; // 0x4256E0
+int(__cdecl* SV_LoadGameDLL)() = nullptr; // 0x42CFF0
 FILE(__cdecl* FS_LoadZipFile)(const char*) = nullptr; // 0x43E030
 int(__cdecl* PrepareHUDRendering)(float, float, float, float, int, float*, float*, float*, int, const char*, __int16, float*, float*, float, float, int) = nullptr; // 0x446050
 int(__cdecl* IsGameStarted)() = nullptr; // 0x449DF0
@@ -204,6 +205,7 @@ DWORD(__thiscall* UISetCvars)(DWORD*, char*) = nullptr; // 0x4B9FD0
 BYTE(__thiscall* LoadUI)(DWORD*, char*) = nullptr; // 0x4C1AC0
 DWORD* (__cdecl* SetAliceMirrorViewportParams)(DWORD*, float, float, float, float, float) = nullptr; // 0x4C5D30
 int(__thiscall* UpdateHeadOrientationFromMouse)(int, float*, int, float*, float*) = nullptr; // 0x4C6050
+void(__cdecl* GPhysics_Pusher)(int); // fgamex86.dll+0x774F0
 HWND(WINAPI* ori_CreateWindowExA)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
 void(WINAPI* ori_glTexParameterf)(GLenum, GLenum, GLfloat);
 void(WINAPI* ori_glReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*);
@@ -229,6 +231,7 @@ bool FixParticleDistanceRatio = false;
 bool FixMenuAnimationSpeed = false;
 bool FixMenuTransitionTiming = false;
 bool FixCutsceneJumpSound = false;
+bool FixPusherOvershoot = false;
 bool FixResolutionModeOOB = false;
 bool FixUnfocusedCursorLock = false;
 bool FixLocalizationFiles = false;
@@ -301,6 +304,7 @@ static void ReadConfig()
 	FixMenuTransitionTiming = IniHelper::ReadInteger("Fixes", "FixMenuTransitionTiming", 1) == 1;
 	FixResolutionModeOOB = IniHelper::ReadInteger("Fixes", "FixResolutionModeOOB", 1) == 1;
 	FixCutsceneJumpSound = IniHelper::ReadInteger("Fixes", "FixCutsceneJumpSound", 1) == 1;
+	FixPusherOvershoot = IniHelper::ReadInteger("Fixes", "FixPusherOvershoot", 1) == 1;
 	FixUnfocusedCursorLock = IniHelper::ReadInteger("Fixes", "FixUnfocusedCursorLock", 1) == 1;
 	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
 
@@ -491,6 +495,33 @@ static void WINAPI glReadPixels_Hook(GLint x, GLint y, GLsizei width, GLsizei he
 static DWORD WINAPI XInputGetState_Hook(DWORD dwUserIndex, XINPUT_STATE* pState)
 {
 	return ControllerHelper::PollController(pState, InvertABXYButtons);
+}
+
+// Prevent flusher entities from overshooting their travel limit and clipping through the player
+static void __cdecl GPhysics_Pusher_Hook(int a1)
+{
+	const char* name = **(const char***)(a1 + 360);
+
+	if (name && strncmp(name, "flusher", 7) == 0)
+	{
+		float origVelZ = *(float*)(a1 + 128);
+		float maxStep = 4.0f;
+
+		if (origVelZ * 0.05f < -maxStep)
+		{
+			*(float*)(a1 + 128) = -maxStep / 0.05f;
+		}
+		else if (origVelZ * 0.05f > maxStep)
+		{
+			*(float*)(a1 + 128) = maxStep / 0.05f;
+		}
+
+		GPhysics_Pusher(a1);
+		*(float*)(a1 + 128) = origVelZ;
+		return;
+	}
+
+	GPhysics_Pusher(a1);
 }
 
 // Hook of the function used by the "+moveup" command
@@ -1051,6 +1082,28 @@ static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
 	}
 
 	return Str_To_Lower(Buffer);
+}
+
+static int __cdecl SV_LoadGameDLL_Hook()
+{
+	// Load the game's DLL
+	int result = SV_LoadGameDLL();
+
+	// Get handle to "fgamex86.dll" if loaded
+	HMODULE gameApiDll = GetModuleHandle(L"fgamex86.dll");
+
+	// If DLL is loaded, get its base address and do the patching
+	if (gameApiDll)
+	{
+		DWORD gameApiBaseAddress = (DWORD)gameApiDll;
+
+		if (FixPusherOvershoot)
+		{
+			HookHelper::ApplyHookReplaceable((void*)(gameApiBaseAddress + 0x774F0), &GPhysics_Pusher_Hook, reinterpret_cast<LPVOID*>(&GPhysics_Pusher));
+		}
+	}
+
+	return result;
 }
 
 // Function used to open and load the pk3 files
@@ -2397,6 +2450,13 @@ static void ApplyResolutionChangeHook()
 	HookHelper::ApplyHook((void*)0x46FC70, &GLW_CreatePFD_Hook, (LPVOID*)&GLW_CreatePFD);
 }
 
+static void ApplyServerHook()
+{
+	if (!FixPusherOvershoot) return;
+
+	HookHelper::ApplyHook((void*)0x42CFF0, &SV_LoadGameDLL_Hook, reinterpret_cast<LPVOID*>(&SV_LoadGameDLL));
+}
+
 static void InitializeGameLoadingChecks()
 {
 	HookHelper::ApplyHook((void*)0x4256E0, &Str_To_Lower_Hook, (LPVOID*)&Str_To_Lower);
@@ -2461,6 +2521,7 @@ static void Init()
 	// Misc
 	ApplyCvarTweaks();
 	ApplyResolutionChangeHook();
+	ApplyServerHook();
 	InitializeGameLoadingChecks();
 }
 
