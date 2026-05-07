@@ -37,6 +37,7 @@ const int DISPLAY_MODE_IDX = 0x7D40C4;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
 const int IS_MENU_LOCKED = 0x11C2770;
 const int BLINK_TIMER = 0x11C35EC;
+const int MAIN_WINDOW_HWND = 0x11C5008;
 const int SYS_EVENT_TIME = 0x11C50AC;
 const int UI_WAIT_TIMER = 0x12EF948;
 const int IS_CINEMATIC = 0x12F3CE8;
@@ -184,6 +185,7 @@ void(__cdecl* TriggerMainMenu)(int) = nullptr; // 0x44C4F0
 void(__thiscall* ShowDialogBoxText)(int) = nullptr; // 0x452CF0
 void(__thiscall* LoadSaveFromUI)(DWORD*, int) = nullptr; // 0x456380
 const char* (__cdecl* LoadLocalizationFile)() = nullptr; // 0x4615F0
+int* (__cdecl* IN_Win32Mouse)(DWORD*, int*) = nullptr; // sub_462A00
 MMRESULT(__cdecl* UpdateControllerState)() = nullptr; // 0x4635A0
 int(__stdcall* lpfnWndProc_MSG)(HWND, UINT, int, LPARAM) = nullptr; // 0x46C600
 int(__cdecl* TakeSaveScreenshot)(int, int, int) = nullptr; // 0x46D280
@@ -228,6 +230,7 @@ bool FixMenuAnimationSpeed = false;
 bool FixMenuTransitionTiming = false;
 bool FixCutsceneJumpSound = false;
 bool FixResolutionModeOOB = false;
+bool FixUnfocusedCursorLock = false;
 bool FixLocalizationFiles = false;
 
 // Input
@@ -298,6 +301,7 @@ static void ReadConfig()
 	FixMenuTransitionTiming = IniHelper::ReadInteger("Fixes", "FixMenuTransitionTiming", 1) == 1;
 	FixResolutionModeOOB = IniHelper::ReadInteger("Fixes", "FixResolutionModeOOB", 1) == 1;
 	FixCutsceneJumpSound = IniHelper::ReadInteger("Fixes", "FixCutsceneJumpSound", 1) == 1;
+	FixUnfocusedCursorLock = IniHelper::ReadInteger("Fixes", "FixUnfocusedCursorLock", 1) == 1;
 	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
 
 	// Input
@@ -1289,6 +1293,21 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 	return LoadLocalizationFile();
 }
 
+// Prevent cursor lock when game window is not in focus
+static int* __cdecl IN_Win32Mouse_Hook(DWORD* a1, int* a2)
+{
+	if (GetForegroundWindow() != MemoryHelper::ReadMemory<HWND>(MAIN_WINDOW_HWND))
+	{
+		ClipCursor(nullptr);
+		ReleaseCapture();
+		*a1 = 0;
+		*a2 = 0;
+		return a2;
+	}
+
+	return IN_Win32Mouse(a1, a2);
+}
+
 // Hook of the function used to parse the controller state, add some more features
 static MMRESULT __cdecl UpdateControllerState_Hook()
 {
@@ -2119,6 +2138,13 @@ static void ApplyFixCutsceneJumpSound()
 	HookHelper::ApplyHook((void*)0x4061D0, &JumpCommand_Hook, (LPVOID*)&JumpCommand);
 }
 
+static void ApplyFixUnfocusedCursorLock()
+{
+	if (!FixUnfocusedCursorLock) return;
+
+	HookHelper::ApplyHook((void*)0x462AE0, &IN_Win32Mouse_Hook, (LPVOID*)&IN_Win32Mouse);
+}
+
 static void ApplyFixLocalizationFiles()
 {
 	if (!FixLocalizationFiles) return;
@@ -2399,6 +2425,7 @@ static void Init()
 	ApplyFixMenuAnimationSpeed();
 	ApplyFixMenuTransitionTiming();
 	ApplyFixCutsceneJumpSound();
+	ApplyFixUnfocusedCursorLock();
 	ApplyFixLocalizationFiles();
 
 	// General
