@@ -759,23 +759,6 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		MH_DisableHook((void*)0x419910);
 	}
 
-	if (EnhancedLOD)
-	{
-		if (_stricmp(var_name, "r_lodbias") == 0)
-		{
-			value = "-2";
-		}
-		else if (_stricmp(var_name, "r_lodCurveError") == 0)
-		{
-			value = "10000";
-		}
-	}
-
-	if (ForceBatchedRendering && _stricmp(var_name, "r_primitives") == 0)
-	{
-		value = "2";
-	}
-
 	if (ForceBorderlessFullscreen && _stricmp(var_name, "r_fullscreen") == 0)
 	{
 		value = "0";
@@ -2562,6 +2545,25 @@ static void ApplyTrilinearTextureFiltering()
 	MemoryHelper::WriteMemory<int>(0x46E5A7, 0x52A32C);
 }
 
+static void ApplyForceBatchedRendering()
+{
+	if (!ForceBatchedRendering) return;
+
+	// r_primitives "0" -> "2"
+	MemoryHelper::WriteMemory<int>(0x46E650, 0x517240);
+}
+
+static void ApplyEnhancedLOD()
+{
+	if (!EnhancedLOD) return;
+
+	// r_lodCurveError "250" -> "4096"
+	MemoryHelper::WriteMemory<int>(0x46E482, 0x517BA8);
+
+	// r_lodbias "0" -> "-2"
+	MemoryHelper::WriteMemory<int>(0x46E499, 0x528E98);
+}
+
 static void ApplyAnisotropicTextureFiltering()
 {
 	HookHelper::ApplyHookAPI(L"opengl32", "glTexParameterf", &glTexParameterf_Hook, (LPVOID*)&ori_glTexParameterf);
@@ -2654,6 +2656,8 @@ static void Init()
 
 	// Graphics
 	ApplyTrilinearTextureFiltering();
+	ApplyForceBatchedRendering();
+	ApplyEnhancedLOD();
 	ApplyAnisotropicTextureFiltering();
 	ApplyProcessAPIPacket();
 	ApplyEnableVsyncAsDefault();
