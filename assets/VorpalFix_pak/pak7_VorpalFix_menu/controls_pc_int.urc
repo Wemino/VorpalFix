@@ -1542,7 +1542,7 @@ Button
 	font			"asrafel"
 	fontjustify		center center
 	fontpos			35 8
-	ordernumber		46
+	ordernumber		47
 }
 
 // CANCEL BUTTON
@@ -1563,7 +1563,7 @@ Button
 	font			"asrafel"
 	fontjustify		center center
 	fontpos			35 8
-	ordernumber		47
+	ordernumber		48
 }
 
 // LANGUAGE
@@ -1637,12 +1637,12 @@ CheckBox
 	unchecked_shader	"ui/control/checkbox_unchecked"
 }
 
-// CONSOLE PORT HUD
+// SHOW INTRO VIDEOS
 resource
 Label
 {
-	title			"Console Style HUD"
-	name			"ConsoleHUDTxt"
+	title			"Show Intro Videos*"
+	name			"ShowIntrosTxt"
 	rect			68 150 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
@@ -1662,56 +1662,22 @@ CheckBox
 	groupid			"group_vf"
 	font			"asrafel"
 	fontjustify		right center
-	linkcvar		"vf_ui_console_hud"
+	linkcvar		"vf_show_intros"
 
-	highlighttextwidget "ConsoleHUDTxt"
+	highlighttextwidget "ShowIntrosTxt"
 	ordernumber		40
 
 	checked_shader		"ui/control/checkbox_checked"
 	unchecked_shader	"ui/control/checkbox_unchecked"
 }
 
-// CONTROLLER ICONS
+// USE GYRO AIMING
 resource
 Label
 {
-	title			"Controller Style*"
-	name			"ControllerIconsTxt"
-	rect			68 178 220 24
-	fgcolor			0.199 0.043 0.043 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	groupid			"group_vf"
-	font			"asrafel"
-	fontjustify		left center
-}
-resource
-List
-{
-	name			"Default"
-	rect			88 194 200 20
-	fgcolor			0.199 0.043 0.043 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	groupid			"group_vf"
-	font			"asrafel"
-	fontjustify		center top
-
-	highlighttextwidget "ControllerIconsTxt"
-	ordernumber		41
-
-	linkcvar		"vf_ui_ps3"
-	additem			0 "Xbox 360"
-	additem			1 "PlayStation 3"
-}
-
-// LETTERBOX
-resource
-Label
-{
-	title			"Cutscene Borders"
-	name			"LetterboxTxt"
-	rect			68 223 220 24
+	title			"Use Gyro Aiming"
+	name			"GyroAimTxt"
+	rect			68 177 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1723,7 +1689,75 @@ resource
 CheckBox
 {
 	name			"Default"
-	rect			260 223 16 16
+	rect			260 177 16 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vf"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"vf_gyro_aim"
+
+	highlighttextwidget "GyroAimTxt"
+	ordernumber		41
+
+	checked_shader		"ui/control/checkbox_checked"
+	unchecked_shader	"ui/control/checkbox_unchecked"
+}
+
+// CONSOLE PORT HUD
+resource
+Label
+{
+	title			"Console Style HUD"
+	name			"ConsoleHUDTxt"
+	rect			68 204 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vf"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+CheckBox
+{
+	name			"Default"
+	rect			260 204 16 16
+	fgcolor			1.00 1.00 1.00 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vf"
+	font			"asrafel"
+	fontjustify		right center
+	linkcvar		"vf_ui_console_hud"
+
+	highlighttextwidget "ConsoleHUDTxt"
+	ordernumber		42
+
+	checked_shader		"ui/control/checkbox_checked"
+	unchecked_shader	"ui/control/checkbox_unchecked"
+}
+
+// LETTERBOX
+resource
+Label
+{
+	title			"Cutscene Borders"
+	name			"LetterboxTxt"
+	rect			68 231 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vf"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+CheckBox
+{
+	name			"Default"
+	rect			260 231 16 16
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1733,7 +1767,7 @@ CheckBox
 	linkcvar		"vf_ui_letterbox"
 
 	highlighttextwidget "LetterboxTxt"
-	ordernumber		42
+	ordernumber		43
 
 	checked_shader		"ui/control/checkbox_checked"
 	unchecked_shader	"ui/control/checkbox_unchecked"
@@ -1745,7 +1779,7 @@ Label
 {
 	title			"Vertical Sync"
 	name			"VsyncTxt"
-	rect			68 250 220 24
+	rect			68 258 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1757,7 +1791,7 @@ resource
 CheckBox
 {
 	name			"Default"
-	rect			260 250 16 16
+	rect			260 258 16 16
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1767,7 +1801,7 @@ CheckBox
 	linkcvar		"r_swapInterval"
 
 	highlighttextwidget "VsyncTxt"
-	ordernumber		43
+	ordernumber		44
 
 	checked_shader		"ui/control/checkbox_checked"
 	unchecked_shader	"ui/control/checkbox_unchecked"
@@ -1779,7 +1813,7 @@ Label
 {
 	title			"Anisotropic Filter"
 	name			"AnisotropyTxt"
-	rect			68 278 220 24
+	rect			68 284 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1791,7 +1825,7 @@ resource
 List
 {
 	name			"Default"
-	rect			88 294 200 20
+	rect			88 300 200 20
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1800,7 +1834,7 @@ List
 	fontjustify		center top
 
 	highlighttextwidget "AnisotropyTxt"
-	ordernumber		44
+	ordernumber		45
 
 	linkcvar		"vf_r_ext_max_anisotropy"
 	additem			0 "Off"
@@ -1816,7 +1850,7 @@ Label
 {
 	title			"Framerate Limit"
 	name			"FPSLimitTxt"
-	rect			68 327 220 24
+	rect			68 329 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1828,7 +1862,7 @@ resource
 List
 {
 	name			"Default"
-	rect			88 343 200 20
+	rect			88 345 200 20
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1837,19 +1871,10 @@ List
 	fontjustify		center top
 
 	highlighttextwidget "FPSLimitTxt"
-	ordernumber		45
+	ordernumber		46
 
 	linkcvar		"vf_com_maxfps"
 	additem			60 "60 FPS"
-	additem			85 "85 FPS"
-	additem			120 "120 FPS"
-	additem			144 "144 FPS"
-	additem			160 "160 FPS"
-	additem			165 "165 FPS"
-	additem			180 "180 FPS"
-	additem			200 "200 FPS"
-	additem			240 "240 FPS"
-	additem			-1 "Screen Refresh Rate"
 }
 
 // RESTART NOTIFICATION

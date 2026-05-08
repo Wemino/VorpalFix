@@ -59,13 +59,13 @@ const int CURRENT_HEIGHT_ADDR = 0x1C47990;
 // =============================
 static int VF_LANGUAGE_PTR;
 static int VF_REMASTERED_MODELS_PTR;
+static int VF_UI_SHOW_INTRO_PTR;
+static int VF_UI_GYRO_AIM_PTR;
 static int VF_UI_CONSOLE_HUD_PTR;
-static int VF_UI_PS3_PTR;
 static int VF_UI_LETTERBOX_PTR;
 static int VF_R_EXT_MAX_ANISOTROPY_PTR;
 static int VF_COM_MAXFPS_PTR;
 
-static bool isScreenRateFps = false;
 static bool isVFMenuUsed = false;
 
 // =============================
@@ -361,7 +361,6 @@ static void ReadConfig()
 	if (CustomFPSLimit == -1)
 	{
 		CustomFPSLimit = SystemHelper::GetCurrentDisplayFrequency();
-		isScreenRateFps = true;
 
 		// Unstable at > 500fps
 		if (CustomFPSLimit > 500)
@@ -968,11 +967,12 @@ static int __cdecl SetupOpenGLParameters_Hook()
 
 	VF_LANGUAGE_PTR = Cvar_Set("vf_language", StringHelper::IntegerToCString(lang), 0);
 	VF_REMASTERED_MODELS_PTR = Cvar_Set("vf_remastered_models", StringHelper::BoolToCString(!DisableRemasteredModels), 0);
+	VF_UI_SHOW_INTRO_PTR = Cvar_Set("vf_show_intros", StringHelper::BoolToCString(UseOriginalIntroVideos), 0);
+	VF_UI_GYRO_AIM_PTR = Cvar_Set("vf_gyro_aim", StringHelper::BoolToCString(GyroEnabled), 0);
 	VF_UI_CONSOLE_HUD_PTR = Cvar_Set("vf_ui_console_hud", StringHelper::BoolToCString(ConsolePortHUD), 0);
-	VF_UI_PS3_PTR = Cvar_Set("vf_ui_ps3", StringHelper::IntegerToCString(UsePS3ControllerIcons), 0);
 	VF_UI_LETTERBOX_PTR = Cvar_Set("vf_ui_letterbox", StringHelper::BoolToCString(!DisableLetterbox), 0);
 	VF_R_EXT_MAX_ANISOTROPY_PTR = Cvar_Set("vf_r_ext_max_anisotropy", StringHelper::FloatToCString(MaxAnisotropy), 0);
-	VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", isScreenRateFps ? "-1" : StringHelper::IntegerToCString(CustomFPSLimit), 0);
+	VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", StringHelper::IntegerToCString(CustomFPSLimit), 0);
 
 	// We only need to do that once
 	MH_DisableHook((void*)0x46E0D0);
@@ -993,13 +993,18 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int*, char* group_name)
 		bool disableRemasteredModels = MemoryHelper::ReadMemory<int>(VF_REMASTERED_MODELS_PTR + 0x20);
 		IniHelper::iniReader["General"]["DisableRemasteredModels"] = StringHelper::IntegerToCString(!disableRemasteredModels);
 
+		// UseOriginalIntroVideos - Need a restart
+		bool useOriginalIntroVideos = MemoryHelper::ReadMemory<int>(VF_UI_SHOW_INTRO_PTR + 0x20);
+		IniHelper::iniReader["General"]["UseOriginalIntroVideos"] = StringHelper::IntegerToCString(useOriginalIntroVideos);
+
+		// GyroEnabled
+		GyroEnabled = MemoryHelper::ReadMemory<int>(VF_UI_GYRO_AIM_PTR + 0x20);
+		IniHelper::iniReader["Input"]["GyroEnabled"] = StringHelper::IntegerToCString(GyroEnabled);
+		ControllerHelper::SetGyroEnabled(GyroEnabled);
+
 		// ConsolePortHUD
 		ConsolePortHUD = MemoryHelper::ReadMemory<int>(VF_UI_CONSOLE_HUD_PTR + 0x20);
 		IniHelper::iniReader["Display"]["ConsolePortHUD"] = StringHelper::IntegerToCString(ConsolePortHUD);
-
-		// UsePS3ControllerIcons - Need a restart
-		int usePS3ControllerIcons = MemoryHelper::ReadMemory<int>(VF_UI_PS3_PTR + 0x20);
-		IniHelper::iniReader["Display"]["UsePS3ControllerIcons"] = StringHelper::IntegerToCString(usePS3ControllerIcons);
 
 		// DisableLetterbox
 		bool isLetterboxEnabled = MemoryHelper::ReadMemory<int>(VF_UI_LETTERBOX_PTR + 0x20);
@@ -2386,8 +2391,6 @@ static void ApplyUseSDLControllerInput()
 
 static void ApplyGyroEnabled()
 {
-	if (!GyroEnabled) return;
-
 	HookHelper::ApplyHook((void*)0x406870, &CL_JoystickMove_Hook, (LPVOID*)&CL_JoystickMove);
 }
 
@@ -2533,7 +2536,7 @@ static void ApplyWndProcHook()
 	if (UseMouseRawInput)
 	{
 		// Prevent double input
-		MemoryHelper::MakeNOP(0x4067B9, 32);
+		MemoryHelper::WriteMemory<uint8_t>(0x4067B9, 0xC3);
 	}
 }
 
