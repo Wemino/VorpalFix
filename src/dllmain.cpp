@@ -87,6 +87,7 @@ static bool isRenderingConsole = false;
 static bool isLoadingSaveFromMenuButton = false;
 static bool isRawInputRegistered = false;
 static bool maxFpsPopulated = false;
+static bool mustScaleFont = false;
 static std::atomic<LONG> rawMouseDeltaX { 0 };
 static std::atomic<LONG> rawMouseDeltaY { 0 };
 
@@ -180,6 +181,7 @@ int(__cdecl* SV_LoadGameDLL)() = nullptr; // 0x42CFF0
 FILE(__cdecl* FS_LoadZipFile)(const char*) = nullptr; // 0x43E030
 int(__cdecl* PrepareHUDRendering)(float, float, float, float, int, float*, float*, float*, int, const char*, __int16, float*, float*, float, float, int) = nullptr; // 0x446050
 int(__cdecl* IsGameStarted)() = nullptr; // 0x449DF0
+void(__cdecl* DrawWorldMapLoadingScreen)(int, float, float, float, float) = nullptr; // 0x44AC30
 void(__cdecl* SetUIBorder)() = nullptr; // 0x44B100
 int(__cdecl* PushMenu)(const char*) = nullptr; // 0x44C1B0
 int(__cdecl* ForceMenu)(const char*) = nullptr; // 0x44C280
@@ -201,6 +203,8 @@ int(__cdecl* RE_StretchPic)(float, float, float, float, float, float, float, flo
 int(__cdecl* RE_StretchRaw)(int, int, int, int, int, int, int) = nullptr; // 0x490130
 void(__cdecl* UpdateRenderContext)(int, int, int, int, float, float, float, float, float, float) = nullptr; // 0x4907F0
 void(__cdecl* ConfigureScissor)(int, int, int, int) = nullptr; // 0x4908D0
+int(__thiscall* Widget_DrawString)(int, int, float, float, int, int, float, float, float, float, float) = nullptr; // 0x4B0F00
+int(__thiscall* Widget_DrawStringInRect)(int, void*, int, int, int, int, float, float, float, float, float) = nullptr; // 0x4B1010
 int(__thiscall* UpdateAndConfigureRenderContext)(int) = nullptr; // 0x4B1130
 DWORD(__thiscall* UISetCvars)(DWORD*, char*) = nullptr; // 0x4B9FD0
 BYTE(__thiscall* LoadUI)(DWORD*, char*) = nullptr; // 0x4C1AC0
@@ -226,7 +230,7 @@ bool FixPak5 = false;
 bool FixBlinkingAnimationSpeed = false;
 bool FixStretchedHUD = false;
 bool FixStretchedFMV = false;
-bool FixStretchedGUI = false;
+bool FixStretchedMenu = false;
 bool FixDPIScaling = false;
 bool FixFullscreenSetting = false;
 bool FixParticleDistanceRatio = false;
@@ -298,7 +302,7 @@ static void ReadConfig()
 	FixBlinkingAnimationSpeed = IniHelper::ReadInteger("Fixes", "FixBlinkingAnimationSpeed", 1) == 1;
 	FixStretchedHUD = IniHelper::ReadInteger("Fixes", "FixStretchedHUD", 1) == 1;
 	FixStretchedFMV = IniHelper::ReadInteger("Fixes", "FixStretchedFMV", 1) == 1;
-	FixStretchedGUI = IniHelper::ReadInteger("Fixes", "FixStretchedGUI", 1) == 1;
+	FixStretchedMenu = IniHelper::ReadInteger("Fixes", "FixStretchedMenu", 1) == 1;
 	FixDPIScaling = IniHelper::ReadInteger("Fixes", "FixDPIScaling", 1) == 1;
 	FixFullscreenSetting = IniHelper::ReadInteger("Fixes", "FixFullscreenSetting", 1) == 1;
 	FixParticleDistanceRatio = IniHelper::ReadInteger("Fixes", "FixParticleDistanceRatio", 1) == 1;
@@ -369,8 +373,8 @@ static void ReadConfig()
 		}
 	}
 
-	// UseConsoleTitleScreen rely on FixStretchedGUI
-	if (!FixStretchedGUI && UseConsoleTitleScreen)
+	// UseConsoleTitleScreen rely on FixStretchedMenu
+	if (!FixStretchedMenu && UseConsoleTitleScreen)
 	{
 		UseConsoleTitleScreen = false;
 	}
@@ -1331,6 +1335,14 @@ static int __cdecl IsGameStarted_Hook()
 	}
 }
 
+// Check if we are on the loading screen to tell if we should scale the font
+static void __cdecl DrawWorldMapLoadingScreen_Hook(int a1, float a2, float a3, float a4, float a5)
+{
+	mustScaleFont = true;
+	DrawWorldMapLoadingScreen(a1, a2, a3, a4, a5);
+	mustScaleFont = false;
+}
+
 // Hook of the "pushmenu" command
 static int __cdecl PushMenu_Hook(const char* menu_name)
 {
@@ -1405,7 +1417,9 @@ static void __fastcall ShowDialogBoxText_Hook(int thisPtr, int*)
 			*(DWORD*)(thisPtr + 0x1D8) = 3;
 		}
 
+		mustScaleFont = true;
 		ShowDialogBoxText(thisPtr);
+		mustScaleFont = false;
 	}
 }
 
@@ -1657,9 +1671,9 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 	}
 
 	// If we are going to update how the width is read during a save screenshot
-	if (FixStretchedGUI || FixSaveScreenshotBufferOverflow)
+	if (FixStretchedMenu || FixSaveScreenshotBufferOverflow)
 	{
-		int screenshotWidth = (FixStretchedGUI && isWiderThan4By3) ? static_cast<int>(scaledWidth) : currentWidth;
+		int screenshotWidth = (FixStretchedMenu && isWiderThan4By3) ? static_cast<int>(scaledWidth) : currentWidth;
 
 		// Check if screenshotWidth is not a multiple of 4
 		if (FixSaveScreenshotBufferOverflow && screenshotWidth % 4 != 0)
@@ -1723,7 +1737,7 @@ static void __cdecl CreateInternalShaders_Hook()
 static void __cdecl RE_StretchFont_Hook(int a1, BYTE a2, float font_x_position, float font_y_position, float a5, float a6, float font_spacing, float font_scale_width, float font_scale_height, int a10)
 {
 	// Don't mess with the console or with the credits
-	if (font_x_position <= 3.0 || font_spacing == -8.0)
+	if (!mustScaleFont)
 	{
 		RE_StretchFont(a1, a2, font_x_position, font_y_position, a5, a6, font_spacing, font_scale_width, font_scale_height, a10);
 		return;
@@ -1924,6 +1938,26 @@ static void __cdecl ConfigureScissor_Hook(int x, int y, int width, int height)
 	{
 		ConfigureScissor(x, y, width, height);
 	}
+}
+
+// If we should scale the font of the menu
+static int __fastcall Widget_DrawStringInRect_Hook(int thisPtr, int, void* a2, int a3, int a4, int a5, int a6, float a7, float a8, float a9, float a10, float a11)
+{
+	mustScaleFont = !(*(BYTE*)(thisPtr + 456) || *(BYTE*)(thisPtr + 449));
+	int result = Widget_DrawStringInRect(thisPtr, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11);
+	mustScaleFont = false;
+
+	return result;
+}
+
+// If we should scale the font of the menu
+static int __fastcall Widget_DrawString_Hook(int thisPtr, int, int a2, float a3, float a4, int a5, int a6, float a7, float a8, float a9, float a10, float a11)
+{
+	mustScaleFont = !(*(BYTE*)(thisPtr + 456) || *(BYTE*)(thisPtr + 449));
+	int result = Widget_DrawString(thisPtr, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11);
+	mustScaleFont = false;
+
+	return result;
 }
 
 // Detect if the console is going to be used in 'UpdateRenderContext', we don't want that to happen while in the credits or during a dialog
@@ -2219,16 +2253,20 @@ static void ApplyFixStretchedFMV()
 	HookHelper::ApplyHook((void*)0x490130, &RE_StretchRaw_Hook, (LPVOID*)&RE_StretchRaw);
 }
 
-static void ApplyFixStretchedGUI()
+static void ApplyFixStretchedMenu()
 {
-	if (!FixStretchedGUI) return;
+	if (!FixStretchedMenu) return;
+
 
 	HookHelper::ApplyHook((void*)0x48FC00, &RE_StretchPic_Hook, (LPVOID*)&RE_StretchPic); // UI Scaling
 	HookHelper::ApplyHook((void*)0x44B100, &SetUIBorder_Hook, (LPVOID*)&SetUIBorder); // Add the borders
 	HookHelper::ApplyHook((void*)0x48F1E0, &RE_StretchFont_Hook, (LPVOID*)&RE_StretchFont); // Font Scaling
 	HookHelper::ApplyHook((void*)0x4C5D30, &SetAliceMirrorViewportParams_Hook, (LPVOID*)&SetAliceMirrorViewportParams); // Scale Alice's 3D model in the settings menu
-	HookHelper::ApplyHook((void*)0x452CF0, &ShowDialogBoxText_Hook, (LPVOID*)&ShowDialogBoxText);
 	HookHelper::ApplyHook((void*)0x4873C0, &CreateInternalShaders_Hook, (LPVOID*)&CreateInternalShaders);
+	HookHelper::ApplyHook((void*)0x452CF0, &ShowDialogBoxText_Hook, (LPVOID*)&ShowDialogBoxText);
+	HookHelper::ApplyHook((void*)0x4B0F00, &Widget_DrawString_Hook, (LPVOID*)&Widget_DrawString);
+	HookHelper::ApplyHook((void*)0x4B1010, &Widget_DrawStringInRect_Hook, (LPVOID*)&Widget_DrawStringInRect);
+	HookHelper::ApplyHook((void*)0x44AC30, &DrawWorldMapLoadingScreen_Hook, (LPVOID*)&DrawWorldMapLoadingScreen);
 	MemoryHelper::MakeNOP(0x4D2AB1, 7); // Dark rectangle when reassigning a control
 
 	// Save screenshot
@@ -2624,7 +2662,7 @@ static void Init()
 	ApplyFixBlinkingAnimationSpeed();
 	ApplyFixStretchedHUD();
 	ApplyFixStretchedFMV();
-	ApplyFixStretchedGUI();
+	ApplyFixStretchedMenu();
 	ApplyFixDPIScaling();
 	ApplyFixParticleDistanceRatio();
 	ApplyFixMenuAnimationSpeed();
