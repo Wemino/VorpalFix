@@ -86,6 +86,7 @@ static bool isTakingSaveScreenshot = false;
 static bool isRenderingConsole = false;
 static bool isLoadingSaveFromMenuButton = false;
 static bool isRawInputRegistered = false;
+static bool maxFpsPopulated = false;
 static std::atomic<LONG> rawMouseDeltaX { 0 };
 static std::atomic<LONG> rawMouseDeltaY { 0 };
 
@@ -203,6 +204,7 @@ void(__cdecl* ConfigureScissor)(int, int, int, int) = nullptr; // 0x4908D0
 int(__thiscall* UpdateAndConfigureRenderContext)(int) = nullptr; // 0x4B1130
 DWORD(__thiscall* UISetCvars)(DWORD*, char*) = nullptr; // 0x4B9FD0
 BYTE(__thiscall* LoadUI)(DWORD*, char*) = nullptr; // 0x4C1AC0
+void(__thiscall* Widget_AddItem)(DWORD*, void**, void**) = nullptr; // 0x4C4850
 DWORD* (__cdecl* SetAliceMirrorViewportParams)(DWORD*, float, float, float, float, float) = nullptr; // 0x4C5D30
 int(__thiscall* UpdateHeadOrientationFromMouse)(int, float*, int, float*, float*) = nullptr; // 0x4C6050
 void(__cdecl* GPhysics_Pusher)(int); // fgamex86.dll+0x774F0
@@ -1057,6 +1059,143 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int*, char* group_name)
 	return UISetCvars(thisPtr, group_name);
 }
 
+// Dynamically populate the FPS list based on the current monitor's supported refresh rates
+static void __fastcall Widget_AddItem_Hook(DWORD* thisp, int, void** a2, void** a3)
+{
+	const char* name = GameHelper::GetWidgetName(thisp);
+
+	if (name && strcmp(name, "vf_com_maxfps") == 0)
+	{
+		if (!maxFpsPopulated)
+		{
+			maxFpsPopulated = true;
+
+			DEVMODEA dm = {};
+			dm.dmSize = sizeof(dm);
+
+			DWORD rates[256]{};
+			int rateCount = 0;
+
+			// Enumerate all refresh rates supported by the primary monitor
+			for (DWORD i = 0; EnumDisplaySettingsA(NULL, i, &dm); i++)
+			{
+				if (dm.dmDisplayFrequency < 60 || rateCount >= 256) continue;
+
+				bool dup = false;
+				for (int k = 0; k < rateCount; k++)
+				{
+					if (rates[k] == dm.dmDisplayFrequency)
+					{
+						dup = true;
+						break;
+					}
+				}
+
+				if (!dup)
+				{
+					rates[rateCount++] = dm.dmDisplayFrequency;
+				}
+			}
+
+			DWORD maxRate = 0;
+			for (int k = 0; k < rateCount; k++)
+			{
+				if (rates[k] > maxRate)
+				{
+					maxRate = rates[k];
+				}
+			}
+
+			// Ensure 60 and 85 are always available if within the monitor's range
+			const DWORD required[] = { 60, 85 };
+			for (int r = 0; r < 2; r++)
+			{
+				if (required[r] > maxRate) continue;
+
+				bool found = false;
+				for (int k = 0; k < rateCount; k++)
+				{
+					if (rates[k] == required[r])
+					{
+						found = true;
+						break;
+					}
+				}
+
+				if (!found && rateCount < 256)
+				{
+					rates[rateCount++] = required[r];
+				}
+			}
+
+			// Ensure 500 FPS is pickable if the monitor supports rates that high
+			if (maxRate >= 500)
+			{
+				bool has500 = false;
+				for (int k = 0; k < rateCount; k++)
+				{
+					if (rates[k] == 500)
+					{
+						has500 = true;
+						break;
+					}
+				}
+
+				if (!has500 && rateCount < 256)
+				{
+					rates[rateCount++] = 500;
+				}
+			}
+
+			// Cap at 500 FPS
+			int finalCount = 0;
+			for (int k = 0; k < rateCount; k++)
+			{
+				if (rates[k] <= 500)
+				{
+					rates[finalCount++] = rates[k];
+				}
+			}
+
+			rateCount = finalCount;
+
+			// Sort ascending
+			for (int a = 0; a < rateCount - 1; a++)
+			{
+				for (int b = a + 1; b < rateCount; b++)
+				{
+					if (rates[a] > rates[b])
+					{
+						DWORD tmp = rates[a];
+						rates[a] = rates[b];
+						rates[b] = tmp;
+					}
+				}
+			}
+
+			// Add each rate as a list item (value + label)
+			for (int r = 0; r < rateCount; r++)
+			{
+				char valueStr[32], labelStr[64];
+				sprintf_s(valueStr, "%d", rates[r]);
+				sprintf_s(labelStr, "%d FPS", rates[r]);
+
+				void* valueObj = nullptr;
+				void* labelObj = nullptr;
+				GameHelper::CreateString(&valueObj, valueStr);
+				GameHelper::CreateString(&labelObj, labelStr);
+
+				Widget_AddItem(thisp, (void**)valueObj, (void**)labelObj);
+			}
+		}
+
+		// Skip original script items for this widget
+		return;
+	}
+
+	return Widget_AddItem(thisp, a2, a3);
+}
+
 // Function executed during the unzipping phase to check for specific file presence
 static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
 {
@@ -1072,6 +1211,7 @@ static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
 	{
 		HookHelper::ApplyHook((void*)0x46E0D0, &SetupOpenGLParameters_Hook, (LPVOID*)&SetupOpenGLParameters);
 		HookHelper::ApplyHook((void*)0x4B9FD0, &UISetCvars_Hook, (LPVOID*)&UISetCvars);
+		HookHelper::ApplyHook((void*)0x4C4850, &Widget_AddItem_Hook, (LPVOID*)&Widget_AddItem);
 		isVFMenuUsed = true;
 	}
 

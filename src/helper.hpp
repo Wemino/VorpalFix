@@ -196,10 +196,12 @@ namespace GameHelper
 	int(__cdecl* Bind)(int, const char*) = (int(__cdecl*)(int, const char*))0x407870;
 	int(__cdecl* VidRestart)() = (int(__cdecl*)())0x40B2F0;
 	int(__cdecl* UpdateCvar)(const char*, const char*, int) = (int(__cdecl*)(const char*, const char*, int))0x418D90;
+	void** (__thiscall* CreateString)(void**, const char*) = (void** (__thiscall*)(void**, const char*))0x441880;
 	char* (__cdecl* GetWeaponName)(int) = (char* (__cdecl*)(int))0x441D60;
 	int(__cdecl* UI_GetStaticMap)(unsigned int, const char*) = (int(__cdecl*)(unsigned int, const char*))0x44A300;
 	int(__cdecl* IsControllerConnected)() = (int(__cdecl*)())0x463130;
 	void(__cdecl* Sys_QueEvent)(int, int, int, int, int, void*) = (void(__cdecl*)(int, int, int, int, int, void*))0x464D00;
+	const char* (__thiscall* GetWidgetName)(DWORD*) = (const char* (__thiscall*)(DWORD*))0x4B1550;
 
 	static void AssignCmdKeyId(int keyId, const char* cmd)
 	{

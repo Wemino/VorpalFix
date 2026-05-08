@@ -1864,15 +1864,6 @@ List
 
 	linkcvar		"vf_com_maxfps"
 	additem			60 "60 FPS"
-	additem			85 "85 FPS"
-	additem			120 "120 FPS"
-	additem			144 "144 FPS"
-	additem			160 "160 FPS"
-	additem			165 "165 FPS"
-	additem			180 "180 FPS"
-	additem			200 "200 FPS"
-	additem			240 "240 FPS"
-	additem			-1 "Screen Refresh Rate"
 }
 
 // RESTART NOTIFICATION
