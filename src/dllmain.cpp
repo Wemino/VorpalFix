@@ -29,12 +29,18 @@ const int CODE_CAVE_SOUND = 0x513490;
 const int CODE_CAVE_INTRO = 0x513B90;
 const int CODE_CAVE_BLINK = 0x513E08;
 const int CODE_CAVE_WIDTH = 0x513E40;
+const int VTABLE_ALICE_DIALOG_TEXT = 0x52221C;
+const int VTABLE_UI_AUTOSCROLL = 0x53EBD4;
 const int STARTUP_STATE_ADDR = 0x7CCA20;
 const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
 const int IS_PAUSED = 0x7CCA64;
 const int CURRENT_LANG = 0x7CF868;
 const int DISPLAY_MODE_IDX = 0x7D40C4;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
+const int RENDER_WIDTH_ADDR = 0x11C02CC;
+const int RENDER_HEIGHT_ADDR = 0x11C02D0;
+const int SET_VIEWPORT_FN_ADDR = 0x11C01D0;
+const int SET_SCISSOR_FN_ADDR = 0x11C01D8;
 const int IS_MENU_LOCKED = 0x11C2770;
 const int BLINK_TIMER = 0x11C35EC;
 const int MAIN_WINDOW_HWND = 0x11C5008;
@@ -83,7 +89,6 @@ static bool skipAutoResolution = false;
 static bool isAnisotropyRetrieved = false;
 static bool isInSettingMenu = false;
 static bool isTakingSaveScreenshot = false;
-static bool isRenderingConsole = false;
 static bool isLoadingSaveFromMenuButton = false;
 static bool isRawInputRegistered = false;
 static bool maxFpsPopulated = false;
@@ -201,11 +206,8 @@ void(__cdecl* CreateInternalShaders)() = nullptr; // 0x4873C0
 void(__cdecl* RE_StretchFont)(int, BYTE, float, float, float, float, float, float, float, int) = nullptr; // 0x48F1E0
 int(__cdecl* RE_StretchPic)(float, float, float, float, float, float, float, float, int) = nullptr; // 0x48FC00
 int(__cdecl* RE_StretchRaw)(int, int, int, int, int, int, int) = nullptr; // 0x490130
-void(__cdecl* UpdateRenderContext)(int, int, int, int, float, float, float, float, float, float) = nullptr; // 0x4907F0
-void(__cdecl* ConfigureScissor)(int, int, int, int) = nullptr; // 0x4908D0
 int(__thiscall* Widget_DrawString)(int, int, float, float, int, int, float, float, float, float, float) = nullptr; // 0x4B0F00
 int(__thiscall* Widget_DrawStringInRect)(int, void*, int, int, int, int, float, float, float, float, float) = nullptr; // 0x4B1010
-int(__thiscall* UpdateAndConfigureRenderContext)(int) = nullptr; // 0x4B1130
 DWORD(__thiscall* UISetCvars)(DWORD*, char*) = nullptr; // 0x4B9FD0
 BYTE(__thiscall* LoadUI)(DWORD*, char*) = nullptr; // 0x4C1AC0
 void(__thiscall* Widget_AddItem)(DWORD*, void**, void**) = nullptr; // 0x4C4850
@@ -1880,66 +1882,6 @@ static int __cdecl RE_StretchRaw_Hook(int x_position, int y_position, int resolu
 	return RE_StretchRaw(x_position, y_position, resolution_width, resolution_height, a5, a6, a7);
 }
 
-// Adjust the scaling of the 'AutoScroll' control in credits
-static void __cdecl UpdateRenderContext_Hook(int x, int y, int width, int height, float a5, float a6, float a7, float a8, float a9, float a10)
-{
-	if (isWiderThan4By3 && x != 0 && !isRenderingConsole)
-	{
-		if (MemoryHelper::ReadMemory<int>(IS_PAUSED)) // Autoscroll
-		{
-			int adjusted_x = (x * scaleFactor) + widthDifference;
-			int adjusted_width = width * scaleFactor;
-
-			UpdateRenderContext(adjusted_x, y, adjusted_width, height, a5, a6, a7, a8, a9, a10);
-		}
-		else // dialog
-		{
-			// Make sure to display the borders while transitioning from menu to in-game
-			if (MemoryHelper::ReadMemory<uint8_t>(IS_MENU_LOCKED))
-			{
-				return;
-			}
-
-			int adjusted_x = x * scaleFactor;
-			UpdateRenderContext(adjusted_x, y, width, height, a5, a6, a7, a8, a9, a10);
-		}
-	}
-	else
-	{
-		UpdateRenderContext(x, y, width, height, a5, a6, a7, a8, a9, a10);
-	}
-}
-
-// Used right after 'UpdateRenderContext', do the same adjustements
-static void __cdecl ConfigureScissor_Hook(int x, int y, int width, int height)
-{
-	if (isWiderThan4By3 && x != 0 && !isRenderingConsole)
-	{
-		if (MemoryHelper::ReadMemory<int>(IS_PAUSED)) // Autoscroll
-		{
-			int adjusted_x = (x * scaleFactor) + widthDifference;
-			int adjusted_width = width * scaleFactor;
-
-			ConfigureScissor(adjusted_x, y, adjusted_width, height);
-		}
-		else // dialog
-		{
-			// Make sure to display the borders while transitioning from menu to in-game
-			if (MemoryHelper::ReadMemory<uint8_t>(IS_MENU_LOCKED))
-			{
-				return;
-			}
-
-			int adjusted_x = x * scaleFactor;
-			ConfigureScissor(adjusted_x, y, width, height);
-		}
-	}
-	else
-	{
-		ConfigureScissor(x, y, width, height);
-	}
-}
-
 // If we should scale the font of the menu
 static int __fastcall Widget_DrawStringInRect_Hook(int thisPtr, int, void* a2, int a3, int a4, int a5, int a6, float a7, float a8, float a9, float a10, float a11)
 {
@@ -1960,22 +1902,136 @@ static int __fastcall Widget_DrawString_Hook(int thisPtr, int, int a2, float a3,
 	return result;
 }
 
-// Detect if the console is going to be used in 'UpdateRenderContext', we don't want that to happen while in the credits or during a dialog
-static DWORD __fastcall UpdateAndConfigureRenderContext_Hook(int thisPtr, int*)
+// Scale the viewport for the autoscroll and dialogbox
+static void __fastcall Widget_ApplyViewport(int thisPtr, int)
 {
-	int x = *(int*)(thisPtr + 0x38);
-	BYTE isEnabled = *(BYTE*)(thisPtr + 0x1C1);
+	int screenWidth = MemoryHelper::ReadMemory<int>(RENDER_WIDTH_ADDR);
+	int screenHeight = MemoryHelper::ReadMemory<int>(RENDER_HEIGHT_ADDR);
 
-	if (x != 0 && isEnabled)
+	float viewportX = *(float*)(thisPtr + 0x38);
+	float viewportY = *(float*)(thisPtr + 0x3C);
+	float viewportWidth = *(float*)(thisPtr + 0x40);
+	float viewportHeight = *(float*)(thisPtr + 0x44);
+	float scissorX = *(float*)(thisPtr + 0x50);
+	float scissorY = *(float*)(thisPtr + 0x54);
+	float scissorWidth = *(float*)(thisPtr + 0x58);
+	float scissorHeight = *(float*)(thisPtr + 0x5C);
+	float orthoLeft = *(float*)(thisPtr + 0x60);
+	float orthoTop = *(float*)(thisPtr + 0x64);
+
+	BYTE noAutoScale = *(BYTE*)(thisPtr + 0x1C1);
+	BYTE hasCustomRect = *(BYTE*)(thisPtr + 0x1C8);
+
+	bool useCustomRect;
+	if (noAutoScale)
 	{
-		isRenderingConsole = true;
+		useCustomRect = true;
 	}
 	else
 	{
-		isRenderingConsole = false;
+		float scaleX = screenWidth / 640.0f;
+		float scaleY = screenHeight / 480.0f;
+		viewportX *= scaleX;  viewportY *= scaleY;
+		viewportWidth *= scaleX;  viewportHeight *= scaleY;
+		scissorX *= scaleX;  scissorY *= scaleY;
+		scissorWidth *= scaleX;  scissorHeight *= scaleY;
+		orthoLeft *= scaleX;  orthoTop *= scaleY;
+		useCustomRect = (hasCustomRect != 0);
 	}
-	
-	return UpdateAndConfigureRenderContext(thisPtr);
+
+	if (useCustomRect)
+	{
+		float orthoRight = orthoLeft + viewportWidth;
+		float orthoBottom = orthoTop + viewportHeight;
+
+		if (isWiderThan4By3)
+		{
+			int vtable = *(int*)thisPtr;
+
+			if (vtable == VTABLE_UI_AUTOSCROLL)
+			{
+				viewportX = viewportX * scaleFactor + widthDifference;
+				viewportWidth = viewportWidth * scaleFactor;
+				scissorX = scissorX * scaleFactor + widthDifference;
+				scissorWidth = scissorWidth * scaleFactor;
+			}
+			else if (vtable == VTABLE_ALICE_DIALOG_TEXT)
+			{
+				// Make sure to display the borders while transitioning from menu to in-game
+				if (MemoryHelper::ReadMemory<uint8_t>(IS_MENU_LOCKED))
+				{
+					return;
+				}
+
+				viewportX *= scaleFactor;
+				scissorX *= scaleFactor;
+			}
+		}
+
+		int viewportXInt = (int)viewportX;
+		int viewportYInt = screenHeight - (int)(viewportY + viewportHeight);
+		int viewportWidthInt = (int)viewportWidth;
+		int viewportHeightInt = (int)viewportHeight;
+		int scissorXInt = (int)scissorX;
+		int scissorYInt = screenHeight - (int)(scissorY + scissorHeight);
+		int scissorWidthInt = (int)scissorWidth;
+		int scissorHeightInt = (int)scissorHeight;
+
+		float zNear = -1.0f;
+		float zFar = 1.0f;
+
+		__asm
+		{
+			push zFar
+			push zNear
+			push orthoTop
+			push orthoBottom
+			push orthoRight
+			push orthoLeft
+			push viewportHeightInt
+			push viewportWidthInt
+			push viewportYInt
+			push viewportXInt
+			mov  eax, SET_VIEWPORT_FN_ADDR
+			call dword ptr[eax]
+			add  esp, 0x28
+		}
+
+		__asm
+		{
+			push scissorHeightInt
+			push scissorWidthInt
+			push scissorYInt
+			push scissorXInt
+			mov  eax, SET_SCISSOR_FN_ADDR
+			call dword ptr[eax]
+			add  esp, 0x10
+		}
+	}
+	else
+	{
+		float screenWidthFloat = (float)screenWidth;
+		float screenHeightFloat = (float)screenHeight;
+		float zero = 0.0f;
+		float negativeOne = -1.0f;
+
+		__asm
+		{
+			push zero
+			push negativeOne
+			push zero
+			push screenHeightFloat
+			push screenWidthFloat
+			push zero
+			push screenHeight
+			push screenWidth
+			push 0
+			push 0
+			mov  eax, SET_VIEWPORT_FN_ADDR
+			call dword ptr[eax]
+			add  esp, 0x28
+		}
+	}
 }
 
 // Load the menu files from 'pak6_VorpalFix.pk3' when required
@@ -2274,9 +2330,14 @@ static void ApplyFixStretchedMenu()
 	HookHelper::ApplyHookAPI(L"opengl32", "glReadPixels", &glReadPixels_Hook, (LPVOID*)&ori_glReadPixels);
 
 	// AutoScroll credits scaling
-	HookHelper::ApplyHook((void*)0x4907F0, &UpdateRenderContext_Hook, (LPVOID*)&UpdateRenderContext);
-	HookHelper::ApplyHook((void*)0x4908D0, &ConfigureScissor_Hook, (LPVOID*)&ConfigureScissor);
-	HookHelper::ApplyHook((void*)0x4B1130, &UpdateAndConfigureRenderContext_Hook, (LPVOID*)&UpdateAndConfigureRenderContext);
+	MemoryHelper::MakeCALL(0x446A85, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
+	MemoryHelper::MakeCALL(0x446D4B, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
+	MemoryHelper::MakeCALL(0x459435, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
+	MemoryHelper::MakeCALL(0x45A763, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
+	MemoryHelper::MakeCALL(0x4AF5B7, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
+	MemoryHelper::MakeJMP(0x4B177C, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
+	MemoryHelper::MakeJMP(0x4B1786, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
+	MemoryHelper::MakeCALL(0x4B60BD, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
 }
 
 static void ApplyFixDPIScaling()
