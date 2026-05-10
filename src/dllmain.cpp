@@ -93,6 +93,8 @@ static bool isLoadingSaveFromMenuButton = false;
 static bool isRawInputRegistered = false;
 static bool maxFpsPopulated = false;
 static bool mustScaleFont = false;
+static bool mustSkipPicScaling = false;
+static bool inAutoCenterLayout = false;
 static std::atomic<LONG> rawMouseDeltaX { 0 };
 static std::atomic<LONG> rawMouseDeltaY { 0 };
 
@@ -193,6 +195,7 @@ int(__cdecl* ForceMenu)(const char*) = nullptr; // 0x44C280
 void(__cdecl* TriggerMainMenu)(int) = nullptr; // 0x44C4F0
 void(__thiscall* ShowDialogBoxText)(int) = nullptr; // 0x452CF0
 void(__thiscall* LoadSaveFromUI)(DWORD*, int) = nullptr; // 0x456380
+int(__thiscall* DrawFullscreenScreenEffect)(int) = nullptr; // 0x45A3C0
 const char* (__cdecl* LoadLocalizationFile)() = nullptr; // 0x4615F0
 int* (__cdecl* IN_Win32Mouse)(DWORD*, int*) = nullptr; // sub_462A00
 MMRESULT(__cdecl* UpdateControllerState)() = nullptr; // 0x4635A0
@@ -206,13 +209,16 @@ void(__cdecl* CreateInternalShaders)() = nullptr; // 0x4873C0
 void(__cdecl* RE_StretchFont)(int, BYTE, float, float, float, float, float, float, float, int) = nullptr; // 0x48F1E0
 int(__cdecl* RE_StretchPic)(float, float, float, float, float, float, float, float, int) = nullptr; // 0x48FC00
 int(__cdecl* RE_StretchRaw)(int, int, int, int, int, int, int) = nullptr; // 0x490130
+int(__thiscall* DrawTexturedQuad)(int, float, float, float, float, float, float, float, float, int) = nullptr; // 0x4B0AF0
 int(__thiscall* Widget_DrawString)(int, int, float, float, int, int, float, float, float, float, float) = nullptr; // 0x4B0F00
 int(__thiscall* Widget_DrawStringInRect)(int, void*, int, int, int, int, float, float, float, float, float) = nullptr; // 0x4B1010
+int(__thiscall* Widget_SetRect)(int, int) = nullptr; // 0x4B3DB0
 DWORD(__thiscall* UISetCvars)(DWORD*, char*) = nullptr; // 0x4B9FD0
 BYTE(__thiscall* LoadUI)(DWORD*, char*) = nullptr; // 0x4C1AC0
 void(__thiscall* Widget_AddItem)(DWORD*, void**, void**) = nullptr; // 0x4C4850
 DWORD* (__cdecl* SetAliceMirrorViewportParams)(DWORD*, float, float, float, float, float) = nullptr; // 0x4C5D30
 int(__thiscall* UpdateHeadOrientationFromMouse)(int, float*, int, float*, float*) = nullptr; // 0x4C6050
+int(__thiscall* Widget_AutoCenterInDesignSpace)(int*, int, int, int, int) = nullptr; // 0x4D2320
 void(__cdecl* GPhysics_Pusher)(int); // fgamex86.dll+0x774F0
 HWND(WINAPI* ori_CreateWindowExA)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
 void(WINAPI* ori_glTexParameterf)(GLenum, GLenum, GLfloat);
@@ -985,6 +991,22 @@ static int __cdecl SetupOpenGLParameters_Hook()
 	return SetupOpenGLParameters();
 }
 
+// Scale the rectangle of the 'Press Any Key' picture
+static int __fastcall Widget_SetRect_Hook(int thisPtr, int, int a2)
+{
+	if (inAutoCenterLayout && isWiderThan4By3)
+	{
+		float origX = *(float*)(a2 + 0);
+		float origW = *(float*)(a2 + 8);
+		float newW = origW * scaleFactor;
+
+		*(float*)(a2 + 0) = origX + (origW - newW) * 0.5f;
+		*(float*)(a2 + 8) = newW;
+	}
+
+	return Widget_SetRect(thisPtr, a2);
+}
+
 // Hook of the function used by the "ui_setcvars" command, used to save the VorpalFix menu settings to the INI
 static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int*, char* group_name)
 {
@@ -1419,9 +1441,9 @@ static void __fastcall ShowDialogBoxText_Hook(int thisPtr, int*)
 			*(DWORD*)(thisPtr + 0x1D8) = 3;
 		}
 
-		mustScaleFont = true;
+		mustSkipPicScaling = true;
 		ShowDialogBoxText(thisPtr);
-		mustScaleFont = false;
+		mustSkipPicScaling = false;
 	}
 }
 
@@ -1430,6 +1452,15 @@ static void __fastcall LoadSaveFromUI_Hook(DWORD* thisPtr, int*, int a2)
 {
 	isLoadingSaveFromMenuButton = true;
 	LoadSaveFromUI(thisPtr, a2);
+}
+
+// Do not scale pictures that are supposed to use the full screen during gameplay
+static int __fastcall DrawFullscreenScreenEffect_Hook(int thisPtr, int)
+{
+	mustSkipPicScaling = true;
+	int ret = DrawFullscreenScreenEffect(thisPtr);
+	mustSkipPicScaling = false;
+	return ret;
 }
 
 // Hook function used to load the localization pk3 file
@@ -1798,6 +1829,27 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 			}
 			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
+		else if (shaderType == ShaderType::TitleBg)
+		{
+			constexpr float titlebg_aspect_ratio = 1280.0f / 720.0f;
+			float scale_factor = (currentAspectRatio > titlebg_aspect_ratio) ? static_cast<float>(currentWidth) / 1280.0f : static_cast<float>(currentHeight) / 720.0f;
+
+			resolution_width = 1280.0f * scale_factor;
+			resolution_height = 720.0f * scale_factor;
+			x_position = (currentWidth - resolution_width) / 2.0f;
+			y_position = (currentHeight - resolution_height) / 2.0f;
+			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+		}
+	}
+
+	if (shaderType == ShaderType::PressAnyKey)
+	{
+		return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+	}
+
+	if (mustSkipPicScaling && shaderType != ShaderType::MouseArrow)
+	{
+		return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 	}
 
 	switch (shaderType)
@@ -1806,46 +1858,12 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 			if (!isCursorResized)
 			{
 				GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
-				GameHelper::ResizePopupMessage(currentWidth, currentHeight);
 				isCursorResized = true;
 			}
 			if (isConsoleEnabled())
 				return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 			break;
 
-		// Scale and center title screen background
-		case ShaderType::TitleBg:
-			if (!isMainMenuShown)
-			{
-				constexpr float titlebg_aspect_ratio = 1280.0f / 720.0f;
-				float scale_factor = (currentAspectRatio > titlebg_aspect_ratio) ? static_cast<float>(currentWidth) / 1280.0f : static_cast<float>(currentHeight) / 720.0f;
-
-				resolution_width = 1280.0f * scale_factor;
-				resolution_height = 720.0f * scale_factor;
-				x_position = (currentWidth - resolution_width) / 2.0f;
-				y_position = (currentHeight - resolution_height) / 2.0f;
-			}
-			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-
-		// Special cases (skip)
-		case ShaderType::DrugFade:
-		case ShaderType::IceFade:
-		case ShaderType::PressAnyKey:
-			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-
-		// Console elements
-		case ShaderType::Slider2Bar:
-		case ShaderType::Slider2Top:
-		case ShaderType::Slider2Indicator:
-			if (isConsoleEnabled() && x_position == 0)
-				return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-			break;
-
-		// Credits (scaled with AutoScroll)
-		case ShaderType::UiBar:
-		case ShaderType::CreditsAlice:
-		case ShaderType::CreditsBill:
-			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 
 		case ShaderType::QuicksaveCam:
 			if (isWiderThan4By3)
@@ -1880,6 +1898,23 @@ static int __cdecl RE_StretchRaw_Hook(int x_position, int y_position, int resolu
 	}
 
 	return RE_StretchRaw(x_position, y_position, resolution_width, resolution_height, a5, a6, a7);
+}
+
+// Do not scale pictures from the AutoScroll or the console
+static int __fastcall DrawTexturedQuad_Hook(int thisPtr, int, float a2, float a3, float a4, float a5, float a6, float a7, float a8, float a9, int a10)
+{
+	if (*(BYTE*)(thisPtr + 449) || *(BYTE*)(thisPtr + 456))
+	{
+		mustSkipPicScaling = true;
+	}
+	else
+	{
+		mustSkipPicScaling = false;
+	}
+
+	int result = DrawTexturedQuad(thisPtr, a2, a3, a4, a5, a6, a7, a8, a9, a10);
+	mustSkipPicScaling = false;
+	return result;
 }
 
 // If we should scale the font of the menu
@@ -1963,8 +1998,10 @@ static void __fastcall Widget_ApplyViewport(int thisPtr, int)
 					return;
 				}
 
-				viewportX *= scaleFactor;
-				scissorX *= scaleFactor;
+				viewportX = viewportX * scaleFactor + widthDifference;
+				viewportWidth = viewportWidth * scaleFactor;
+				scissorX = scissorX * scaleFactor + widthDifference;
+				scissorWidth = scissorWidth * scaleFactor;
 			}
 		}
 
@@ -2121,6 +2158,15 @@ static DWORD* __cdecl SetAliceMirrorViewportParams_Hook(DWORD* a1, float param_x
 	}
 
 	return renderEntity;
+}
+
+// Used to tell if we should do the scaling inside 'Widget_SetRect_Hook'
+static int __fastcall Widget_AutoCenterInDesignSpace_Hook(int* thisPtr, int, int a2, int a3, int a4, int a5)
+{
+	inAutoCenterLayout = true;
+	int result = Widget_AutoCenterInDesignSpace(thisPtr, a2, a3, a4, a5);
+	inAutoCenterLayout = false;
+	return result;
 }
 
 // Adds borders to hide the pillarbox when scaling the menu
@@ -2338,6 +2384,14 @@ static void ApplyFixStretchedMenu()
 	MemoryHelper::MakeJMP(0x4B177C, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
 	MemoryHelper::MakeJMP(0x4B1786, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
 	MemoryHelper::MakeCALL(0x4B60BD, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
+
+	// Do not scale those pictures
+	HookHelper::ApplyHook((void*)0x45A3C0, &DrawFullscreenScreenEffect_Hook, (LPVOID*)&DrawFullscreenScreenEffect);
+	HookHelper::ApplyHook((void*)0x4B0AF0, &DrawTexturedQuad_Hook, (LPVOID*)&DrawTexturedQuad);
+
+	// Scale 'Press Any Key'
+	HookHelper::ApplyHook((void*)0x4D2320, &Widget_AutoCenterInDesignSpace_Hook, (LPVOID*)&Widget_AutoCenterInDesignSpace);
+	HookHelper::ApplyHook((void*)0x4B3DB0, &Widget_SetRect_Hook, (LPVOID*)&Widget_SetRect);
 }
 
 static void ApplyFixDPIScaling()

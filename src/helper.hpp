@@ -175,15 +175,7 @@ namespace GameHelper
 		Generic = 0,
 		MouseArrow,
 		TitleBg,
-		DrugFade,
-		IceFade,
 		PressAnyKey,
-		Slider2Bar,
-		Slider2Top,
-		Slider2Indicator,
-		UiBar,
-		CreditsAlice,
-		CreditsBill,
 		QuicksaveCam,
 	};
 
@@ -272,24 +264,6 @@ namespace GameHelper
 		}
 	}
 
-	static void __cdecl ResizePopupMessage(int width, int height)
-	{
-		int ImageIndex = FindShaderIndex("ui/control/press_any_key.tga");
-
-		if (ImageIndex == -1) return;
-
-		int image_width = MemoryHelper::ReadMemory<int>(ImageIndex + 0x48);
-
-		float current_width = static_cast<float>(width);
-		float current_height = static_cast<float>(height);
-
-		float target_width = current_height * ASPECT_RATIO_4_3;
-		float scale_factor = target_width / current_width;
-		image_width = static_cast<int>(image_width * scale_factor);
-
-		MemoryHelper::WriteMemory<int>(ImageIndex + 0x48, image_width, false);
-	}
-
 	static void ResetShaderCache()
 	{
 		shaderTypeCache.clear();
@@ -308,24 +282,8 @@ namespace GameHelper
 			cached = ShaderType::MouseArrow;
 		else if (strcmp(name, "ui/quicksavecam/quicksavecam") == 0)
 			cached = ShaderType::QuicksaveCam;
-		else if (strcmp(name, "textures/special/drugfade") == 0)
-			cached = ShaderType::DrugFade;
-		else if (strcmp(name, "textures/special/icefade") == 0)
-			cached = ShaderType::IceFade;
 		else if (strcmp(name, "ui/control/press_any_key") == 0)
 			cached = ShaderType::PressAnyKey;
-		else if (strcmp(name, "ui/control/slider2_bar") == 0)
-			cached = ShaderType::Slider2Bar;
-		else if (strcmp(name, "ui/control/slider2_top") == 0)
-			cached = ShaderType::Slider2Top;
-		else if (strcmp(name, "ui/control/slider2_indicator") == 0)
-			cached = ShaderType::Slider2Indicator;
-		else if (strcmp(name, "ui/bar") == 0)
-			cached = ShaderType::UiBar;
-		else if (strcmp(name, "ui/credits/alice") == 0)
-			cached = ShaderType::CreditsAlice;
-		else if (strcmp(name, "ui/credits/bill") == 0)
-			cached = ShaderType::CreditsBill;
 		else if (strcmp(name, "title_bg") == 0)
 			cached = ShaderType::TitleBg;
 		else
