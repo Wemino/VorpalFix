@@ -183,7 +183,6 @@ char* (__cdecl* GetSavePath)() = nullptr; // 0x417400
 void(__cdecl* CVAR_Init)() = nullptr; // 0x417530
 int(__cdecl* Cvar_Set)(const char*, const char*, int) = nullptr; // 0x419910
 int(__cdecl* FS_FOpenFileRead)(char*, int*, int, int) = nullptr; // 0x41A590
-int(__cdecl* CheckDiskFreeSpace)() = nullptr; // 0x41D1E0
 float(__cdecl* UpdateHeadOrientation)(DWORD*, float*) = nullptr; // 0x423740
 BYTE(__cdecl* Str_To_Lower)(char*) = nullptr; // 0x4256E0
 int(__cdecl* SV_LoadGameDLL)() = nullptr; // 0x42CFF0
@@ -930,7 +929,7 @@ static int __cdecl FS_FOpenFileRead_Hook(char* Source, int* a2, int a3, int a4)
 }
 
 // Reimplementation of 'sub_41D1E0' to fix free space reporting and ensure accurate target disk
-static int __cdecl CheckDiskFreeSpace_Hook()
+static int __cdecl CheckDiskFreeSpace()
 {
 	unsigned __int64 freeBytesAvailable = 0;
 	unsigned __int64 totalNumberOfBytes = 0;
@@ -2309,7 +2308,7 @@ static void ApplyFixHardDiskFull()
 {
 	if (!FixHardDiskFull) return;
 
-	HookHelper::ApplyHook((void*)0x41D1E0, &CheckDiskFreeSpace_Hook, (LPVOID*)&CheckDiskFreeSpace);
+	MemoryHelper::MakeCALL(0x42A5CE, reinterpret_cast<uintptr_t>(&CheckDiskFreeSpace));
 }
 
 static void ApplyFixDisplayModeBufferOverflow()
