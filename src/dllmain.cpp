@@ -55,7 +55,11 @@ const int MOUSE_PITCH_BUFFER = 0x12F9874;
 const int MOUSE_BUFFER_INDEX = 0x12F987C;
 const int CAMERA_YAW_ADDR = 0x12F9F28;
 const int CAMERA_PITCH_ADDR = 0x12F9F2C;
+const int CVAR_SENSITIVITY = 0x148BC3C;
+const int CVAR_M_INVERT_PITCH = 0x14E8A5C;
+const int CVAR_CL_YAWSPEED = 0x14EB3B8;
 const int IS_IN_MENU = 0x14EB498;
+const int CVAR_CL_PITCHSPEED = 0x14EB4D8;
 const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
 const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
 const int DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
@@ -566,10 +570,10 @@ static void __cdecl CL_JoystickMove_Hook(int a1)
 			float* cameraYaw = (float*)CAMERA_YAW_ADDR;
 			float* cameraPitch = (float*)CAMERA_PITCH_ADDR;
 
-			int ptr_sensitivity = MemoryHelper::ReadMemory<int>(0x148BC3C);
-			int ptr_cl_yawspeed = MemoryHelper::ReadMemory<int>(0x14EB3B8);
-			int ptr_cl_pitchspeed = MemoryHelper::ReadMemory<int>(0x14EB4D8);
-			int ptr_m_invert_pitch = MemoryHelper::ReadMemory<int>(0x14E8A5C);
+			int ptr_sensitivity = MemoryHelper::ReadMemory<int>(CVAR_SENSITIVITY);
+			int ptr_cl_yawspeed = MemoryHelper::ReadMemory<int>(CVAR_CL_YAWSPEED);
+			int ptr_cl_pitchspeed = MemoryHelper::ReadMemory<int>(CVAR_CL_PITCHSPEED);
+			int ptr_m_invert_pitch = MemoryHelper::ReadMemory<int>(CVAR_M_INVERT_PITCH);
 
 			float baseSens = MemoryHelper::ReadMemory<float>(ptr_sensitivity + 28) / 5.0f;
 			float pitchSens = MemoryHelper::ReadMemory<float>(ptr_cl_yawspeed + 28);
