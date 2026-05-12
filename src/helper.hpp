@@ -282,8 +282,6 @@ namespace GameHelper
 			cached = ShaderType::MouseArrow;
 		else if (strcmp(name, "ui/quicksavecam/quicksavecam") == 0)
 			cached = ShaderType::QuicksaveCam;
-		else if (strcmp(name, "ui/control/press_any_key") == 0)
-			cached = ShaderType::PressAnyKey;
 		else if (strcmp(name, "title_bg") == 0)
 			cached = ShaderType::TitleBg;
 		else

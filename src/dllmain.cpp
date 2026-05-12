@@ -30,7 +30,9 @@ const int CODE_CAVE_INTRO = 0x513B90;
 const int CODE_CAVE_BLINK = 0x513E08;
 const int CODE_CAVE_WIDTH = 0x513E40;
 const int VTABLE_ALICE_DIALOG_TEXT = 0x52221C;
+const int VTABLE_UI_WINDOW_MANAGER = 0x53E62C;
 const int VTABLE_UI_AUTOSCROLL = 0x53EBD4;
+const int VTABLE_UI_LABEL = 0x5410FC;
 const int STARTUP_STATE_ADDR = 0x7CCA20;
 const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
 const int IS_PAUSED = 0x7CCA64;
@@ -1842,12 +1844,7 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 		}
 	}
 
-	if (shaderType == ShaderType::PressAnyKey)
-	{
-		return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-	}
-
-	if (mustSkipPicScaling && shaderType != ShaderType::MouseArrow)
+	if (mustSkipPicScaling)
 	{
 		return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 	}
@@ -1908,6 +1905,17 @@ static int __fastcall DrawTexturedQuad_Hook(int thisPtr, int, float a2, float a3
 		mustSkipPicScaling = true;
 	}
 	else
+	{
+		mustSkipPicScaling = false;
+	}
+
+	int vtable = *(int*)thisPtr;
+
+	if (vtable == VTABLE_UI_LABEL)
+	{
+		mustSkipPicScaling = true;
+	}
+	else if (vtable == VTABLE_UI_WINDOW_MANAGER)
 	{
 		mustSkipPicScaling = false;
 	}
@@ -2358,7 +2366,6 @@ static void ApplyFixStretchedFMV()
 static void ApplyFixStretchedMenu()
 {
 	if (!FixStretchedMenu) return;
-
 
 	HookHelper::ApplyHook((void*)0x48FC00, &RE_StretchPic_Hook, (LPVOID*)&RE_StretchPic); // UI Scaling
 	HookHelper::ApplyHook((void*)0x44B100, &SetUIBorder_Hook, (LPVOID*)&SetUIBorder); // Add the borders
