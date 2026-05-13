@@ -38,6 +38,7 @@ const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
 const int IS_PAUSED = 0x7CCA64;
 const int CURRENT_LANG = 0x7CF868;
 const int GAME_API_MODULE_ADDR = 0x7D0E7C;
+const int GL_PIXEL_FORMAT_DESCRIPTOR_ADDR = 0x7D4098;
 const int DISPLAY_MODE_IDX = 0x7D40C4;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
 const int RENDER_WIDTH_ADDR = 0x11C02CC;
@@ -64,6 +65,9 @@ const int CVAR_CL_PITCHSPEED = 0x14EB4D8;
 const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
 const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
 const int DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
+const int GL_HDC_ADDR = 0x1C46324;
+const int GL_HGLRC_ADDR = 0x1C46328;
+const int GL_PIXEL_FORMAT_SET_ADDR = 0x1C46334;
 const int CURRENT_WIDTH_ADDR = 0x1C4798C;
 const int CURRENT_HEIGHT_ADDR = 0x1C47990;
 
@@ -180,59 +184,85 @@ static const char* const pak5BrokenPaths[] =
 // =============================
 // Original Function Pointers
 // =============================
-int(__cdecl* JumpCommand)() = nullptr; // 0x4061D0
-void(__cdecl* CL_JoystickMove)(int) = nullptr; // 0x406870
-void(__cdecl* CL_MouseMove)(char*) = nullptr; // 0x4069A0
-int(__cdecl* Bind)(int, char*) = nullptr; // 0x407870
-int(__cdecl* HandleKeyboardInput)(int, int, int) = nullptr; // 0x4081B0
-void(__cdecl* CL_ParsePacketEntities)(int, int, int) = nullptr; // 0x40C1B0
-int(__cdecl* CallCmd)(const char*, char) = nullptr; // 0x4158F0
-char* (__cdecl* GetSavePath)() = nullptr; // 0x417400
-void(__cdecl* CVAR_Init)() = nullptr; // 0x417530
-int(__cdecl* Cvar_Set)(const char*, const char*, int) = nullptr; // 0x419910
-int(__cdecl* FS_FOpenFileRead)(char*, int*, int, int) = nullptr; // 0x41A590
-float(__cdecl* UpdateHeadOrientation)(DWORD*, float*) = nullptr; // 0x423740
-BYTE(__cdecl* Str_To_Lower)(char*) = nullptr; // 0x4256E0
-int(__cdecl* SV_LoadGameDLL)() = nullptr; // 0x42CFF0
-FILE(__cdecl* FS_LoadZipFile)(const char*) = nullptr; // 0x43E030
-int(__cdecl* PrepareHUDRendering)(float, float, float, float, int, float*, float*, float*, int, const char*, __int16, float*, float*, float, float, int) = nullptr; // 0x446050
-int(__cdecl* IsGameStarted)() = nullptr; // 0x449DF0
-void(__cdecl* DrawWorldMapLoadingScreen)(int, float, float, float, float) = nullptr; // 0x44AC30
-void(__cdecl* SetUIBorder)() = nullptr; // 0x44B100
-int(__cdecl* PushMenu)(const char*) = nullptr; // 0x44C1B0
-int(__cdecl* ForceMenu)(const char*) = nullptr; // 0x44C280
-void(__cdecl* TriggerMainMenu)(int) = nullptr; // 0x44C4F0
-void(__thiscall* ShowDialogBoxText)(int) = nullptr; // 0x452CF0
-void(__thiscall* LoadSaveFromUI)(DWORD*, int) = nullptr; // 0x456380
-int(__thiscall* DrawFullscreenScreenEffect)(int) = nullptr; // 0x45A3C0
-const char* (__cdecl* LoadLocalizationFile)() = nullptr; // 0x4615F0
-int* (__cdecl* IN_Win32Mouse)(DWORD*, int*) = nullptr; // sub_462A00
-MMRESULT(__cdecl* UpdateControllerState)() = nullptr; // 0x4635A0
-int(__stdcall* lpfnWndProc_MSG)(HWND, UINT, int, LPARAM) = nullptr; // 0x46C600
-int(__cdecl* TakeSaveScreenshot)(int, int, int) = nullptr; // 0x46D280
-int(__cdecl* SetupOpenGLParameters)() = nullptr; // 0x46E0D0
-void(__cdecl* FetchDisplayResolutions)() = nullptr; // 0x46F850
-int(__cdecl* GLW_CreatePFD)(void*, unsigned __int8, char, unsigned __int8, int) = nullptr; // 0x46FC70
-int(__cdecl* QGL_Init)(LPCSTR) = nullptr; // 0x47ABE0
-void(__cdecl* CreateInternalShaders)() = nullptr; // 0x4873C0
-void(__cdecl* RE_StretchFont)(int, BYTE, float, float, float, float, float, float, float, int) = nullptr; // 0x48F1E0
-int(__cdecl* RE_StretchPic)(float, float, float, float, float, float, float, float, int) = nullptr; // 0x48FC00
-int(__cdecl* RE_StretchRaw)(int, int, int, int, int, int, int) = nullptr; // 0x490130
-int(__thiscall* DrawTexturedQuad)(int, float, float, float, float, float, float, float, float, int) = nullptr; // 0x4B0AF0
-int(__thiscall* Widget_DrawString)(int, int, float, float, int, int, float, float, float, float, float) = nullptr; // 0x4B0F00
-int(__thiscall* Widget_DrawStringInRect)(int, void*, int, int, int, int, float, float, float, float, float) = nullptr; // 0x4B1010
-int(__thiscall* Widget_SetRect)(int, int) = nullptr; // 0x4B3DB0
-DWORD(__thiscall* UISetCvars)(DWORD*, char*) = nullptr; // 0x4B9FD0
-BYTE(__thiscall* LoadUI)(DWORD*, char*) = nullptr; // 0x4C1AC0
-void(__thiscall* Widget_AddItem)(DWORD*, void**, void**) = nullptr; // 0x4C4850
-DWORD* (__cdecl* SetAliceMirrorViewportParams)(DWORD*, float, float, float, float, float) = nullptr; // 0x4C5D30
-int(__thiscall* UpdateHeadOrientationFromMouse)(int, float*, int, float*, float*) = nullptr; // 0x4C6050
-int(__thiscall* Widget_AutoCenterInDesignSpace)(int*, int, int, int, int) = nullptr; // 0x4D2320
-void(__cdecl* GPhysics_Pusher)(int); // fgamex86.dll+0x774F0
-HWND(WINAPI* ori_CreateWindowExA)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
-void(WINAPI* ori_glTexParameterf)(GLenum, GLenum, GLfloat);
-void(WINAPI* ori_glReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*);
-DWORD(WINAPI* ori_XInputGetState)(DWORD, XINPUT_STATE*);
+static int(__cdecl* JumpCommand)() = nullptr; // 0x4061D0
+static void(__cdecl* CL_JoystickMove)(int) = nullptr; // 0x406870
+static void(__cdecl* CL_MouseMove)(char*) = nullptr; // 0x4069A0
+static int(__cdecl* Bind)(int, char*) = nullptr; // 0x407870
+static int(__cdecl* HandleKeyboardInput)(int, int, int) = nullptr; // 0x4081B0
+static void(__cdecl* CL_ParsePacketEntities)(int, int, int) = nullptr; // 0x40C1B0
+static int(__cdecl* CallCmd)(const char*, char) = nullptr; // 0x4158F0
+static char* (__cdecl* GetSavePath)() = nullptr; // 0x417400
+static void(__cdecl* CVAR_Init)() = nullptr; // 0x417530
+static int(__cdecl* Cvar_Set)(const char*, const char*, int) = nullptr; // 0x419910
+static int(__cdecl* FS_FOpenFileRead)(char*, int*, int, int) = nullptr; // 0x41A590
+static float(__cdecl* UpdateHeadOrientation)(DWORD*, float*) = nullptr; // 0x423740
+static BYTE(__cdecl* Str_To_Lower)(char*) = nullptr; // 0x4256E0
+static int(__cdecl* SV_LoadGameDLL)() = nullptr; // 0x42CFF0
+static FILE(__cdecl* FS_LoadZipFile)(const char*) = nullptr; // 0x43E030
+static int(__cdecl* PrepareHUDRendering)(float, float, float, float, int, float*, float*, float*, int, const char*, __int16, float*, float*, float, float, int) = nullptr; // 0x446050
+static int(__cdecl* IsGameStarted)() = nullptr; // 0x449DF0
+static void(__cdecl* DrawWorldMapLoadingScreen)(int, float, float, float, float) = nullptr; // 0x44AC30
+static void(__cdecl* SetUIBorder)() = nullptr; // 0x44B100
+static int(__cdecl* PushMenu)(const char*) = nullptr; // 0x44C1B0
+static int(__cdecl* ForceMenu)(const char*) = nullptr; // 0x44C280
+static void(__cdecl* TriggerMainMenu)(int) = nullptr; // 0x44C4F0
+static void(__thiscall* ShowDialogBoxText)(int) = nullptr; // 0x452CF0
+static void(__thiscall* LoadSaveFromUI)(DWORD*, int) = nullptr; // 0x456380
+static int(__thiscall* DrawFullscreenScreenEffect)(int) = nullptr; // 0x45A3C0
+static const char* (__cdecl* LoadLocalizationFile)() = nullptr; // 0x4615F0
+static int* (__cdecl* IN_Win32Mouse)(DWORD*, int*) = nullptr; // sub_462A00
+static MMRESULT(__cdecl* UpdateControllerState)() = nullptr; // 0x4635A0
+static int(__stdcall* lpfnWndProc_MSG)(HWND, UINT, int, LPARAM) = nullptr; // 0x46C600
+static int(__cdecl* TakeSaveScreenshot)(int, int, int) = nullptr; // 0x46D280
+static int(__cdecl* SetupOpenGLParameters)() = nullptr; // 0x46E0D0
+static void(__cdecl* FetchDisplayResolutions)() = nullptr; // 0x46F850
+static int(__cdecl* GLW_CreatePFD)(void*, unsigned __int8, char, unsigned __int8, int) = nullptr; // 0x46FC70
+static int(__cdecl* QGL_Init)(LPCSTR) = nullptr; // 0x47ABE0
+static void(__cdecl* CreateInternalShaders)() = nullptr; // 0x4873C0
+static void(__cdecl* RE_StretchFont)(int, BYTE, float, float, float, float, float, float, float, int) = nullptr; // 0x48F1E0
+static int(__cdecl* RE_StretchPic)(float, float, float, float, float, float, float, float, int) = nullptr; // 0x48FC00
+static int(__cdecl* RE_StretchRaw)(int, int, int, int, int, int, int) = nullptr; // 0x490130
+static int(__thiscall* DrawTexturedQuad)(int, float, float, float, float, float, float, float, float, int) = nullptr; // 0x4B0AF0
+static int(__thiscall* Widget_DrawString)(int, int, float, float, int, int, float, float, float, float, float) = nullptr; // 0x4B0F00
+static int(__thiscall* Widget_DrawStringInRect)(int, void*, int, int, int, int, float, float, float, float, float) = nullptr; // 0x4B1010
+static int(__thiscall* Widget_SetRect)(int, int) = nullptr; // 0x4B3DB0
+static DWORD(__thiscall* UISetCvars)(DWORD*, char*) = nullptr; // 0x4B9FD0
+static BYTE(__thiscall* LoadUI)(DWORD*, char*) = nullptr; // 0x4C1AC0
+static void(__thiscall* Widget_AddItem)(DWORD*, void**, void**) = nullptr; // 0x4C4850
+static DWORD* (__cdecl* SetAliceMirrorViewportParams)(DWORD*, float, float, float, float, float) = nullptr; // 0x4C5D30
+static int(__thiscall* UpdateHeadOrientationFromMouse)(int, float*, int, float*, float*) = nullptr; // 0x4C6050
+static int(__thiscall* Widget_AutoCenterInDesignSpace)(int*, int, int, int, int) = nullptr; // 0x4D2320
+static void(__cdecl* GPhysics_Pusher)(int); // fgamex86.dll+0x774F0
+static HWND(WINAPI* ori_CreateWindowExA)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
+static void(WINAPI* ori_glTexParameterf)(GLenum, GLenum, GLfloat);
+static void(WINAPI* ori_glReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*);
+static DWORD(WINAPI* ori_XInputGetState)(DWORD, XINPUT_STATE*);
+static BOOL(WINAPI* SystemHelper::qwglChoosePixelFormatARB)(HDC, const int*, const FLOAT*, UINT, int*, UINT*) = nullptr;
+
+// =============================
+// OpenGL / WGL Defines
+// =============================
+
+#define WGL_DRAW_TO_WINDOW_ARB            0x2001
+#define WGL_SUPPORT_OPENGL_ARB            0x2010
+#define WGL_ACCELERATION_ARB              0x2003
+#define WGL_FULL_ACCELERATION_ARB         0x2027
+#define WGL_COLOR_BITS_ARB                0x2014
+#define WGL_DEPTH_BITS_ARB                0x2022
+#define WGL_STENCIL_BITS_ARB              0x2023
+#define WGL_DOUBLE_BUFFER_ARB             0x2011
+#define WGL_SAMPLE_BUFFERS_ARB            0x2041
+#define WGL_SAMPLES_ARB                   0x2042
+
+#define TRY_PFD_SUCCESS                   0
+#define TRY_PFD_FAIL_SOFT                 1
+#define TRY_PFD_FAIL_HARD                 2
+
+#define GL_TEXTURE_MAX_ANISOTROPY_EXT     0x84FE
+#define GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT 0x84FF
+
+#define GL_NEAREST_MIPMAP_NEAREST         0x2700
+#define GL_LINEAR_MIPMAP_LINEAR           0x2703
 
 // =============================
 // Ini Variables
@@ -298,6 +328,7 @@ bool EnableAltF4Close = 0;
 
 // Graphics
 float MaxAnisotropy = 0;
+int MultiSampleAntiAliasing = 0;
 bool TrilinearTextureFiltering = false;
 bool ForceBatchedRendering = false;
 bool EnhancedLOD = false;
@@ -371,6 +402,7 @@ static void ReadConfig()
 
 	// Graphics
 	MaxAnisotropy = IniHelper::ReadFloat("Graphics", "MaxAnisotropy", 16);
+	MultiSampleAntiAliasing = IniHelper::ReadInteger("Graphics", "MultiSampleAntiAliasing", 8);
 	TrilinearTextureFiltering = IniHelper::ReadInteger("Graphics", "TrilinearTextureFiltering", 1) == 1;
 	ForceBatchedRendering = IniHelper::ReadInteger("Graphics", "ForceBatchedRendering", 1) == 1;
 	EnhancedLOD = IniHelper::ReadInteger("Graphics", "EnhancedLOD", 1) == 1;
@@ -473,13 +505,13 @@ static HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 static void WINAPI glTexParameterf_Hook(GLenum target, GLenum pname, GLfloat param)
 {
 	// Check if the param is a valid mipmap filter mode
-	if (param >= 0x2700 && param <= 0x2703)
+	if (param >= GL_NEAREST_MIPMAP_NEAREST && param <= GL_LINEAR_MIPMAP_LINEAR)
 	{
 		if (!isAnisotropyRetrieved)
 		{
-			// Retrieve the maximum anisotropy level supported by the hardware with GL_MAX_TEXTURE_MAX_ANISOTROPY
+			// Retrieve the maximum anisotropy level supported by the hardware
 			float maxAnisotropy;
-			glGetFloatv(0x84FF, &maxAnisotropy);
+			glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAnisotropy);
 
 			// Check if the user's MaxAnisotropy exceeds the hardware's capability
 			if (MaxAnisotropy > maxAnisotropy)
@@ -492,7 +524,7 @@ static void WINAPI glTexParameterf_Hook(GLenum target, GLenum pname, GLfloat par
 		}
 
 		ori_glTexParameterf(target, pname, param);
-		ori_glTexParameterf(target, 0x84FE, (float)MaxAnisotropy); // GL_TEXTURE_MAX_ANISOTROPY
+		ori_glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, (float)MaxAnisotropy);
 	}
 	else
 	{
@@ -1760,6 +1792,184 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 	return GLW_CreatePFD(pPFD, colorbits, depthbits, stencilbits, stereo);
 }
 
+// Selects an MSAA pixel format before creating the OpenGL context
+static int GLW_MakeContext()
+{
+	PIXELFORMATDESCRIPTOR* pPFD = (PIXELFORMATDESCRIPTOR*)GL_PIXEL_FORMAT_DESCRIPTOR_ADDR;
+
+	HDC hDC = *(HDC*)GL_HDC_ADDR;
+	int* pPixelFormatSet = (int*)GL_PIXEL_FORMAT_SET_ADDR;
+	HGLRC* pHGLRC = (HGLRC*)GL_HGLRC_ADDR;
+
+	if (!*pPixelFormatSet)
+	{
+		bool msaaApplied = false;
+		int msaaSamples = MultiSampleAntiAliasing;
+
+		if (msaaSamples > 0)
+		{
+			SystemHelper::BootstrapWGLExtensions();
+
+			int attribs[] =
+			{
+				WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+				WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+				WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
+				WGL_COLOR_BITS_ARB, pPFD->cColorBits,
+				WGL_DEPTH_BITS_ARB, pPFD->cDepthBits,
+				WGL_STENCIL_BITS_ARB, pPFD->cStencilBits,
+				WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
+				WGL_SAMPLE_BUFFERS_ARB, 1,
+				WGL_SAMPLES_ARB, msaaSamples,
+				0, 0
+			};
+
+			int msaaFormat = 0;
+			UINT numFormats = 0;
+
+			if (SystemHelper::qwglChoosePixelFormatARB && SystemHelper::qwglChoosePixelFormatARB(hDC, attribs, NULL, 1, &msaaFormat, &numFormats) && numFormats > 0)
+			{
+				__asm
+				{
+					push pPFD
+					push 0x28
+					push msaaFormat
+					push hDC
+					mov eax, 0x1BB8AC8
+					call dword ptr[eax]
+				}
+
+				int setResult = 0;
+
+				__asm
+				{
+					push pPFD
+					push msaaFormat
+					push hDC
+					mov eax, 0x1BB8D9C
+					call dword ptr[eax]
+					mov setResult, eax
+				}
+
+				if (setResult)
+				{
+					GameHelper::ri_Printf(0, "...PIXELFORMAT %d selected (%dx MSAA)\n", msaaFormat, msaaSamples);
+
+					*pPixelFormatSet = 1;
+					msaaApplied = true;
+				}
+				else
+				{
+					GameHelper::ri_Printf(0, "...qwglSetPixelFormat with MSAA failed, falling back\n");
+				}
+			}
+			else
+			{
+				GameHelper::ri_Printf(0, "...no MSAA pixel format found, falling back\n");
+			}
+		}
+
+		if (!msaaApplied)
+		{
+			int pixelformat = GameHelper::GLW_ChoosePFD(pPFD);
+
+			if (!pixelformat)
+			{
+				GameHelper::ri_Printf(0, "...GLW_ChoosePFD failed\n");
+				return TRY_PFD_FAIL_SOFT;
+			}
+
+			GameHelper::ri_Printf(0, "...PIXELFORMAT %d selected\n", pixelformat);
+
+			__asm
+			{
+				push pPFD
+				push 0x28
+				push pixelformat
+				push hDC
+				mov eax, 0x1BB8AC8
+				call dword ptr[eax]
+			}
+
+			int setResult = 0;
+
+			__asm
+			{
+				push pPFD
+				push pixelformat
+				push hDC
+				mov eax, 0x1BB8D9C
+				call dword ptr[eax]
+				mov setResult, eax
+			}
+
+			if (!setResult)
+			{
+				GameHelper::ri_Printf(0, "...qwglSetPixelFormat failed\n");
+				return TRY_PFD_FAIL_SOFT;
+			}
+
+			*pPixelFormatSet = 1;
+		}
+	}
+
+	if (!*pHGLRC)
+	{
+		GameHelper::ri_Printf(0, "...creating GL context: ");
+
+		HGLRC newContext = nullptr;
+
+		__asm
+		{
+			push hDC
+			mov eax, 0x1BB8EC8
+			call dword ptr[eax]
+			mov newContext, eax
+		}
+
+		*pHGLRC = newContext;
+
+		if (!newContext)
+		{
+			GameHelper::ri_Printf(0, "failed\n");
+			return TRY_PFD_FAIL_HARD;
+		}
+
+		GameHelper::ri_Printf(0, "succeeded\n");
+		GameHelper::ri_Printf(0, "...making context current: ");
+
+		int makeCurrentResult = 0;
+
+		__asm
+		{
+			push newContext
+			push hDC
+			mov eax, 0x1BB8F00
+			call dword ptr[eax]
+			mov makeCurrentResult, eax
+		}
+
+		if (!makeCurrentResult)
+		{
+			__asm
+			{
+				push newContext
+				mov eax, 0x1BB8D7C
+				call dword ptr[eax]
+			}
+
+			*pHGLRC = nullptr;
+
+			GameHelper::ri_Printf(0, "failed\n");
+			return TRY_PFD_FAIL_HARD;
+		}
+
+		GameHelper::ri_Printf(0, "succeeded\n");
+	}
+
+	return TRY_PFD_SUCCESS;
+}
+
 // Function used to adjust the resolution settings before the initialization of OpenGL
 static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 {
@@ -2718,6 +2928,12 @@ static void ApplyWndProcHook()
 	}
 }
 
+static void ApplyMultiSampleAntiAliasing()
+{
+	MemoryHelper::MakeCALL(0x46FF8A, reinterpret_cast<uintptr_t>(&GLW_MakeContext));
+	MemoryHelper::MakeCALL(0x46FFF6, reinterpret_cast<uintptr_t>(&GLW_MakeContext));
+}
+
 static void ApplyTrilinearTextureFiltering()
 {
 	if (!TrilinearTextureFiltering) return;
@@ -2836,6 +3052,7 @@ static void Init()
 	ApplyWndProcHook();
 
 	// Graphics
+	ApplyMultiSampleAntiAliasing();
 	ApplyTrilinearTextureFiltering();
 	ApplyForceBatchedRendering();
 	ApplyEnhancedLOD();

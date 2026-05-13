@@ -193,7 +193,9 @@ namespace GameHelper
 	int(__cdecl* UI_GetStaticMap)(unsigned int, const char*) = (int(__cdecl*)(unsigned int, const char*))0x44A300;
 	int(__cdecl* IsControllerConnected)() = (int(__cdecl*)())0x463130;
 	void(__cdecl* Sys_QueEvent)(int, int, int, int, int, void*) = (void(__cdecl*)(int, int, int, int, int, void*))0x464D00;
+	int(__cdecl* GLW_ChoosePFD)(PIXELFORMATDESCRIPTOR*) = (int(__cdecl*)(PIXELFORMATDESCRIPTOR*))0x46F990;
 	const char* (__thiscall* GetWidgetName)(DWORD*) = (const char* (__thiscall*)(DWORD*))0x4B1550;
+	void(__cdecl*& ri_Printf)(int, const char*, ...) = *(void(__cdecl**)(int, const char*, ...))0x1C1D220;
 
 	static void AssignCmdKeyId(int keyId, const char* cmd)
 	{
@@ -317,7 +319,7 @@ namespace SystemHelper
 		return { 0, 0 };
 	}
 
-	std::vector<std::string> GetLocPk3Files(const std::string& path) 
+	static std::vector<std::string> GetLocPk3Files(const std::string& path) 
 	{
 		std::vector<std::string> pk3Files;
 
@@ -338,6 +340,51 @@ namespace SystemHelper
 		}
 
 		return pk3Files;
+	}
+
+	extern BOOL(WINAPI* qwglChoosePixelFormatARB)(HDC, const int*, const FLOAT*, UINT, int*, UINT*);
+
+	static void BootstrapWGLExtensions()
+	{
+		if (qwglChoosePixelFormatARB)
+			return;
+
+		WNDCLASSA wc = {};
+		wc.lpfnWndProc = DefWindowProcA;
+		wc.hInstance = GetModuleHandle(NULL);
+		wc.lpszClassName = "MSAABootstrapWnd";
+		RegisterClassA(&wc);
+
+		HWND hwnd = CreateWindowA(wc.lpszClassName, "", 0, 0, 0, 1, 1, NULL, NULL, wc.hInstance, NULL);
+		if (!hwnd) return;
+
+		HDC hdc = GetDC(hwnd);
+		if (!hdc) { DestroyWindow(hwnd); return; }
+
+		PIXELFORMATDESCRIPTOR pfd = {};
+		pfd.nSize = sizeof(pfd);
+		pfd.nVersion = 1;
+		pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+		pfd.iPixelType = PFD_TYPE_RGBA;
+		pfd.cColorBits = 32;
+		pfd.cDepthBits = 24;
+		pfd.iLayerType = PFD_MAIN_PLANE;
+
+		int pf = ChoosePixelFormat(hdc, &pfd);
+		if (pf && SetPixelFormat(hdc, pf, &pfd))
+		{
+			HGLRC ctx = wglCreateContext(hdc);
+			if (ctx)
+			{
+				wglMakeCurrent(hdc, ctx);
+				qwglChoosePixelFormatARB = (BOOL(__stdcall*)(HDC, const int*, const FLOAT*, UINT, int*, UINT*))wglGetProcAddress("wglChoosePixelFormatARB");
+				wglMakeCurrent(NULL, NULL);
+				wglDeleteContext(ctx);
+			}
+		}
+
+		ReleaseDC(hwnd, hdc);
+		DestroyWindow(hwnd);
 	}
 
 	static void LoadProxyLibrary()
