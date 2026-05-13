@@ -101,6 +101,7 @@ static bool maxFpsPopulated = false;
 static bool mustScaleFont = false;
 static bool mustSkipPicScaling = false;
 static bool inAutoCenterLayout = false;
+static bool refreshFOV = false;
 static std::atomic<LONG> rawMouseDeltaX { 0 };
 static std::atomic<LONG> rawMouseDeltaY { 0 };
 
@@ -119,6 +120,8 @@ static float scaleFactor = 0;
 static float scaledWidth = 0;
 static float widthDifference = 0;
 static float consoleHudAdjustmentDivisor = 0;
+static float lastServerFov = 90.0f;
+static float lastGameplayFov = 90.0f;
 
 // Localization pk3
 static bool hasLookedForLocalizationFiles = false;
@@ -659,41 +662,51 @@ static void __cdecl CL_ParsePacketEntities_Hook(int msg, int oldframe, int newfr
 	float* oldFovPtr = oldframe ? (float*)(oldframe + 0x418) : nullptr;
 	float newFov = *newFovPtr;
 
-	if (AutoFOV && isWiderThan4By3)
-	{
-		bool shouldScale = !oldFovPtr || (newFov != *oldFovPtr);
+	bool isCinematic = *(int*)(newframe + 0x104) != 0;
+	bool wasCinematic = oldframe && *(int*)(oldframe + 0x104) != 0;
+	bool fovChanged = !oldFovPtr || (newFov != *oldFovPtr);
+	bool exitingCutscene = DisableLetterbox && wasCinematic && !isCinematic;
 
-		if (shouldScale)
+	if (fovChanged)
+	{
+		lastServerFov = newFov;
+		if (!isCinematic)
 		{
-			float verticalFovRad = 2.0f * atanf(tanf(newFov * (float)(M_PI / 180.0) * 0.5f) / ASPECT_RATIO_4_3);
-			*newFovPtr = 2.0f * atanf(tanf(verticalFovRad * 0.5f) * currentAspectRatio) * (float)(180.0 / M_PI);
+			lastGameplayFov = newFov;
 		}
+	}
+
+	if (exitingCutscene)
+	{
+		*newFovPtr = lastGameplayFov;
+		newFov = lastGameplayFov;
+	}
+	else if (refreshFOV && !fovChanged)
+	{
+		*newFovPtr = lastServerFov;
+		newFov = lastServerFov;
+	}
+
+	bool shouldUpdateFov = fovChanged || refreshFOV || exitingCutscene;
+
+	if ((AutoFOV || exitingCutscene) && isWiderThan4By3 && shouldUpdateFov)
+	{
+		float verticalFovRad = 2.0f * atanf(tanf(newFov * (float)(M_PI / 180.0) * 0.5f) / ASPECT_RATIO_4_3);
+		*newFovPtr = 2.0f * atanf(tanf(verticalFovRad * 0.5f) * currentAspectRatio) * (float)(180.0 / M_PI);
 	}
 
 	if (DisableLetterbox)
 	{
-		*(int*)(newframe + 0x10C) = 0; // No letterbox
+		*(int*)(newframe + 0x10C) = 0;
 
-		bool isCinematic = *(int*)(newframe + 0x104) != 0;
-		bool wasCinematic = oldframe && *(int*)(oldframe + 0x104) != 0;
-
-		if (isCinematic != wasCinematic) // Cutscene state changed
-		{
-			if (isCinematic) // Entering cutscene
-			{
-				*newFovPtr /= 1.11f;
-			}
-			else // Exiting cutscene, default FOV is 90 during gameplay
-			{
-				float verticalFovRad = 2.0f * atanf(tanf(90.0f * (float)(M_PI / 180.0) * 0.5f) / ASPECT_RATIO_4_3);
-				*newFovPtr = 2.0f * atanf(tanf(verticalFovRad * 0.5f) * currentAspectRatio) * (float)(180.0 / M_PI);
-			}
-		}
-		else if (isCinematic && oldFovPtr && newFov != *oldFovPtr) // Update cutscene FOV
+		bool enteringCutscene = isCinematic && !wasCinematic;
+		if (isCinematic && (enteringCutscene || shouldUpdateFov))
 		{
 			*newFovPtr /= 1.11f;
 		}
 	}
+
+	refreshFOV = false;
 
 	CL_ParsePacketEntities(msg, oldframe, newframe);
 }
@@ -1699,6 +1712,7 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 	currentHeight = MemoryHelper::ReadMemory<int>(CURRENT_HEIGHT_ADDR);
 	currentAspectRatio = static_cast<float>(currentWidth) / static_cast<float>(currentHeight);
 	isWiderThan4By3 = currentAspectRatio > ASPECT_RATIO_4_3;
+	refreshFOV = true;
 
 	if (isWiderThan4By3)
 	{
