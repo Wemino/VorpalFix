@@ -1594,7 +1594,7 @@ Label
 {
 	title			"Language*"
 	name			"LanguageTxt"
-	rect			68 78 220 24
+	rect			68 77 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1607,7 +1607,7 @@ resource
 List
 {
 	name			"Default"
-	rect			88 94 200 20
+	rect			88 93 200 20
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1631,7 +1631,7 @@ Label
 {
 	title			"Remastered Models*"
 	name			"RemasteredModelsTxt"
-	rect			68 123 220 24
+	rect			68 118 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1643,7 +1643,7 @@ resource
 CheckBox
 {
 	name			"Default"
-	rect			260 123 16 16
+	rect			260 118 16 16
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1659,47 +1659,13 @@ CheckBox
 	unchecked_shader	"ui/control/checkbox_unchecked"
 }
 
-// SHOW INTRO VIDEOS
-resource
-Label
-{
-	title			"Show Intro Videos*"
-	name			"ShowIntrosTxt"
-	rect			68 150 220 24
-	fgcolor			0.199 0.043 0.043 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	groupid			"group_vf"
-	font			"asrafel"
-	fontjustify		left center
-}
-resource
-CheckBox
-{
-	name			"Default"
-	rect			260 150 16 16
-	fgcolor			1.00 1.00 1.00 1.00
-	bgcolor			0.00 0.00 0.00 0.00
-	borderstyle		"NONE"
-	groupid			"group_vf"
-	font			"asrafel"
-	fontjustify		right center
-	linkcvar		"vf_show_intros"
-
-	highlighttextwidget "ShowIntrosTxt"
-	ordernumber		29
-
-	checked_shader		"ui/control/checkbox_checked"
-	unchecked_shader	"ui/control/checkbox_unchecked"
-}
-
 // USE GYRO AIMING
 resource
 Label
 {
 	title			"Use Gyro Aiming"
 	name			"GyroAimTxt"
-	rect			68 177 220 24
+	rect			68 145 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1711,7 +1677,7 @@ resource
 CheckBox
 {
 	name			"Default"
-	rect			260 177 16 16
+	rect			260 145 16 16
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1721,7 +1687,7 @@ CheckBox
 	linkcvar		"vf_gyro_aim"
 
 	highlighttextwidget "GyroAimTxt"
-	ordernumber		30
+	ordernumber		29
 
 	checked_shader		"ui/control/checkbox_checked"
 	unchecked_shader	"ui/control/checkbox_unchecked"
@@ -1733,7 +1699,7 @@ Label
 {
 	title			"Console Style HUD"
 	name			"ConsoleHUDTxt"
-	rect			68 204 220 24
+	rect			68 172 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1745,7 +1711,7 @@ resource
 CheckBox
 {
 	name			"Default"
-	rect			260 204 16 16
+	rect			260 172 16 16
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1755,7 +1721,7 @@ CheckBox
 	linkcvar		"vf_ui_console_hud"
 
 	highlighttextwidget "ConsoleHUDTxt"
-	ordernumber		31
+	ordernumber		30
 
 	checked_shader		"ui/control/checkbox_checked"
 	unchecked_shader	"ui/control/checkbox_unchecked"
@@ -1767,7 +1733,7 @@ Label
 {
 	title			"Cutscene Borders"
 	name			"LetterboxTxt"
-	rect			68 231 220 24
+	rect			68 199 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1779,7 +1745,7 @@ resource
 CheckBox
 {
 	name			"Default"
-	rect			260 231 16 16
+	rect			260 199 16 16
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1789,7 +1755,7 @@ CheckBox
 	linkcvar		"vf_ui_letterbox"
 
 	highlighttextwidget "LetterboxTxt"
-	ordernumber		32
+	ordernumber		31
 
 	checked_shader		"ui/control/checkbox_checked"
 	unchecked_shader	"ui/control/checkbox_unchecked"
@@ -1801,7 +1767,7 @@ Label
 {
 	title			"Vertical Sync"
 	name			"VsyncTxt"
-	rect			68 258 220 24
+	rect			68 226 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1813,7 +1779,7 @@ resource
 CheckBox
 {
 	name			"Default"
-	rect			260 258 16 16
+	rect			260 226 16 16
 	fgcolor			1.00 1.00 1.00 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1823,19 +1789,19 @@ CheckBox
 	linkcvar		"r_swapInterval"
 
 	highlighttextwidget "VsyncTxt"
-	ordernumber		33
+	ordernumber		32
 
 	checked_shader		"ui/control/checkbox_checked"
 	unchecked_shader	"ui/control/checkbox_unchecked"
 }
 
-// MAX ANISOTROPY
+// ANTIALIASING
 resource
 Label
 {
-	title			"Anisotropic Filter"
-	name			"AnisotropyTxt"
-	rect			68 284 220 24
+	title			"Antialiasing Mode"
+	name			"AntialiasingTxt"
+	rect			68 250 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1847,7 +1813,43 @@ resource
 List
 {
 	name			"Default"
-	rect			88 300 200 20
+	rect			88 266 200 20
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vf"
+	font			"asrafel"
+	fontjustify		center top
+
+	highlighttextwidget "AntialiasingTxt"
+	ordernumber		33
+
+	linkcvar		"vf_r_multisamples"
+	additem			0 "Off"
+	additem			2 "2x MSAA"
+	additem			4 "4x MSAA"
+	additem			8 "8x MSAA"
+}
+
+// MAX ANISOTROPY
+resource
+Label
+{
+	title			"Anisotropic Filter"
+	name			"AnisotropyTxt"
+	rect			68 289 220 24
+	fgcolor			0.199 0.043 0.043 1.00
+	bgcolor			0.00 0.00 0.00 0.00
+	borderstyle		"NONE"
+	groupid			"group_vf"
+	font			"asrafel"
+	fontjustify		left center
+}
+resource
+List
+{
+	name			"Default"
+	rect			88 305 200 20
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1872,7 +1874,7 @@ Label
 {
 	title			"Framerate Limit"
 	name			"FPSLimitTxt"
-	rect			68 329 220 24
+	rect			68 328 220 24
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"
@@ -1884,7 +1886,7 @@ resource
 List
 {
 	name			"Default"
-	rect			88 345 200 20
+	rect			88 344 200 20
 	fgcolor			0.199 0.043 0.043 1.00
 	bgcolor			0.00 0.00 0.00 0.00
 	borderstyle		"NONE"

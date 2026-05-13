@@ -76,10 +76,10 @@ const int CURRENT_HEIGHT_ADDR = 0x1C47990;
 // =============================
 static int VF_LANGUAGE_PTR;
 static int VF_REMASTERED_MODELS_PTR;
-static int VF_UI_SHOW_INTRO_PTR;
 static int VF_UI_GYRO_AIM_PTR;
 static int VF_UI_CONSOLE_HUD_PTR;
 static int VF_UI_LETTERBOX_PTR;
+static int VF_MSAA_PTR;
 static int VF_R_EXT_MAX_ANISOTROPY_PTR;
 static int VF_COM_MAXFPS_PTR;
 
@@ -1030,10 +1030,10 @@ static int __cdecl SetupOpenGLParameters_Hook()
 
 	VF_LANGUAGE_PTR = Cvar_Set("vf_language", StringHelper::IntegerToCString(lang), 0);
 	VF_REMASTERED_MODELS_PTR = Cvar_Set("vf_remastered_models", StringHelper::BoolToCString(!DisableRemasteredModels), 0);
-	VF_UI_SHOW_INTRO_PTR = Cvar_Set("vf_show_intros", StringHelper::BoolToCString(UseOriginalIntroVideos), 0);
 	VF_UI_GYRO_AIM_PTR = Cvar_Set("vf_gyro_aim", StringHelper::BoolToCString(GyroEnabled), 0);
 	VF_UI_CONSOLE_HUD_PTR = Cvar_Set("vf_ui_console_hud", StringHelper::BoolToCString(ConsolePortHUD), 0);
 	VF_UI_LETTERBOX_PTR = Cvar_Set("vf_ui_letterbox", StringHelper::BoolToCString(!DisableLetterbox), 0);
+	VF_MSAA_PTR = Cvar_Set("vf_r_multisamples", StringHelper::IntegerToCString(MultiSampleAntiAliasing), 0);
 	VF_R_EXT_MAX_ANISOTROPY_PTR = Cvar_Set("vf_r_ext_max_anisotropy", StringHelper::FloatToCString(MaxAnisotropy), 0);
 	VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", StringHelper::IntegerToCString(CustomFPSLimit), 0);
 
@@ -1064,6 +1064,8 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int*, char* group_name)
 	// Apply the changes
 	if (strcmp(group_name, "group_vf") == 0)
 	{
+		bool shouldVidRestart = false;
+
 		// LanguageId - Need a restart
 		int languageId = MemoryHelper::ReadMemory<int>(VF_LANGUAGE_PTR + 0x20);
 		IniHelper::iniReader["General"]["LanguageId"] = StringHelper::IntegerToCString(languageId);
@@ -1071,10 +1073,6 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int*, char* group_name)
 		// DisableRemasteredModels - Need a restart
 		bool disableRemasteredModels = MemoryHelper::ReadMemory<int>(VF_REMASTERED_MODELS_PTR + 0x20);
 		IniHelper::iniReader["General"]["DisableRemasteredModels"] = StringHelper::IntegerToCString(!disableRemasteredModels);
-
-		// UseOriginalIntroVideos - Need a restart
-		bool useOriginalIntroVideos = MemoryHelper::ReadMemory<int>(VF_UI_SHOW_INTRO_PTR + 0x20);
-		IniHelper::iniReader["General"]["UseOriginalIntroVideos"] = StringHelper::IntegerToCString(useOriginalIntroVideos);
 
 		// GyroEnabled
 		GyroEnabled = MemoryHelper::ReadMemory<int>(VF_UI_GYRO_AIM_PTR + 0x20);
@@ -1090,15 +1088,30 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int*, char* group_name)
 		IniHelper::iniReader["Display"]["DisableLetterbox"] = StringHelper::IntegerToCString(!isLetterboxEnabled);
 		DisableLetterbox = !isLetterboxEnabled;
 
+		// MultiSampleAntiAliasing
+		int msaa = MemoryHelper::ReadMemory<int>(VF_MSAA_PTR + 0x20);
+		IniHelper::iniReader["Graphics"]["MultiSampleAntiAliasing"] = StringHelper::IntegerToCString(msaa);
+
+		if (msaa != MultiSampleAntiAliasing)
+		{
+			MultiSampleAntiAliasing = msaa;
+			shouldVidRestart = true;
+		}
+
 		// MaxAnisotropy
 		float maxAnisotropy = MemoryHelper::ReadMemory<float>(VF_R_EXT_MAX_ANISOTROPY_PTR + 0x1C);
 		IniHelper::iniReader["Graphics"]["MaxAnisotropy"] = StringHelper::FloatToCString(maxAnisotropy);
 
-		// Execute vid_restart to refresh the textures
 		if (maxAnisotropy != MaxAnisotropy)
 		{
 			MaxAnisotropy = maxAnisotropy;
 			isAnisotropyRetrieved = false;
+			shouldVidRestart = true;
+		}
+
+		// Execute vid_restart once if either MultiSampleAntiAliasing or MaxAnisotropy changed
+		if (shouldVidRestart)
+		{
 			GameHelper::VidRestart();
 		}
 
