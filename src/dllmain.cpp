@@ -37,6 +37,7 @@ const int STARTUP_STATE_ADDR = 0x7CCA20;
 const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
 const int IS_PAUSED = 0x7CCA64;
 const int CURRENT_LANG = 0x7CF868;
+const int GAME_API_MODULE_ADDR = 0x7D0E7C;
 const int DISPLAY_MODE_IDX = 0x7D40C4;
 const int DISPLAY_MODE_NUM = 0x7D40C8;
 const int RENDER_WIDTH_ADDR = 0x11C02CC;
@@ -1264,7 +1265,7 @@ static int __cdecl SV_LoadGameDLL_Hook()
 	int result = SV_LoadGameDLL();
 
 	// Get handle to "fgamex86.dll" if loaded
-	HMODULE gameApiDll = GetModuleHandle(L"fgamex86.dll");
+	HMODULE gameApiDll = *(HMODULE*)GAME_API_MODULE_ADDR;
 
 	// If DLL is loaded, get its base address and do the patching
 	if (gameApiDll)
