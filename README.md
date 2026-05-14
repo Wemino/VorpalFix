@@ -295,6 +295,22 @@ Adds support for PlayStation and Nintendo Switch controllers via SDL3.
   </table>
 </div>
 
+- **MSAA Anti-Aliasing**  
+  Smooths jagged edges on models and scenery while preserving the game's original look.
+
+<div align="center">
+  <table>
+    <tr>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/MSAA_Off.png"></td>
+      <td width="50%"><img style="width:100%" src="https://raw.githubusercontent.com/Wemino/VorpalFix/main/assets/MSAA_On.png"></td>
+    </tr>
+    <tr>
+      <td align="center">Vanilla</td>
+      <td align="center">MSAA Anti-Aliasing</td>
+    </tr>
+  </table>
+</div>
+
 - **Maximum Model Detail**  
   Disable LOD bias to render models at full quality at any distance.
 
