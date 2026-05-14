@@ -229,7 +229,6 @@ static int(__thiscall* Widget_SetRect)(int, int) = nullptr; // 0x4B3DB0
 static DWORD(__thiscall* UISetCvars)(DWORD*, char*) = nullptr; // 0x4B9FD0
 static BYTE(__thiscall* LoadUI)(DWORD*, char*) = nullptr; // 0x4C1AC0
 static void(__thiscall* Widget_AddItem)(DWORD*, void**, void**) = nullptr; // 0x4C4850
-static DWORD* (__cdecl* SetAliceMirrorViewportParams)(DWORD*, float, float, float, float, float) = nullptr; // 0x4C5D30
 static int(__thiscall* UpdateHeadOrientationFromMouse)(int, float*, int, float*, float*) = nullptr; // 0x4C6050
 static int(__thiscall* Widget_AutoCenterInDesignSpace)(int*, int, int, int, int) = nullptr; // 0x4D2320
 static void(__cdecl* GPhysics_Pusher)(int); // fgamex86.dll+0x774F0
@@ -2415,16 +2414,28 @@ static DWORD __fastcall LoadUI_Hook(DWORD* thisPtr, int*, char* ui_path)
 }
 
 // Adjust the scaling and position of Alice's 3D model in the settings menu
-static DWORD* __cdecl SetAliceMirrorViewportParams_Hook(DWORD* a1, float param_x, float param_y, float param_width, float param_height, float param_fov)
+static DWORD* __cdecl SetAliceMirrorViewportParams(float x, float y, float width, float height, float fov)
 {
-	DWORD* renderEntity = SetAliceMirrorViewportParams(a1, param_x, param_y, param_width, param_height, param_fov);
+	DWORD* renderEntity;
+	__asm mov renderEntity, esi
 
 	if (isWiderThan4By3)
 	{
-		// X position
-		renderEntity[0] = static_cast<int>(widthDifference);
-		// Width
-		renderEntity[2] = static_cast<int>(scaledWidth);
+		x = widthDifference;
+		width = scaledWidth;
+	}
+
+	__asm
+	{
+		push fov
+		push height
+		push width
+		push y
+		push x
+		mov  esi, renderEntity
+		mov  eax, 0x4C5D30
+		call eax
+		add  esp, 0x14
 	}
 
 	return renderEntity;
@@ -2632,12 +2643,12 @@ static void ApplyFixStretchedMenu()
 	HookHelper::ApplyHook((void*)0x48FC00, &RE_StretchPic_Hook, (LPVOID*)&RE_StretchPic); // UI Scaling
 	HookHelper::ApplyHook((void*)0x44B100, &SetUIBorder_Hook, (LPVOID*)&SetUIBorder); // Add the borders
 	HookHelper::ApplyHook((void*)0x48F1E0, &RE_StretchFont_Hook, (LPVOID*)&RE_StretchFont); // Font Scaling
-	HookHelper::ApplyHook((void*)0x4C5D30, &SetAliceMirrorViewportParams_Hook, (LPVOID*)&SetAliceMirrorViewportParams); // Scale Alice's 3D model in the settings menu
 	HookHelper::ApplyHook((void*)0x4873C0, &CreateInternalShaders_Hook, (LPVOID*)&CreateInternalShaders);
 	HookHelper::ApplyHook((void*)0x452CF0, &ShowDialogBoxText_Hook, (LPVOID*)&ShowDialogBoxText);
 	HookHelper::ApplyHook((void*)0x4B0F00, &Widget_DrawString_Hook, (LPVOID*)&Widget_DrawString);
 	HookHelper::ApplyHook((void*)0x4B1010, &Widget_DrawStringInRect_Hook, (LPVOID*)&Widget_DrawStringInRect);
 	HookHelper::ApplyHook((void*)0x44AC30, &DrawWorldMapLoadingScreen_Hook, (LPVOID*)&DrawWorldMapLoadingScreen);
+	MemoryHelper::MakeCALL(0x4C68BC, reinterpret_cast<uintptr_t>(&SetAliceMirrorViewportParams)); // Scale Alice's 3D model in the settings menu
 	MemoryHelper::MakeNOP(0x4D2AB1, 7); // Dark rectangle when reassigning a control
 
 	// Save screenshot
