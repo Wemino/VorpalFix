@@ -495,6 +495,11 @@ static HWND WINAPI CreateWindowExA_Hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 		rid.hwndTarget = hwnd;
 
 		isRawInputRegistered = RegisterRawInputDevices(&rid, 1, sizeof(rid)) != FALSE;
+		if (isRawInputRegistered)
+		{
+			// Prevent double input
+			MemoryHelper::WriteMemory<uint8_t>(0x4067B9, 0xC3);
+		}
 	}
 
 	return hwnd;
@@ -2933,12 +2938,6 @@ static void ApplyWndProcHook()
 	if (!EnableAltF4Close && !UseMouseRawInput && !EnableMouse45) return;
 
 	HookHelper::ApplyHook((void*)0x46C600, &lpfnWndProc_MSG_Hook, (LPVOID*)&lpfnWndProc_MSG);
-
-	if (UseMouseRawInput)
-	{
-		// Prevent double input
-		MemoryHelper::WriteMemory<uint8_t>(0x4067B9, 0xC3);
-	}
 }
 
 static void ApplyMultiSampleAntiAliasing()
