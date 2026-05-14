@@ -1823,7 +1823,7 @@ static int GLW_MakeContext()
 
 		if (SystemHelper::qwglChoosePixelFormatARB)
 		{
-			int attribs[24];
+			int attribs[24]{};
 			int n = 0;
 			attribs[n++] = WGL_DRAW_TO_WINDOW_ARB;  attribs[n++] = GL_TRUE;
 			attribs[n++] = WGL_SUPPORT_OPENGL_ARB;  attribs[n++] = GL_TRUE;
