@@ -723,8 +723,8 @@ static void __cdecl CL_ParsePacketEntities_Hook(int msg, int oldframe, int newfr
 
 	if ((AutoFOV || exitingCutscene) && isWiderThan4By3 && shouldUpdateFov)
 	{
-		float verticalFovRad = 2.0f * atanf(tanf(newFov * (float)(M_PI / 180.0) * 0.5f) / ASPECT_RATIO_4_3);
-		*newFovPtr = 2.0f * atanf(tanf(verticalFovRad * 0.5f) * currentAspectRatio) * (float)(180.0 / M_PI);
+		float horizontalFovRad = newFov * (float)(M_PI / 180.0);
+		*newFovPtr = 2.0f * atanf(tanf(horizontalFovRad * 0.5f) * currentAspectRatio / ASPECT_RATIO_4_3) * (float)(180.0 / M_PI);
 	}
 
 	if (DisableLetterbox)
@@ -749,12 +749,9 @@ static int __cdecl CallCmd_Hook(char* cmd, char a2)
     if (!CustomControllerBindings || !isHoldingLeftStick || !cmd)
         return CallCmd(cmd, a2);
 
-    std::string inputCmd(cmd);
-    std::transform(inputCmd.begin(), inputCmd.end(), inputCmd.begin(), ::tolower);
-
-	for (const auto& command : weaponCommands)
+	for (const char* command : weaponCommands)
 	{
-		if (inputCmd == command) return 0; // Return 0 if the command matches, skip the weapon switch command that has been replaced
+		if (_stricmp(cmd, command) == 0) return 0; // Return 0 if the command matches, skip the weapon switch command that has been replaced
 	}
     
     return CallCmd(cmd, a2);
@@ -868,9 +865,7 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 
 		// Get config file path
 		const char* configFile = (MemoryHelper::ReadMemory<int>(CURRENT_LANG) == 2) ? "config_pc_fra.cfg" : "config.cfg";
-
-		std::string directoryPath = GetSavePath_Hook();
-		std::filesystem::path configFilePath = std::filesystem::path(directoryPath) / configFile;
+		std::filesystem::path configFilePath = std::filesystem::path(GetSavePath_Hook()) / configFile;
 
 		// Execute this earlier to cache the resolution list
 		FetchDisplayResolutions_Hook();
@@ -879,21 +874,16 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		int resolutionNum = MemoryHelper::ReadMemory<int>(DISPLAY_MODE_NUM);
 
 		// Check if 'r_mode' exceeds the total count of available resolution modes
-		if (FixResolutionModeOOB)
+		if (FixResolutionModeOOB && std::atoi(value) >= resolutionNum)
 		{
-			int index;
-			std::istringstream(value) >> index;
-
-			// Check if "index" is within bounds and adjust if necessary
-			if (index >= resolutionNum)
-			{
-				// Set to the current resolution instead of crashing
-				AutoResolution = true;
-			}
+			// Set to the current resolution instead of crashing
+			AutoResolution = true;
 		}
 
 		// If we want 'r_mode' to match the screen resolution
-		if ((FirstAutoResolution && !std::filesystem::exists(configFilePath)) || (AutoResolution || ForceBorderlessFullscreen))
+		bool wantAutoMatch = AutoResolution || ForceBorderlessFullscreen || (FirstAutoResolution && !std::filesystem::exists(configFilePath));
+
+		if (wantAutoMatch)
 		{
 			// Find the 'r_mode' value matching the screen resolution
 			for (int i = 0; i < resolutionNum; i++)
@@ -903,9 +893,9 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 
 				if (screenWidth == screenWidthMode && screenHeight == screenHeightMode)
 				{
-					Cvar_Set(var_name, value, flag); // Set the default value
+					int result = Cvar_Set(var_name, value, flag); // Set the default value
 					GameHelper::UpdateCvar(var_name, StringHelper::IntegerToCString(i), flag); // Update 'r_mode' to the index of the matching screen resolution
-					break;
+					return result;
 				}
 			}
 		}
@@ -1239,18 +1229,7 @@ static void __fastcall Widget_AddItem_Hook(DWORD* thisp, int, void** a2, void** 
 			rateCount = finalCount;
 
 			// Sort ascending
-			for (int a = 0; a < rateCount - 1; a++)
-			{
-				for (int b = a + 1; b < rateCount; b++)
-				{
-					if (rates[a] > rates[b])
-					{
-						DWORD tmp = rates[a];
-						rates[a] = rates[b];
-						rates[b] = tmp;
-					}
-				}
-			}
+			std::sort(rates, rates + rateCount);
 
 			// Add each rate as a list item (value + label)
 			for (int r = 0; r < rateCount; r++)
@@ -1616,37 +1595,37 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 	{
 		isHoldingLeftStick = true;
 
-		static const struct { int mask; const char* joyKey; int slot; } dpadMap[] =
+		int slot = -1;
+		switch (xinput_state & 0x0F)
 		{
-			{ XINPUT_GAMEPAD_DPAD_UP,    "JOY5", 0 },
-			{ XINPUT_GAMEPAD_DPAD_DOWN,  "JOY7", 1 },
-			{ XINPUT_GAMEPAD_DPAD_LEFT,  "JOY8", 2 },
-			{ XINPUT_GAMEPAD_DPAD_RIGHT, "JOY6", 3 },
-		};
+			case XINPUT_GAMEPAD_DPAD_UP: slot = 0; break;
+			case XINPUT_GAMEPAD_DPAD_DOWN: slot = 1; break;
+			case XINPUT_GAMEPAD_DPAD_LEFT: slot = 2; break;
+			case XINPUT_GAMEPAD_DPAD_RIGHT: slot = 3; break;
+		}
 
-		int currentWeaponId = MemoryHelper::ReadMemory<int>(CURRENT_WEAPON_ID);
-		if (currentWeaponId != -1)
+		if (slot != -1)
 		{
-			const int dpadBits = xinput_state & 0x0F;
-
-			for (const auto& d : dpadMap)
+			int currentWeaponId = MemoryHelper::ReadMemory<int>(CURRENT_WEAPON_ID);
+			if (currentWeaponId != -1 && lastWeaponIdPerDpad[slot] != currentWeaponId)
 			{
-				if (dpadBits != d.mask) continue;
-
-				if (lastWeaponIdPerDpad[d.slot] != currentWeaponId)
+				static const int dpadKeyIds[4] = 
 				{
-					auto [it, inserted] = weaponCommandCache.try_emplace(currentWeaponId);
-					if (inserted)
-					{
-						it->second = "use ";
-						it->second += GameHelper::GetWeaponName(currentWeaponId);
-					}
+					GameHelper::GetKeyId("JOY5"),
+					GameHelper::GetKeyId("JOY7"),
+					GameHelper::GetKeyId("JOY8"),
+					GameHelper::GetKeyId("JOY6"),
+				};
 
-					Bind(GameHelper::GetKeyId(d.joyKey), const_cast<char*>(it->second.c_str()));
-					lastWeaponIdPerDpad[d.slot] = currentWeaponId;
+				auto [it, inserted] = weaponCommandCache.try_emplace(currentWeaponId);
+				if (inserted)
+				{
+					it->second = "use ";
+					it->second += GameHelper::GetWeaponName(currentWeaponId);
 				}
 
-				break;
+				Bind(dpadKeyIds[slot], const_cast<char*>(it->second.c_str()));
+				lastWeaponIdPerDpad[slot] = currentWeaponId;
 			}
 		}
 	}
@@ -1658,28 +1637,18 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 	const WORD QUICK_LOAD_COMBO = XINPUT_GAMEPAD_RIGHT_THUMB | XINPUT_GAMEPAD_A;
 	const WORD QUICK_SAVE_COMBO = XINPUT_GAMEPAD_RIGHT_THUMB | XINPUT_GAMEPAD_B;
 
-	// Right Stick Pressed + A (Quick Load)
-	if ((xinput_state & QUICK_LOAD_COMBO) == QUICK_LOAD_COMBO)
+	const bool quickLoad = (xinput_state & QUICK_LOAD_COMBO) == QUICK_LOAD_COMBO;
+	const bool quickSave = (xinput_state & QUICK_SAVE_COMBO) == QUICK_SAVE_COMBO;
+
+	if (quickLoad || quickSave)
 	{
-		static auto lastQuickActionTime = std::chrono::steady_clock::now() - std::chrono::milliseconds(1000);
-		auto now = std::chrono::steady_clock::now();
+		static auto lastQuickActionTime = std::chrono::steady_clock::now() - std::chrono::seconds(1);
 
-		if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastQuickActionTime).count() >= 1000)
+		const auto now = std::chrono::steady_clock::now();
+
+		if (now - lastQuickActionTime >= std::chrono::seconds(1))
 		{
-			CallCmd("loadgame quicksave\n", 0);
-			lastQuickActionTime = now;
-		}
-	}
-
-	// Right Stick Pressed + B (Quick Save)
-	if ((xinput_state & QUICK_SAVE_COMBO) == QUICK_SAVE_COMBO)
-	{
-		static auto lastQuickActionTime = std::chrono::steady_clock::now() - std::chrono::milliseconds(1000);
-		auto now = std::chrono::steady_clock::now();
-
-		if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastQuickActionTime).count() >= 1000)
-		{
-			CallCmd("savegame quicksave\n", 0);
+			CallCmd(quickLoad ? "loadgame quicksave\n" : "savegame quicksave\n", 0);
 			lastQuickActionTime = now;
 		}
 	}
@@ -1716,7 +1685,7 @@ static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, int wParam, LPARA
 	}
 
 	// Mouse4/Mouse5
-	if (EnableMouse45 && Msg == WM_XBUTTONDOWN || Msg == WM_XBUTTONUP)
+	if (EnableMouse45 && (Msg == WM_XBUTTONDOWN || Msg == WM_XBUTTONUP))
 	{
 		int key = 0;
 		switch (HIWORD(wParam))
@@ -2050,6 +2019,11 @@ static void __cdecl RE_StretchFont_Hook(int a1, BYTE a2, float font_x_position, 
 // Adjust the menu position and scaling for non-4:3 aspect ratios
 static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float resolution_width, float resolution_height, float a5, float a6, float a7, float a8, int ShaderHandle)
 {
+	if (mustSkipPicScaling)
+	{
+		return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+	}
+
 	// Pillarbox borders
 	if (x_position == LEFT_BORDER_X_ID || x_position == RIGHT_BORDER_X_ID)
 	{
@@ -2102,11 +2076,6 @@ static int __cdecl RE_StretchPic_Hook(float x_position, float y_position, float 
 			y_position = (currentHeight - resolution_height) / 2.0f;
 			return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 		}
-	}
-
-	if (mustSkipPicScaling)
-	{
-		return RE_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 	}
 
 	switch (shaderType)

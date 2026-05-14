@@ -486,7 +486,8 @@ namespace HookHelper
 	{
 		if (!InitializeMinHook()) return;
 
-		MH_STATUS status = MH_CreateHookApi(moduleName, apiName, hookFunc, originalFunc);
+		LPVOID target = nullptr;
+		MH_STATUS status = MH_CreateHookApiEx(moduleName, apiName, hookFunc, originalFunc, &target);
 		if (status != MH_OK)
 		{
 			char errorMsg[0x100];
@@ -495,7 +496,7 @@ namespace HookHelper
 			return;
 		}
 
-		status = MH_EnableHook(MH_ALL_HOOKS);
+		status = MH_EnableHook(target);
 		if (status != MH_OK)
 		{
 			char errorMsg[0x100];
