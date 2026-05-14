@@ -1382,8 +1382,7 @@ static int __cdecl PrepareHUDRendering_Hook(float x_position, float y_position, 
 			{
 				x_position += currentWidth / consoleHudAdjustmentDivisor;
 			}
-
-			if (x_position > 0)
+			else if (x_position > 0)
 			{
 				x_position -= currentWidth / consoleHudAdjustmentDivisor;
 			}
