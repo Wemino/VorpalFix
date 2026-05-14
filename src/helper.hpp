@@ -193,7 +193,6 @@ namespace GameHelper
 	int(__cdecl* UI_GetStaticMap)(unsigned int, const char*) = (int(__cdecl*)(unsigned int, const char*))0x44A300;
 	int(__cdecl* IsControllerConnected)() = (int(__cdecl*)())0x463130;
 	void(__cdecl* Sys_QueEvent)(int, int, int, int, int, void*) = (void(__cdecl*)(int, int, int, int, int, void*))0x464D00;
-	int(__cdecl* GLW_ChoosePFD)(PIXELFORMATDESCRIPTOR*) = (int(__cdecl*)(PIXELFORMATDESCRIPTOR*))0x46F990;
 	const char* (__thiscall* GetWidgetName)(DWORD*) = (const char* (__thiscall*)(DWORD*))0x4B1550;
 	void(__cdecl*& ri_Printf)(int, const char*, ...) = *(void(__cdecl**)(int, const char*, ...))0x1C1D220;
 

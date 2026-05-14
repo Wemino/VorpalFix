@@ -1816,37 +1816,41 @@ static int GLW_MakeContext()
 
 	if (!*pPixelFormatSet)
 	{
-		bool msaaApplied = false;
+		bool pixelFormatSelected = false;
 		int msaaSamples = MultiSampleAntiAliasing;
 
-		if (msaaSamples > 0)
+		SystemHelper::BootstrapWGLExtensions();
+
+		if (SystemHelper::qwglChoosePixelFormatARB)
 		{
-			SystemHelper::BootstrapWGLExtensions();
+			int attribs[24];
+			int n = 0;
+			attribs[n++] = WGL_DRAW_TO_WINDOW_ARB;  attribs[n++] = GL_TRUE;
+			attribs[n++] = WGL_SUPPORT_OPENGL_ARB;  attribs[n++] = GL_TRUE;
+			attribs[n++] = WGL_ACCELERATION_ARB;    attribs[n++] = WGL_FULL_ACCELERATION_ARB;
+			attribs[n++] = WGL_COLOR_BITS_ARB;      attribs[n++] = pPFD->cColorBits;
+			attribs[n++] = WGL_DEPTH_BITS_ARB;      attribs[n++] = pPFD->cDepthBits;
+			attribs[n++] = WGL_STENCIL_BITS_ARB;    attribs[n++] = pPFD->cStencilBits;
+			attribs[n++] = WGL_DOUBLE_BUFFER_ARB;   attribs[n++] = GL_TRUE;
 
-			int attribs[] =
+			if (msaaSamples > 0)
 			{
-				WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
-				WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
-				WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
-				WGL_COLOR_BITS_ARB, pPFD->cColorBits,
-				WGL_DEPTH_BITS_ARB, pPFD->cDepthBits,
-				WGL_STENCIL_BITS_ARB, pPFD->cStencilBits,
-				WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
-				WGL_SAMPLE_BUFFERS_ARB, 1,
-				WGL_SAMPLES_ARB, msaaSamples,
-				0, 0
-			};
+				attribs[n++] = WGL_SAMPLE_BUFFERS_ARB;  attribs[n++] = 1;
+				attribs[n++] = WGL_SAMPLES_ARB;         attribs[n++] = msaaSamples;
+			}
+			attribs[n++] = 0;
+			attribs[n++] = 0;
 
-			int msaaFormat = 0;
+			int chosenFormat = 0;
 			UINT numFormats = 0;
 
-			if (SystemHelper::qwglChoosePixelFormatARB && SystemHelper::qwglChoosePixelFormatARB(hDC, attribs, NULL, 1, &msaaFormat, &numFormats) && numFormats > 0)
+			if (SystemHelper::qwglChoosePixelFormatARB(hDC, attribs, NULL, 1, &chosenFormat, &numFormats) && numFormats > 0)
 			{
 				__asm
 				{
 					push pPFD
 					push 0x28
-					push msaaFormat
+					push chosenFormat
 					push hDC
 					mov eax, 0x1BB8AC8
 					call dword ptr[eax]
@@ -1857,7 +1861,7 @@ static int GLW_MakeContext()
 				__asm
 				{
 					push pPFD
-					push msaaFormat
+					push chosenFormat
 					push hDC
 					mov eax, 0x1BB8D9C
 					call dword ptr[eax]
@@ -1866,25 +1870,42 @@ static int GLW_MakeContext()
 
 				if (setResult)
 				{
-					GameHelper::ri_Printf(0, "...PIXELFORMAT %d selected (%dx MSAA)\n", msaaFormat, msaaSamples);
+					if (msaaSamples > 0)
+					{
+						GameHelper::ri_Printf(0, "...PIXELFORMAT %d selected (%dx MSAA)\n", chosenFormat, msaaSamples);
+					}
+					else
+					{
+						GameHelper::ri_Printf(0, "...PIXELFORMAT %d selected\n", chosenFormat);
+					}
 
 					*pPixelFormatSet = 1;
-					msaaApplied = true;
+					pixelFormatSelected = true;
 				}
 				else
 				{
-					GameHelper::ri_Printf(0, "...qwglSetPixelFormat with MSAA failed, falling back\n");
+					GameHelper::ri_Printf(0, "...qwglSetPixelFormat failed, falling back\n");
 				}
 			}
 			else
 			{
-				GameHelper::ri_Printf(0, "...no MSAA pixel format found, falling back\n");
+				GameHelper::ri_Printf(0, "...qwglChoosePixelFormatARB found no match, falling back\n");
 			}
 		}
 
-		if (!msaaApplied)
+		if (!pixelFormatSelected)
 		{
-			int pixelformat = GameHelper::GLW_ChoosePFD(pPFD);
+			int pixelformat = 0;
+
+			__asm
+			{
+				push pPFD
+				mov ecx, hDC
+				mov eax, 0x46F990 // GLW_ChoosePFD
+				call eax
+				add esp, 4
+				mov pixelformat, eax
+			}
 
 			if (!pixelformat)
 			{
