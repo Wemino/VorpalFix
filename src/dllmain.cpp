@@ -24,52 +24,53 @@ using GameHelper::ShaderType;
 // =============================
 // Memory Addresses 
 // =============================
-const int MAIN_ENTRY_POINT = 0x4DF0A3;
-const int CODE_CAVE_SOUND = 0x513490;
-const int CODE_CAVE_INTRO = 0x513B90;
-const int CODE_CAVE_BLINK = 0x513E08;
-const int CODE_CAVE_WIDTH = 0x513E40;
-const int VTABLE_ALICE_DIALOG_TEXT = 0x52221C;
-const int VTABLE_UI_WINDOW_MANAGER = 0x53E62C;
-const int VTABLE_UI_AUTOSCROLL = 0x53EBD4;
-const int VTABLE_UI_LABEL = 0x5410FC;
-const int STARTUP_STATE_ADDR = 0x7CCA20;
-const int CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
-const int IS_PAUSED = 0x7CCA64;
-const int CURRENT_LANG = 0x7CF868;
-const int GAME_API_MODULE_ADDR = 0x7D0E7C;
-const int GL_PIXEL_FORMAT_DESCRIPTOR_ADDR = 0x7D4098;
-const int DISPLAY_MODE_IDX = 0x7D40C4;
-const int DISPLAY_MODE_NUM = 0x7D40C8;
-const int RENDER_WIDTH_ADDR = 0x11C02CC;
-const int RENDER_HEIGHT_ADDR = 0x11C02D0;
-const int SET_VIEWPORT_FN_ADDR = 0x11C01D0;
-const int SET_SCISSOR_FN_ADDR = 0x11C01D8;
-const int IS_MENU_LOCKED = 0x11C2770;
-const int BLINK_TIMER = 0x11C35EC;
-const int MAIN_WINDOW_HWND = 0x11C5008;
-const int SYS_EVENT_TIME = 0x11C50AC;
-const int UI_WAIT_TIMER = 0x12EF948;
-const int IS_CINEMATIC = 0x12F3CE8;
-const int CURRENT_WEAPON_ID = 0x12F3D60;
-const int MOUSE_YAW_BUFFER = 0x12F986C;
-const int MOUSE_PITCH_BUFFER = 0x12F9874;
-const int MOUSE_BUFFER_INDEX = 0x12F987C;
-const int CAMERA_YAW_ADDR = 0x12F9F28;
-const int CAMERA_PITCH_ADDR = 0x12F9F2C;
-const int CVAR_SENSITIVITY = 0x148BC3C;
-const int CVAR_M_INVERT_PITCH = 0x14E8A5C;
-const int CVAR_CL_YAWSPEED = 0x14EB3B8;
-const int IS_IN_MENU = 0x14EB498;
-const int CVAR_CL_PITCHSPEED = 0x14EB4D8;
-const int SHADERS_CACHE_ADDR = 0x1BFCEF4;
-const int DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
-const int DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
-const int GL_HDC_ADDR = 0x1C46324;
-const int GL_HGLRC_ADDR = 0x1C46328;
-const int GL_PIXEL_FORMAT_SET_ADDR = 0x1C46334;
-const int CURRENT_WIDTH_ADDR = 0x1C4798C;
-const int CURRENT_HEIGHT_ADDR = 0x1C47990;
+constexpr uintptr_t MAIN_ENTRY_POINT = 0x4DF0A3;
+constexpr uintptr_t CODE_CAVE_SOUND = 0x513490;
+constexpr uintptr_t CODE_CAVE_INTRO = 0x513B90;
+constexpr uintptr_t CODE_CAVE_BLINK = 0x513E08;
+constexpr uintptr_t CODE_CAVE_WIDTH = 0x513E40;
+constexpr uintptr_t VTABLE_ALICE_DIALOG_TEXT = 0x52221C;
+constexpr uintptr_t VTABLE_UI_WINDOW_MANAGER = 0x53E62C;
+constexpr uintptr_t VTABLE_UI_AUTOSCROLL = 0x53EBD4;
+constexpr uintptr_t VTABLE_UI_LABEL = 0x5410FC;
+constexpr uintptr_t STARTUP_STATE_ADDR = 0x7CCA20;
+constexpr uintptr_t CONSOLE_THREAD_PTR_ADDR = 0x7CCA54;
+constexpr uintptr_t IS_PAUSED = 0x7CCA64;
+constexpr uintptr_t CURRENT_LANG = 0x7CF868;
+constexpr uintptr_t MOUSE_ACTIVE_ADDR = 0x7CFA40;
+constexpr uintptr_t GAME_API_MODULE_ADDR = 0x7D0E7C;
+constexpr uintptr_t GL_PIXEL_FORMAT_DESCRIPTOR_ADDR = 0x7D4098;
+constexpr uintptr_t DISPLAY_MODE_IDX = 0x7D40C4;
+constexpr uintptr_t DISPLAY_MODE_NUM = 0x7D40C8;
+constexpr uintptr_t RENDER_WIDTH_ADDR = 0x11C02CC;
+constexpr uintptr_t RENDER_HEIGHT_ADDR = 0x11C02D0;
+constexpr uintptr_t SET_VIEWPORT_FN_ADDR = 0x11C01D0;
+constexpr uintptr_t SET_SCISSOR_FN_ADDR = 0x11C01D8;
+constexpr uintptr_t IS_MENU_LOCKED = 0x11C2770;
+constexpr uintptr_t BLINK_TIMER = 0x11C35EC;
+constexpr uintptr_t MAIN_WINDOW_HWND = 0x11C5008;
+constexpr uintptr_t SYS_EVENT_TIME = 0x11C50AC;
+constexpr uintptr_t UI_WAIT_TIMER = 0x12EF948;
+constexpr uintptr_t IS_CINEMATIC = 0x12F3CE8;
+constexpr uintptr_t CURRENT_WEAPON_ID = 0x12F3D60;
+constexpr uintptr_t MOUSE_YAW_BUFFER = 0x12F986C;
+constexpr uintptr_t MOUSE_PITCH_BUFFER = 0x12F9874;
+constexpr uintptr_t MOUSE_BUFFER_INDEX = 0x12F987C;
+constexpr uintptr_t CAMERA_YAW_ADDR = 0x12F9F28;
+constexpr uintptr_t CAMERA_PITCH_ADDR = 0x12F9F2C;
+constexpr uintptr_t CVAR_SENSITIVITY = 0x148BC3C;
+constexpr uintptr_t CVAR_M_INVERT_PITCH = 0x14E8A5C;
+constexpr uintptr_t CVAR_CL_YAWSPEED = 0x14EB3B8;
+constexpr uintptr_t IS_IN_MENU = 0x14EB498;
+constexpr uintptr_t CVAR_CL_PITCHSPEED = 0x14EB4D8;
+constexpr uintptr_t SHADERS_CACHE_ADDR = 0x1BFCEF4;
+constexpr uintptr_t DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
+constexpr uintptr_t DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
+constexpr uintptr_t GL_HDC_ADDR = 0x1C46324;
+constexpr uintptr_t GL_HGLRC_ADDR = 0x1C46328;
+constexpr uintptr_t GL_PIXEL_FORMAT_SET_ADDR = 0x1C46334;
+constexpr uintptr_t CURRENT_WIDTH_ADDR = 0x1C4798C;
+constexpr uintptr_t CURRENT_HEIGHT_ADDR = 0x1C47990;
 
 // =============================
 // VorpalFix Menu
@@ -107,6 +108,7 @@ static bool mustScaleFont = false;
 static bool mustSkipPicScaling = false;
 static bool inAutoCenterLayout = false;
 static bool refreshFOV = false;
+static bool cursorReleased = false;
 static std::atomic<LONG> rawMouseDeltaX { 0 };
 static std::atomic<LONG> rawMouseDeltaY { 0 };
 
@@ -210,7 +212,8 @@ static void(__thiscall* ShowDialogBoxText)(int) = nullptr; // 0x452CF0
 static void(__thiscall* LoadSaveFromUI)(DWORD*, int) = nullptr; // 0x456380
 static int(__thiscall* DrawFullscreenScreenEffect)(int) = nullptr; // 0x45A3C0
 static const char* (__cdecl* LoadLocalizationFile)() = nullptr; // 0x4615F0
-static int* (__cdecl* IN_Win32Mouse)(DWORD*, int*) = nullptr; // sub_462A00
+static int(__cdecl* IN_ActivateWin32Mouse)() = nullptr; // sub_462A00
+static int* (__cdecl* IN_Win32Mouse)(DWORD*, int*) = nullptr; // sub_462AE0
 static MMRESULT(__cdecl* UpdateControllerState)() = nullptr; // 0x4635A0
 static int(__stdcall* lpfnWndProc_MSG)(HWND, UINT, int, LPARAM) = nullptr; // 0x46C600
 static int(__cdecl* TakeSaveScreenshot)(int, int, int) = nullptr; // 0x46D280
@@ -1567,13 +1570,32 @@ static const char* __cdecl LoadLocalizationFile_Hook()
 	return LoadLocalizationFile();
 }
 
+// Release cursor clip/capture when game window is not in focus
+static int __cdecl IN_ActivateWin32Mouse_Hook()
+{
+	if (GetForegroundWindow() != MemoryHelper::ReadMemory<HWND>(MAIN_WINDOW_HWND))
+	{
+		if (!cursorReleased)
+		{
+			ClipCursor(nullptr);
+			ReleaseCapture();
+			while (ShowCursor(TRUE) < 0);
+			cursorReleased = true;
+		}
+
+		MemoryHelper::WriteMemory<int>(MOUSE_ACTIVE_ADDR, 0);
+		return 0;
+	}
+
+	cursorReleased = false;
+	return IN_ActivateWin32Mouse();
+}
+
 // Prevent cursor lock when game window is not in focus
 static int* __cdecl IN_Win32Mouse_Hook(DWORD* a1, int* a2)
 {
 	if (GetForegroundWindow() != MemoryHelper::ReadMemory<HWND>(MAIN_WINDOW_HWND))
 	{
-		ClipCursor(nullptr);
-		ReleaseCapture();
 		*a1 = 0;
 		*a2 = 0;
 		return a2;
@@ -2729,6 +2751,7 @@ static void ApplyFixUnfocusedCursorLock()
 {
 	if (!FixUnfocusedCursorLock) return;
 
+	HookHelper::ApplyHook((void*)0x462A00, &IN_ActivateWin32Mouse_Hook, (LPVOID*)&IN_ActivateWin32Mouse);
 	HookHelper::ApplyHook((void*)0x462AE0, &IN_Win32Mouse_Hook, (LPVOID*)&IN_Win32Mouse);
 }
 
