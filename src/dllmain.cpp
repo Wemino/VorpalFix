@@ -263,6 +263,8 @@ static BOOL(WINAPI* SystemHelper::qwglChoosePixelFormatARB)(HDC, const int*, con
 #define GL_TEXTURE_MAX_ANISOTROPY_EXT     0x84FE
 #define GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT 0x84FF
 
+#define GL_MAX_SAMPLES                    0x8D57
+
 #define GL_NEAREST_MIPMAP_NEAREST         0x2700
 #define GL_LINEAR_MIPMAP_LINEAR           0x2703
 
@@ -1259,7 +1261,32 @@ static void __fastcall Widget_AddItem_Hook(DWORD* thisp, int, void** a2, void** 
 		return;
 	}
 
-	return Widget_AddItem(thisp, a2, a3);
+	if (name && strcmp(name, "vf_r_multisamples") == 0)
+	{
+		Widget_AddItem(thisp, a2, a3);
+
+		// Script adds 4 items (0, 2, 4, 8), after the 4th, inject 16x if the GPU supports it
+		static int msaaItemCount = 0;
+		msaaItemCount++;
+
+		if (msaaItemCount == 4)
+		{
+			GLint maxSamples = 0;
+			glGetIntegerv(GL_MAX_SAMPLES, &maxSamples);
+			if (maxSamples >= 16)
+			{
+				void* valueObj = nullptr;
+				void* labelObj = nullptr;
+				GameHelper::CreateString(&valueObj, "16");
+				GameHelper::CreateString(&labelObj, "16x MSAA");
+				Widget_AddItem(thisp, (void**)valueObj, (void**)labelObj);
+			}
+		}
+
+		return;
+	}
+
+	Widget_AddItem(thisp, a2, a3);
 }
 
 // Function executed during the unzipping phase to check for specific file presence
