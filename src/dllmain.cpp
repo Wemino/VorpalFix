@@ -50,6 +50,8 @@ constexpr uintptr_t IS_MENU_LOCKED = 0x11C2770;
 constexpr uintptr_t BLINK_TIMER = 0x11C35EC;
 constexpr uintptr_t MAIN_WINDOW_HWND = 0x11C5008;
 constexpr uintptr_t SYS_EVENT_TIME = 0x11C50AC;
+constexpr uintptr_t FS_HANDLE_TABLE_ADDR = 0x12E3CE0;
+constexpr uintptr_t FS_HANDLE_NAMES_ADDR = 0x12E3CF8;
 constexpr uintptr_t UI_WAIT_TIMER = 0x12EF948;
 constexpr uintptr_t IS_CINEMATIC = 0x12F3CE8;
 constexpr uintptr_t CURRENT_WEAPON_ID = 0x12F3D60;
@@ -114,9 +116,9 @@ static std::atomic<LONG> rawMouseDeltaY { 0 };
 
 // Misc (read-only)
 using GameHelper::ASPECT_RATIO_4_3;
-constexpr int LEFT_BORDER_X_ID = 0x1000000;
-constexpr int RIGHT_BORDER_X_ID = 0x2000000;
-const char* ALICE2_DEFAULT_PATH = "..\\..\\Alice2\\Binaries\\Win32\\AliceMadnessReturns.exe";
+static constexpr int LEFT_BORDER_X_ID = 0x1000000;
+static constexpr int RIGHT_BORDER_X_ID = 0x2000000;
+static const char* ALICE2_DEFAULT_PATH = "..\\..\\Alice2\\Binaries\\Win32\\AliceMadnessReturns.exe";
 
 // Scaling
 static int currentWidth = 0;
@@ -129,6 +131,14 @@ static float widthDifference = 0;
 static float consoleHudAdjustmentDivisor = 0;
 static float lastServerFov = 90.0f;
 static float lastGameplayFov = 90.0f;
+
+// Save optimization
+static bool isWritingSaveData = false;
+static bool isSaveBufferActive = false;
+static int saveBufferHandle = 0;
+static FILE* saveBufferFile = nullptr;
+static std::vector<uint8_t> saveBuffer;
+static size_t saveBufferCursor = 0;
 
 // Localization pk3
 static bool hasLookedForLocalizationFiles = false;
@@ -196,9 +206,13 @@ static int(__cdecl* CallCmd)(const char*, char) = nullptr; // 0x4158F0
 static char* (__cdecl* GetSavePath)() = nullptr; // 0x417400
 static void(__cdecl* CVAR_Init)() = nullptr; // 0x417530
 static int(__cdecl* Cvar_Set)(const char*, const char*, int) = nullptr; // 0x419910
+static void* (__cdecl* FS_FCloseFile)(int) = nullptr; // 0x41A1B0
 static int(__cdecl* FS_FOpenFileRead)(char*, int*, int, int) = nullptr; // 0x41A590
+static size_t(__cdecl* FS_Write)(const void*, size_t, int) = nullptr; // 0x41AD80
+static int(__cdecl* FS_Seek)(int, int, int) = nullptr; // 0x41AEC0
 static float(__cdecl* UpdateHeadOrientation)(DWORD*, float*) = nullptr; // 0x423740
 static BYTE(__cdecl* Str_To_Lower)(char*) = nullptr; // 0x4256E0
+static bool(__cdecl* SV_ArchiveLevelFile)(bool) = nullptr; // 0x429F50
 static int(__cdecl* SV_LoadGameDLL)() = nullptr; // 0x42CFF0
 static FILE(__cdecl* FS_LoadZipFile)(const char*) = nullptr; // 0x43E030
 static int(__cdecl* PrepareHUDRendering)(float, float, float, float, int, float*, float*, float*, int, const char*, __int16, float*, float*, float, float, int) = nullptr; // 0x446050
@@ -234,6 +248,7 @@ static BYTE(__thiscall* LoadUI)(DWORD*, char*) = nullptr; // 0x4C1AC0
 static void(__thiscall* Widget_AddItem)(DWORD*, void**, void**) = nullptr; // 0x4C4850
 static int(__thiscall* UpdateHeadOrientationFromMouse)(int, float*, int, float*, float*) = nullptr; // 0x4C6050
 static int(__thiscall* Widget_AutoCenterInDesignSpace)(int*, int, int, int, int) = nullptr; // 0x4D2320
+static long(__cdecl* ori_ftell)(FILE*) = nullptr; // 0x4D79D3
 static void(__cdecl* GPhysics_Pusher)(int); // fgamex86.dll+0x774F0
 static HWND(WINAPI* ori_CreateWindowExA)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
 static void(WINAPI* ori_glTexParameterf)(GLenum, GLenum, GLfloat);
@@ -292,6 +307,7 @@ bool FixPusherOvershoot = false;
 bool FixResolutionModeOOB = false;
 bool FixUnfocusedCursorLock = false;
 bool FixLocalizationFiles = false;
+bool OptimizeSaveSpeed = false;
 
 // Input
 bool CustomControllerBindings = false;
@@ -365,6 +381,7 @@ static void ReadConfig()
 	FixPusherOvershoot = IniHelper::ReadInteger("Fixes", "FixPusherOvershoot", 1) == 1;
 	FixUnfocusedCursorLock = IniHelper::ReadInteger("Fixes", "FixUnfocusedCursorLock", 1) == 1;
 	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
+	OptimizeSaveSpeed = IniHelper::ReadInteger("Fixes", "OptimizeSaveSpeed", 1) == 1;
 
 	// Input
 	CustomControllerBindings = IniHelper::ReadInteger("Input", "CustomControllerBindings", 1) == 1;
@@ -914,6 +931,25 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	return Cvar_Set(var_name, value, flag);
 }
 
+static void* __cdecl FS_FCloseFile_Hook(int handle)
+{
+	if (isSaveBufferActive && handle == saveBufferHandle)
+	{
+		if (!saveBuffer.empty())
+		{
+			FS_Write(saveBuffer.data(), saveBuffer.size(), handle);
+		}
+
+		isSaveBufferActive = false;
+		saveBufferHandle = 0;
+		saveBufferFile = nullptr;
+		saveBuffer.clear();
+		saveBufferCursor = 0;
+	}
+
+	return FS_FCloseFile(handle);
+}
+
 static int __cdecl FS_FOpenFileRead_Hook(char* Source, int* a2, int a3, int a4)
 {
 	// Fast check for "s/ch" substring in the file path
@@ -975,6 +1011,64 @@ static int __cdecl FS_FOpenFileRead_Hook(char* Source, int* a2, int a3, int a4)
     }
 
     return FS_FOpenFileRead(redirect ? (char*)redirect : Source, a2, a3, a4);
+}
+
+static size_t __cdecl FS_Write_Hook(const void* buffer, size_t length, int handle)
+{
+	if (isWritingSaveData && !isSaveBufferActive)
+	{
+		const char* name = (const char*)(FS_HANDLE_NAMES_ADDR + 124 * handle);
+		size_t nameLen = strlen(name);
+		if (nameLen >= 4 && _stricmp(name + nameLen - 4, ".sav") == 0)
+		{
+			isSaveBufferActive = true;
+			saveBufferHandle = handle;
+			saveBufferFile = ((FILE**)FS_HANDLE_TABLE_ADDR)[31 * handle];
+			saveBuffer.clear();
+			saveBuffer.reserve(2 * 1024 * 1024);
+			saveBufferCursor = 0;
+		}
+	}
+
+	if (isSaveBufferActive && handle == saveBufferHandle)
+	{
+		size_t end = saveBufferCursor + length;
+		if (end > saveBuffer.size())
+		{
+			saveBuffer.resize(end, 0);
+		}
+
+		if (length)
+		{
+			memcpy(saveBuffer.data() + saveBufferCursor, buffer, length);
+		}
+
+		saveBufferCursor = end;
+		return length;
+	}
+
+	return FS_Write(buffer, length, handle);
+}
+
+static int __cdecl FS_Seek_Hook(int handle, int offset, int origin)
+{
+	if (isSaveBufferActive && handle == saveBufferHandle)
+	{
+		__int64 newPos;
+		switch (origin)
+		{
+			case 0: newPos = (__int64)saveBufferCursor + offset; break;
+			case 1: newPos = (__int64)saveBuffer.size() + offset; break;
+			case 2: newPos = offset; break;
+			default: return -1;
+		}
+		if (newPos < 0) return -1;
+
+		saveBufferCursor = (size_t)newPos;
+		return 0;
+	}
+
+	return FS_Seek(handle, offset, origin);
 }
 
 // Reimplementation of 'sub_41D1E0' to fix free space reporting and ensure accurate target disk
@@ -1315,6 +1409,19 @@ static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
 	}
 
 	return Str_To_Lower(Buffer);
+}
+
+static bool __cdecl SV_ArchiveLevelFile_Hook(bool loading)
+{
+	if (!loading)
+	{
+		isWritingSaveData = true;
+		bool result = SV_ArchiveLevelFile(loading);
+		isWritingSaveData = false;
+		return result;
+	}
+
+	return SV_ArchiveLevelFile(loading);
 }
 
 static int __cdecl SV_LoadGameDLL_Hook()
@@ -2472,6 +2579,16 @@ static int __fastcall Widget_AutoCenterInDesignSpace_Hook(int* thisPtr, int, int
 	return result;
 }
 
+static long __cdecl ftell_Hook(FILE* stream)
+{
+	if (isSaveBufferActive && stream == saveBufferFile)
+	{
+		return (long)saveBufferCursor;
+	}
+
+	return ori_ftell(stream);
+}
+
 // Adds borders to hide the pillarbox when scaling the menu
 static void __cdecl SetUIBorder_Hook()
 {
@@ -2677,7 +2794,7 @@ static void ApplyFixStretchedMenu()
 	HookHelper::ApplyHook((void*)0x46D280, &TakeSaveScreenshot_Hook, (LPVOID*)&TakeSaveScreenshot);
 	HookHelper::ApplyHookAPI(L"opengl32", "glReadPixels", &glReadPixels_Hook, (LPVOID*)&ori_glReadPixels);
 
-	// AutoScroll credits scaling
+	// AutoScroll/DialogBox scaling
 	MemoryHelper::MakeCALL(0x446A85, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
 	MemoryHelper::MakeCALL(0x446D4B, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
 	MemoryHelper::MakeCALL(0x459435, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
@@ -2787,6 +2904,17 @@ static void ApplyFixLocalizationFiles()
 	if (!FixLocalizationFiles) return;
 
 	HookHelper::ApplyHook((void*)0x4615F0, &LoadLocalizationFile_Hook, (LPVOID*)&LoadLocalizationFile);
+}
+
+static void ApplyOptimizeSaveSpeed()
+{
+	if (!OptimizeSaveSpeed) return;
+
+	HookHelper::ApplyHook((void*)0x41A1B0, &FS_FCloseFile_Hook, (LPVOID*)&FS_FCloseFile);
+	HookHelper::ApplyHook((void*)0x41AD80, &FS_Write_Hook, (LPVOID*)&FS_Write);
+	HookHelper::ApplyHook((void*)0x41AEC0, &FS_Seek_Hook, (LPVOID*)&FS_Seek);
+	HookHelper::ApplyHook((void*)0x429F50, &SV_ArchiveLevelFile_Hook, (LPVOID*)&SV_ArchiveLevelFile);
+	HookHelper::ApplyHook((void*)0x4D79D3, &ftell_Hook, (LPVOID*)&ori_ftell);
 }
 
 static void ApplyLaunchWithoutAlice2()
@@ -3088,6 +3216,7 @@ static void Init()
 	ApplyFixCutsceneJumpSound();
 	ApplyFixUnfocusedCursorLock();
 	ApplyFixLocalizationFiles();
+	ApplyOptimizeSaveSpeed();
 
 	// General
 	ApplyLaunchWithoutAlice2();
