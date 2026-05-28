@@ -31,6 +31,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
 
 - Fixed the "Hard Disk Full" error message incorrectly appearing when the game is installed on a disk with more than 2TB of free space.
 
+- Save files are now written to disk in a single operation instead of thousands of small chunks.
+
 - Fixed a crash that occurred when saving at resolutions where the width is not a multiple of 4 (e.g., 1366x768), as well as another crash that could happen while fetching the resolution list.
 
 - Fixed missing particle effects for re-materialization visuals of Alice's throwable weapons.

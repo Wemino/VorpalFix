@@ -931,6 +931,7 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 	return Cvar_Set(var_name, value, flag);
 }
 
+// Flush the in-memory save buffer to disk before closing
 static void* __cdecl FS_FCloseFile_Hook(int handle)
 {
 	if (isSaveBufferActive && handle == saveBufferHandle)
@@ -950,6 +951,7 @@ static void* __cdecl FS_FCloseFile_Hook(int handle)
 	return FS_FCloseFile(handle);
 }
 
+// Force the game to load the remastered models that had a wrong file path inside 'pak5_mod.pk3'
 static int __cdecl FS_FOpenFileRead_Hook(char* Source, int* a2, int a3, int a4)
 {
 	// Fast check for "s/ch" substring in the file path
@@ -1013,6 +1015,7 @@ static int __cdecl FS_FOpenFileRead_Hook(char* Source, int* a2, int a3, int a4)
     return FS_FOpenFileRead(redirect ? (char*)redirect : Source, a2, a3, a4);
 }
 
+// Capture save writes into the in-memory buffer instead of writing to disk
 static size_t __cdecl FS_Write_Hook(const void* buffer, size_t length, int handle)
 {
 	if (isWritingSaveData && !isSaveBufferActive)
@@ -1050,6 +1053,7 @@ static size_t __cdecl FS_Write_Hook(const void* buffer, size_t length, int handl
 	return FS_Write(buffer, length, handle);
 }
 
+// Update the in-memory buffer cursor instead of seeking the real file
 static int __cdecl FS_Seek_Hook(int handle, int offset, int origin)
 {
 	if (isSaveBufferActive && handle == saveBufferHandle)
@@ -1411,6 +1415,7 @@ static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
 	return Str_To_Lower(Buffer);
 }
 
+// Toggle save buffering on/off around the save operation
 static bool __cdecl SV_ArchiveLevelFile_Hook(bool loading)
 {
 	if (!loading)
@@ -2579,6 +2584,7 @@ static int __fastcall Widget_AutoCenterInDesignSpace_Hook(int* thisPtr, int, int
 	return result;
 }
 
+// Return the in-memory buffer cursor instead of the real file position
 static long __cdecl ftell_Hook(FILE* stream)
 {
 	if (isSaveBufferActive && stream == saveBufferFile)
