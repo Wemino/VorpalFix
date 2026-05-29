@@ -29,6 +29,7 @@ constexpr uintptr_t CODE_CAVE_SOUND = 0x513490;
 constexpr uintptr_t CODE_CAVE_INTRO = 0x513B90;
 constexpr uintptr_t CODE_CAVE_BLINK = 0x513E08;
 constexpr uintptr_t CODE_CAVE_WIDTH = 0x513E40;
+constexpr uintptr_t CODE_CAVE_PHANTASM = 0x513E44;
 constexpr uintptr_t VTABLE_ALICE_DIALOG_TEXT = 0x52221C;
 constexpr uintptr_t VTABLE_UI_WINDOW_MANAGER = 0x53E62C;
 constexpr uintptr_t VTABLE_UI_AUTOSCROLL = 0x53EBD4;
@@ -304,6 +305,7 @@ bool FixMenuAnimationSpeed = false;
 bool FixMenuTransitionTiming = false;
 bool FixCutsceneJumpSound = false;
 bool FixPusherOvershoot = false;
+bool FixFrozenCameraRotation = false;
 bool FixResolutionModeOOB = false;
 bool FixUnfocusedCursorLock = false;
 bool FixLocalizationFiles = false;
@@ -379,6 +381,7 @@ static void ReadConfig()
 	FixResolutionModeOOB = IniHelper::ReadInteger("Fixes", "FixResolutionModeOOB", 1) == 1;
 	FixCutsceneJumpSound = IniHelper::ReadInteger("Fixes", "FixCutsceneJumpSound", 1) == 1;
 	FixPusherOvershoot = IniHelper::ReadInteger("Fixes", "FixPusherOvershoot", 1) == 1;
+	FixFrozenCameraRotation = IniHelper::ReadInteger("Fixes", "FixFrozenCameraRotation", 1) == 1;
 	FixUnfocusedCursorLock = IniHelper::ReadInteger("Fixes", "FixUnfocusedCursorLock", 1) == 1;
 	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
 	OptimizeSaveSpeed = IniHelper::ReadInteger("Fixes", "OptimizeSaveSpeed", 1) == 1;
@@ -1445,6 +1448,106 @@ static int __cdecl SV_LoadGameDLL_Hook()
 		if (FixPusherOvershoot)
 		{
 			HookHelper::ApplyHookReplaceable((void*)(gameApiBaseAddress + 0x774F0), &GPhysics_Pusher_Hook, reinterpret_cast<LPVOID*>(&GPhysics_Pusher));
+		}
+
+		if (FixFrozenCameraRotation)
+		{
+			// When Alice’s prop tags are full, the freeze-cinematic bullet cam can’t attach,
+			// causing the view to fall back to the world origin. Let only the bullet cam bind
+			// when full (no slot, no count bump), then relink it to her every frame.
+
+			static uint32_t s_bulletcam = 0;
+
+			const uintptr_t caveGuard = CODE_CAVE_PHANTASM;   // 23
+			const uintptr_t caveGate = caveGuard + 23;        // 17
+			const uintptr_t caveCamidA = caveGate + 17;       // 17
+			const uintptr_t caveCamidB = caveCamidA + 17;     // 17
+			const uintptr_t caveRefresh = caveCamidB + 17;    // 16
+			const uintptr_t caveRefresh2 = caveRefresh + 16;  // 16
+
+			// Slot store guard: skip the store + count bump when there's no free slot (edi == 8)
+			unsigned char code[] = 
+			{
+				0x83, 0xFF, 0x08,                          // cmp edi, 8
+				0x7D, 0x0D,                                // jge+0x0D
+				0x89, 0x8C, 0xBB, 0x0C, 0x01, 0x00, 0x00,  // mov [ebx+edi*4+10Ch], ecx
+				0xFF, 0x83, 0x08, 0x01, 0x00, 0x00,        // inc dword ptr [ebx+108h]
+				0xE9, 0x00, 0x00, 0x00, 0x00               // jmp+0x6C1EB
+			};
+
+			*(uint32_t*)(code + 19) = (gameApiBaseAddress + 0x6C1EB) - (caveGuard + sizeof(code));
+			MemoryHelper::WriteMemoryRaw(caveGuard, code, sizeof(code));
+			MemoryHelper::MakeJMP(gameApiBaseAddress + 0x6C1DE, caveGuard);
+			MemoryHelper::MakeNOP(gameApiBaseAddress + 0x6C1DE + 5, 2);
+
+			// Cap gate: when the array is full only the bullet cam takes the bind path, the rest return 0
+			unsigned char gate[] = 
+			{
+				0x3B, 0x35, 0x00, 0x00, 0x00, 0x00,        // cmp esi, [s_bulletcam]
+				0x0F, 0x85, 0x00, 0x00, 0x00, 0x00,        // jne+0x6C236 (stock return 0)
+				0xE9, 0x00, 0x00, 0x00, 0x00               // jmp+0x6C1AB (bind path)
+			};
+
+			*(uint32_t*)(gate + 2) = (uint32_t)(uintptr_t)&s_bulletcam;
+			*(uint32_t*)(gate + 8) = (gameApiBaseAddress + 0x6C236) - (caveGate + 12);
+			*(uint32_t*)(gate + 13) = (gameApiBaseAddress + 0x6C1AB) - (caveGate + 17);
+			MemoryHelper::WriteMemoryRaw(caveGate, gate, sizeof(gate));
+
+			// Route the "array full" jge into the gate
+			MemoryHelper::WriteMemory<uint32_t>(gameApiBaseAddress + 0x6C1A7, (uint32_t)(caveGate - (gameApiBaseAddress + 0x6C1AB)));
+
+			// Stamp the cam pointer at its two attach call sites
+			unsigned char camidA[] = 
+			{
+				0x8B, 0x8D, 0x18, 0x04, 0x00, 0x00,        // mov ecx, [ebp+418h]
+				0x89, 0x0D, 0x00, 0x00, 0x00, 0x00,        // mov [s_bulletcam], ecx
+				0xE9, 0x00, 0x00, 0x00, 0x00               // jmp+0xB8DB6
+			};
+
+			*(uint32_t*)(camidA + 8) = (uint32_t)(uintptr_t)&s_bulletcam;
+			*(uint32_t*)(camidA + 13) = (gameApiBaseAddress + 0xB8DB6) - (caveCamidA + 17);
+			MemoryHelper::WriteMemoryRaw(caveCamidA, camidA, sizeof(camidA));
+			MemoryHelper::MakeJMP(gameApiBaseAddress + 0xB8DB0, caveCamidA);
+			MemoryHelper::MakeNOP(gameApiBaseAddress + 0xB8DB0 + 5, 1);
+
+			unsigned char camidB[] = 
+			{
+				0x8B, 0x8D, 0x18, 0x04, 0x00, 0x00,        // mov ecx, [ebp+418h]
+				0x89, 0x0D, 0x00, 0x00, 0x00, 0x00,        // mov [s_bulletcam], ecx
+				0xE9, 0x00, 0x00, 0x00, 0x00               // jmp+0xB9575
+			};
+
+			*(uint32_t*)(camidB + 8) = (uint32_t)(uintptr_t)&s_bulletcam;
+			*(uint32_t*)(camidB + 13) = (gameApiBaseAddress + 0xB9575) - (caveCamidB + 17);
+			MemoryHelper::WriteMemoryRaw(caveCamidB, camidB, sizeof(camidB));
+			MemoryHelper::MakeJMP(gameApiBaseAddress + 0xB956F, caveCamidB);
+			MemoryHelper::MakeNOP(gameApiBaseAddress + 0xB956F + 5, 1);
+
+			// Relink the slot-less cam from its bind each frame the cinematic runs
+			unsigned char refresh[] = 
+			{
+				0x8B, 0x8D, 0x18, 0x04, 0x00, 0x00,        // mov ecx, [ebp+418h]
+				0x8B, 0x01,                                // mov eax, [ecx]
+				0xFF, 0x50, 0x24,                          // call dword ptr [eax+24h]
+				0xE9, 0x00, 0x00, 0x00, 0x00               // jmp+0xB95D4
+			};
+
+			*(uint32_t*)(refresh + 12) = (gameApiBaseAddress + 0xB95D4) - (caveRefresh + sizeof(refresh));
+			MemoryHelper::WriteMemoryRaw(caveRefresh, refresh, sizeof(refresh));
+			MemoryHelper::WriteMemory<uint32_t>(gameApiBaseAddress + 0xB94E3, (uint32_t)(caveRefresh - (gameApiBaseAddress + 0xB94E7)));
+
+			// Same relink on the mode-entry frame so a repeat beam doesn't flash the old spot
+			unsigned char refresh2[] = 
+			{
+				0x8B, 0x8D, 0x18, 0x04, 0x00, 0x00,        // mov ecx, [ebp+418h]
+				0x8B, 0x01,                                // mov eax, [ecx]
+				0xFF, 0x50, 0x24,                          // call dword ptr [eax+24h]
+				0xE9, 0x00, 0x00, 0x00, 0x00               // jmp+0xB8DBB
+			};
+
+			*(uint32_t*)(refresh2 + 12) = (gameApiBaseAddress + 0xB8DBB) - (caveRefresh2 + sizeof(refresh2));
+			MemoryHelper::WriteMemoryRaw(caveRefresh2, refresh2, sizeof(refresh2));
+			MemoryHelper::WriteMemory<uint32_t>(gameApiBaseAddress + 0xB8D28, (uint32_t)(caveRefresh2 - (gameApiBaseAddress + 0xB8D2C)));
 		}
 	}
 
@@ -3187,7 +3290,7 @@ static void ApplyResolutionChangeHook()
 
 static void ApplyServerHook()
 {
-	if (!FixPusherOvershoot) return;
+	if (!FixPusherOvershoot && !FixFrozenCameraRotation) return;
 
 	HookHelper::ApplyHook((void*)0x42CFF0, &SV_LoadGameDLL_Hook, reinterpret_cast<LPVOID*>(&SV_LoadGameDLL));
 }
