@@ -1942,7 +1942,7 @@ List
 	highlighttextwidget "FPSLimitTxt"
 	ordernumber		46
 
-	linkcvar		"vf_com_maxfps"
+	linkcvar		"com_maxfps"
 	additem			60 "60 FPS"
 }
 

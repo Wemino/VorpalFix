@@ -85,7 +85,6 @@ static int VF_UI_CONSOLE_HUD_PTR;
 static int VF_UI_LETTERBOX_PTR;
 static int VF_MSAA_PTR;
 static int VF_R_EXT_MAX_ANISOTROPY_PTR;
-static int VF_COM_MAXFPS_PTR;
 
 static bool isVFMenuUsed = false;
 
@@ -354,7 +353,7 @@ int MultiSampleAntiAliasing = 0;
 bool TrilinearTextureFiltering = false;
 bool ForceBatchedRendering = false;
 bool EnhancedLOD = false;
-int CustomFPSLimit = 0;
+bool OverrideFPSLimit = false;
 bool EnableVsyncAsDefault = false;
 bool AutoFOV = false;
 
@@ -430,21 +429,9 @@ static void ReadConfig()
 	TrilinearTextureFiltering = IniHelper::ReadInteger("Graphics", "TrilinearTextureFiltering", 1) == 1;
 	ForceBatchedRendering = IniHelper::ReadInteger("Graphics", "ForceBatchedRendering", 1) == 1;
 	EnhancedLOD = IniHelper::ReadInteger("Graphics", "EnhancedLOD", 1) == 1;
-	CustomFPSLimit = IniHelper::ReadInteger("Graphics", "CustomFPSLimit", 85);
+	OverrideFPSLimit = IniHelper::ReadInteger("Graphics", "OverrideFPSLimit", 1) == 1;
 	EnableVsyncAsDefault = IniHelper::ReadInteger("Graphics", "EnableVsyncAsDefault", 1) == 1;
 	AutoFOV = IniHelper::ReadInteger("Graphics", "AutoFOV", 1) == 1;
-
-	// Set to monitor's refresh rate
-	if (CustomFPSLimit == -1)
-	{
-		CustomFPSLimit = SystemHelper::GetCurrentDisplayFrequency();
-
-		// Unstable at > 500fps
-		if (CustomFPSLimit > 500)
-		{
-			CustomFPSLimit = 500;
-		}
-	}
 
 	// UseConsoleTitleScreen rely on FixStretchedMenu
 	if (!FixStretchedMenu && UseConsoleTitleScreen)
@@ -871,9 +858,10 @@ static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int fl
 		}
 	}
 
-	if (CustomFPSLimit != 60 && _stricmp(var_name, "com_maxfps") == 0)
+	// Restore the original 85 FPS limit from the 2000 PC release instead of the 60 FPS console cap
+	if (OverrideFPSLimit && _stricmp(var_name, "com_maxfps") == 0)
 	{
-		value = StringHelper::IntegerToCString(CustomFPSLimit);
+		value = StringHelper::IntegerToCString(85);
 	}
 
 	if (CameraSmoothingFactor != 0.8f && _stricmp(var_name, "cg_camerascale") == 0)
@@ -1135,7 +1123,6 @@ static int __cdecl SetupOpenGLParameters_Hook()
 	VF_UI_LETTERBOX_PTR = Cvar_Set("vf_ui_letterbox", StringHelper::BoolToCString(!DisableLetterbox), 0);
 	VF_MSAA_PTR = Cvar_Set("vf_r_multisamples", StringHelper::IntegerToCString(MultiSampleAntiAliasing), 0);
 	VF_R_EXT_MAX_ANISOTROPY_PTR = Cvar_Set("vf_r_ext_max_anisotropy", StringHelper::FloatToCString(MaxAnisotropy), 0);
-	VF_COM_MAXFPS_PTR = Cvar_Set("vf_com_maxfps", StringHelper::IntegerToCString(CustomFPSLimit), 0);
 
 	// We only need to do that once
 	MH_DisableHook((void*)0x46E0D0);
@@ -1215,23 +1202,6 @@ static DWORD __fastcall UISetCvars_Hook(DWORD* thisPtr, int*, char* group_name)
 			GameHelper::VidRestart();
 		}
 
-		// CustomFPSLimit
-		CustomFPSLimit = MemoryHelper::ReadMemory<int>(VF_COM_MAXFPS_PTR + 0x20);
-		IniHelper::iniReader["Graphics"]["CustomFPSLimit"] = StringHelper::IntegerToCString(CustomFPSLimit);
-
-		// Set to monitor's refresh rate
-		if (CustomFPSLimit == -1)
-		{
-			CustomFPSLimit = SystemHelper::GetCurrentDisplayFrequency();
-			if (CustomFPSLimit > 500)
-			{
-				CustomFPSLimit = 500;
-			}
-		}
-
-		// Write the new value
-		GameHelper::UpdateCvar("com_maxfps", StringHelper::IntegerToCString(CustomFPSLimit), 1);
-
 		// Update the INI
 		IniHelper::Save();
 	}
@@ -1244,7 +1214,7 @@ static void __fastcall Widget_AddItem_Hook(DWORD* thisp, int, void** a2, void** 
 {
 	const char* name = GameHelper::GetWidgetName(thisp);
 
-	if (name && strcmp(name, "vf_com_maxfps") == 0)
+	if (name && strcmp(name, "com_maxfps") == 0)
 	{
 		if (!maxFpsPopulated)
 		{
