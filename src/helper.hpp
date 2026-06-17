@@ -183,13 +183,13 @@ namespace GameHelper
 
 	bool DisableCursorScaling = false;
 
-	void(__cdecl* CenterView)() = (void(__cdecl*)())0x406510;
-	int(__cdecl* GetKeyId)(const char*) = (int(__cdecl*)(const char*))0x4076F0;
-	int(__cdecl* Bind)(int, const char*) = (int(__cdecl*)(int, const char*))0x407870;
-	int(__cdecl* VidRestart)() = (int(__cdecl*)())0x40B2F0;
-	int(__cdecl* UpdateCvar)(const char*, const char*, int) = (int(__cdecl*)(const char*, const char*, int))0x418D90;
+	void(__cdecl* IN_CenterView)() = (void(__cdecl*)())0x406510;
+	int(__cdecl* Key_StringToKeynum)(const char*) = (int(__cdecl*)(const char*))0x4076F0;
+	int(__cdecl* Key_SetBinding)(int, const char*) = (int(__cdecl*)(int, const char*))0x407870;
+	int(__cdecl* CL_Vid_Restart_f)() = (int(__cdecl*)())0x40B2F0;
+	int(__cdecl* Cvar_Set2)(const char*, const char*, int) = (int(__cdecl*)(const char*, const char*, int))0x418D90;
 	void** (__thiscall* CreateString)(void**, const char*) = (void** (__thiscall*)(void**, const char*))0x441880;
-	char* (__cdecl* GetWeaponName)(int) = (char* (__cdecl*)(int))0x441D60;
+	char* (__cdecl* CL_GetInvItemName)(int) = (char* (__cdecl*)(int))0x441D60;
 	int(__cdecl* UI_GetStaticMap)(unsigned int, const char*) = (int(__cdecl*)(unsigned int, const char*))0x44A300;
 	int(__cdecl* IsControllerConnected)() = (int(__cdecl*)())0x463130;
 	void(__cdecl* Sys_QueEvent)(int, int, int, int, int, void*) = (void(__cdecl*)(int, int, int, int, int, void*))0x464D00;
@@ -202,7 +202,7 @@ namespace GameHelper
 
 		if (strcmp(KeyCommandName, cmd) != 0)
 		{
-			Bind(keyId, cmd);
+			Key_SetBinding(keyId, cmd);
 		}
 	}
 
