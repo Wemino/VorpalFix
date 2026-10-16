@@ -291,6 +291,16 @@ namespace GameHelper
 		return cached;
 	}
 
+	// Fit a widget rect in the 4:3 area, 'rectOffset' is where its x, y, width and height are
+	static void ScaleWidgetRect(int widget, int rectOffset, float scaleFactor, float widthDifference, int& x, int& width)
+	{
+		// Same scale as the game, unless the widget is not auto scaled
+		float scaleX = *(BYTE*)(widget + 0x1C1) ? 1.0f : MemoryHelper::ReadMemory<int>(0x11C02CC) / 640.0f;
+
+		x = (int)(*(float*)(widget + rectOffset) * scaleX * scaleFactor + widthDifference);
+		width = (int)(*(float*)(widget + rectOffset + 0x8) * scaleX * scaleFactor);
+	}
+
 	// Check if a point of the light grid contains lighting data
 	static bool IsLightGridPointLit(uintptr_t world, int x, int y, int z)
 	{

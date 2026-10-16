@@ -45,8 +45,6 @@ constexpr uintptr_t GAME_API_MODULE_ADDR = 0x7D0E7C;
 constexpr uintptr_t GL_PIXEL_FORMAT_DESCRIPTOR_ADDR = 0x7D4098;
 constexpr uintptr_t DISPLAY_MODE_IDX = 0x7D40C4;
 constexpr uintptr_t DISPLAY_MODE_NUM = 0x7D40C8;
-constexpr uintptr_t RENDER_WIDTH_ADDR = 0x11C02CC;
-constexpr uintptr_t RENDER_HEIGHT_ADDR = 0x11C02D0;
 constexpr uintptr_t SET_VIEWPORT_FN_ADDR = 0x11C01D0;
 constexpr uintptr_t SET_SCISSOR_FN_ADDR = 0x11C01D8;
 constexpr uintptr_t IS_MENU_LOCKED = 0x11C2770;
@@ -124,8 +122,6 @@ static std::atomic<LONG> rawMouseDeltaY { 0 };
 
 // Misc (read-only)
 using GameHelper::ASPECT_RATIO_4_3;
-static constexpr int LEFT_BORDER_X_ID = 0x1000000;
-static constexpr int RIGHT_BORDER_X_ID = 0x2000000;
 static const char* ALICE2_DEFAULT_PATH = "..\\..\\Alice2\\Binaries\\Win32\\AliceMadnessReturns.exe";
 
 // Scaling
@@ -2385,18 +2381,6 @@ static int __cdecl Draw_StretchPic_Hook(float x_position, float y_position, floa
 		return Draw_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
 	}
 
-	// Pillarbox borders
-	if (x_position == LEFT_BORDER_X_ID || x_position == RIGHT_BORDER_X_ID)
-	{
-		float scale_factor = currentHeight / 720.0f;
-		resolution_width = 320.0f * scale_factor;
-		resolution_height = static_cast<float>(currentHeight);
-
-		x_position = (x_position == LEFT_BORDER_X_ID)? widthDifference - resolution_width : currentWidth - widthDifference;
-
-		return Draw_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-	}
-
 	char* ShaderName = *(char**)(SHADERS_CACHE_ADDR + 0x4 * ShaderHandle);
     GameHelper::ShaderType shaderType = GameHelper::ClassifyShader(ShaderHandle, ShaderName);
 
@@ -2605,137 +2589,63 @@ static int __fastcall UIWidget_Print_Hook(int thisPtr, int, int a2, float a3, fl
 	return result;
 }
 
-// Scale the viewport for the autoscroll and dialogbox
-static void __fastcall Widget_ApplyViewport(int thisPtr, int)
+// Scale the viewport for the autoscroll and dialogbox, replaces the call in 'UIWidget::setViewport' where the widget is in esi
+static void __cdecl Widget_SetViewport_Override(int x, int y, int width, int height, float left, float right, float bottom, float top, float zNear, float zFar)
 {
-	int screenWidth = MemoryHelper::ReadMemory<int>(RENDER_WIDTH_ADDR);
-	int screenHeight = MemoryHelper::ReadMemory<int>(RENDER_HEIGHT_ADDR);
+	int widget;
+	__asm mov widget, esi
 
-	float viewportX = *(float*)(thisPtr + 0x38);
-	float viewportY = *(float*)(thisPtr + 0x3C);
-	float viewportWidth = *(float*)(thisPtr + 0x40);
-	float viewportHeight = *(float*)(thisPtr + 0x44);
-	float scissorX = *(float*)(thisPtr + 0x50);
-	float scissorY = *(float*)(thisPtr + 0x54);
-	float scissorWidth = *(float*)(thisPtr + 0x58);
-	float scissorHeight = *(float*)(thisPtr + 0x5C);
-	float orthoLeft = *(float*)(thisPtr + 0x60);
-	float orthoTop = *(float*)(thisPtr + 0x64);
-
-	BYTE noAutoScale = *(BYTE*)(thisPtr + 0x1C1);
-	BYTE hasCustomRect = *(BYTE*)(thisPtr + 0x1C8);
-
-	bool useCustomRect;
-	if (noAutoScale)
+	int vtable = *(int*)widget;
+	if (isWiderThan4By3 && (vtable == VTABLE_UI_AUTOSCROLL || vtable == VTABLE_ALICE_DIALOG_TEXT))
 	{
-		useCustomRect = true;
-	}
-	else
-	{
-		float scaleX = screenWidth / 640.0f;
-		float scaleY = screenHeight / 480.0f;
-		viewportX *= scaleX;  viewportY *= scaleY;
-		viewportWidth *= scaleX;  viewportHeight *= scaleY;
-		scissorX *= scaleX;  scissorY *= scaleY;
-		scissorWidth *= scaleX;  scissorHeight *= scaleY;
-		orthoLeft *= scaleX;  orthoTop *= scaleY;
-		useCustomRect = (hasCustomRect != 0);
+		// Make sure to display the borders while transitioning from menu to in-game
+		if (vtable == VTABLE_ALICE_DIALOG_TEXT && MemoryHelper::ReadMemory<uint8_t>(IS_MENU_LOCKED)) return;
+
+		GameHelper::ScaleWidgetRect(widget, 0x38, scaleFactor, widthDifference, x, width);
 	}
 
-	if (useCustomRect)
+	__asm
 	{
-		float orthoRight = orthoLeft + viewportWidth;
-		float orthoBottom = orthoTop + viewportHeight;
-
-		if (isWiderThan4By3)
-		{
-			int vtable = *(int*)thisPtr;
-
-			if (vtable == VTABLE_UI_AUTOSCROLL)
-			{
-				viewportX = viewportX * scaleFactor + widthDifference;
-				viewportWidth = viewportWidth * scaleFactor;
-				scissorX = scissorX * scaleFactor + widthDifference;
-				scissorWidth = scissorWidth * scaleFactor;
-			}
-			else if (vtable == VTABLE_ALICE_DIALOG_TEXT)
-			{
-				// Make sure to display the borders while transitioning from menu to in-game
-				if (MemoryHelper::ReadMemory<uint8_t>(IS_MENU_LOCKED))
-				{
-					return;
-				}
-
-				viewportX = viewportX * scaleFactor + widthDifference;
-				viewportWidth = viewportWidth * scaleFactor;
-				scissorX = scissorX * scaleFactor + widthDifference;
-				scissorWidth = scissorWidth * scaleFactor;
-			}
-		}
-
-		int viewportXInt = (int)viewportX;
-		int viewportYInt = screenHeight - (int)(viewportY + viewportHeight);
-		int viewportWidthInt = (int)viewportWidth;
-		int viewportHeightInt = (int)viewportHeight;
-		int scissorXInt = (int)scissorX;
-		int scissorYInt = screenHeight - (int)(scissorY + scissorHeight);
-		int scissorWidthInt = (int)scissorWidth;
-		int scissorHeightInt = (int)scissorHeight;
-
-		float zNear = -1.0f;
-		float zFar = 1.0f;
-
-		__asm
-		{
-			push zFar
-			push zNear
-			push orthoTop
-			push orthoBottom
-			push orthoRight
-			push orthoLeft
-			push viewportHeightInt
-			push viewportWidthInt
-			push viewportYInt
-			push viewportXInt
-			mov  eax, SET_VIEWPORT_FN_ADDR
-			call dword ptr[eax]
-			add  esp, 0x28
-		}
-
-		__asm
-		{
-			push scissorHeightInt
-			push scissorWidthInt
-			push scissorYInt
-			push scissorXInt
-			mov  eax, SET_SCISSOR_FN_ADDR
-			call dword ptr[eax]
-			add  esp, 0x10
-		}
+		push zFar
+		push zNear
+		push top
+		push bottom
+		push right
+		push left
+		push height
+		push width
+		push y
+		push x
+		mov  eax, SET_VIEWPORT_FN_ADDR
+		call dword ptr[eax]
+		add  esp, 0x28
 	}
-	else
-	{
-		float screenWidthFloat = (float)screenWidth;
-		float screenHeightFloat = (float)screenHeight;
-		float zero = 0.0f;
-		float negativeOne = -1.0f;
+}
 
-		__asm
-		{
-			push zero
-			push negativeOne
-			push zero
-			push screenHeightFloat
-			push screenWidthFloat
-			push zero
-			push screenHeight
-			push screenWidth
-			push 0
-			push 0
-			mov  eax, SET_VIEWPORT_FN_ADDR
-			call dword ptr[eax]
-			add  esp, 0x28
-		}
+// Scale the scissor for the autoscroll and dialogbox, replaces the call in 'UIWidget::setViewport' where the widget is in esi
+static void __cdecl Widget_SetScissor_Override(int x, int y, int width, int height)
+{
+	int widget;
+	__asm mov widget, esi
+
+	int vtable = *(int*)widget;
+	if (isWiderThan4By3 && (vtable == VTABLE_UI_AUTOSCROLL || vtable == VTABLE_ALICE_DIALOG_TEXT))
+	{
+		// Make sure to display the borders while transitioning from menu to in-game
+		if (vtable == VTABLE_ALICE_DIALOG_TEXT && MemoryHelper::ReadMemory<uint8_t>(IS_MENU_LOCKED)) return;
+
+		GameHelper::ScaleWidgetRect(widget, 0x50, scaleFactor, widthDifference, x, width);
+	}
+
+	__asm
+	{
+		push height
+		push width
+		push y
+		push x
+		mov  eax, SET_SCISSOR_FN_ADDR
+		call dword ptr[eax]
+		add  esp, 0x10
 	}
 }
 
@@ -2866,8 +2776,12 @@ static void __cdecl UI_DrawPillarboxes_Hook()
 	if (!isWiderThan4By3) return;
 
 	int border = GameHelper::UI_GetStaticMap(18, "border1_left.tga");
-	Draw_StretchPic_Hook(LEFT_BORDER_X_ID, 0, 0, 0, 0.0, 0.0, 1.0, 1.0, *(DWORD*)(border + 4));
-	Draw_StretchPic_Hook(RIGHT_BORDER_X_ID, 0, 0, 0, 1.0, 0.0, 0.0, 1.0, *(DWORD*)(border + 4));
+	float scale_factor = currentHeight / 720.0f;
+	float border_width = 320.0f * scale_factor;
+	float border_height = static_cast<float>(currentHeight);
+
+	Draw_StretchPic(widthDifference - border_width, 0, border_width, border_height, 0.0, 0.0, 1.0, 1.0, *(DWORD*)(border + 4));
+	Draw_StretchPic(currentWidth - widthDifference, 0, border_width, border_height, 1.0, 0.0, 0.0, 1.0, *(DWORD*)(border + 4));
 }
 
 // Update 'BLINK_TIMER' at a consistent rate, independent of frame rate
@@ -3127,14 +3041,10 @@ static void ApplyFixStretchedMenu()
 	HookHelper::ApplyHookAPI(L"opengl32", "glReadPixels", &glReadPixels_Hook, (LPVOID*)&ori_glReadPixels);
 
 	// AutoScroll/DialogBox scaling
-	MemoryHelper::MakeCALL(0x446A85, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
-	MemoryHelper::MakeCALL(0x446D4B, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
-	MemoryHelper::MakeCALL(0x459435, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
-	MemoryHelper::MakeCALL(0x45A763, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
-	MemoryHelper::MakeCALL(0x4AF5B7, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
-	MemoryHelper::MakeJMP(0x4B177C, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
-	MemoryHelper::MakeJMP(0x4B1786, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
-	MemoryHelper::MakeCALL(0x4B60BD, reinterpret_cast<uintptr_t>(&Widget_ApplyViewport));
+	MemoryHelper::MakeCALL(0x4B12E8, reinterpret_cast<uintptr_t>(&Widget_SetViewport_Override));
+	MemoryHelper::MakeNOP(0x4B12E8 + 5, 1);
+	MemoryHelper::MakeCALL(0x4B1323, reinterpret_cast<uintptr_t>(&Widget_SetScissor_Override));
+	MemoryHelper::MakeNOP(0x4B1323 + 5, 1);
 
 	// Do not scale those pictures
 	HookHelper::ApplyHook((void*)0x45A3C0, &View3D_DrawFades_Hook, (LPVOID*)&View3D_DrawFades);
