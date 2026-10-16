@@ -644,9 +644,11 @@ namespace RenderHelper
 		return true;
 	}
 
+	static bool isSSAASuspended = false;
+
 	static bool IsSSAAActive()
 	{
-		return ssaaContext && sceneTarget.fbo && wglGetCurrentContext() == ssaaContext;
+		return ssaaContext && sceneTarget.fbo && !isSSAASuspended && wglGetCurrentContext() == ssaaContext;
 	}
 
 	// Convert a rectangle from the game's resolution to the supersampled resolution
@@ -721,6 +723,264 @@ namespace RenderHelper
 	static void RestoreSSAABinding()
 	{
 		qglBindFramebuffer(GL_FRAMEBUFFER, sceneTarget.fbo);
+	}
+};
+
+#define GL_TEXTURE0                       0x84C0
+#define GL_TEXTURE1                       0x84C1
+#define GL_FRAGMENT_SHADER                0x8B30
+#define GL_VERTEX_SHADER                  0x8B31
+#define GL_COMPILE_STATUS                 0x8B81
+#define GL_LINK_STATUS                    0x8B82
+
+namespace GammaHelper
+{
+	// Same lookup as the display does with the gamma ramp, applied to the game's frame instead
+	static const char* GammaVertexShader = 
+	R"(#version 120
+		void main()
+		{
+			gl_Position = gl_Vertex;
+		}
+	)";
+
+	static const char* GammaFragmentShader = 
+	R"(#version 120
+		uniform sampler2D frame;
+		uniform sampler2D ramp;
+		uniform vec2 size;
+
+		void main()
+		{
+			vec3 color = texture2D(frame, gl_FragCoord.xy / size).rgb;
+			vec3 coord = (color * 255.0 + 0.5) / 256.0;
+			gl_FragColor = vec4(texture2D(ramp, vec2(coord.r, 0.5)).r, texture2D(ramp, vec2(coord.g, 0.5)).g, texture2D(ramp, vec2(coord.b, 0.5)).b, 1.0);
+		}
+	)";
+
+	typedef char GLchar;
+
+	static GLuint(APIENTRY* qglCreateShader)(GLenum) = nullptr;
+	static void(APIENTRY* qglShaderSource)(GLuint, GLsizei, const GLchar* const*, const GLint*) = nullptr;
+	static void(APIENTRY* qglCompileShader)(GLuint) = nullptr;
+	static void(APIENTRY* qglGetShaderiv)(GLuint, GLenum, GLint*) = nullptr;
+	static void(APIENTRY* qglDeleteShader)(GLuint) = nullptr;
+	static GLuint(APIENTRY* qglCreateProgram)() = nullptr;
+	static void(APIENTRY* qglAttachShader)(GLuint, GLuint) = nullptr;
+	static void(APIENTRY* qglLinkProgram)(GLuint) = nullptr;
+	static void(APIENTRY* qglGetProgramiv)(GLuint, GLenum, GLint*) = nullptr;
+	static void(APIENTRY* qglUseProgram)(GLuint) = nullptr;
+	static GLint(APIENTRY* qglGetUniformLocation)(GLuint, const GLchar*) = nullptr;
+	static void(APIENTRY* qglUniform1i)(GLint, GLint) = nullptr;
+	static void(APIENTRY* qglUniform2f)(GLint, GLfloat, GLfloat) = nullptr;
+	static void(APIENTRY* qglActiveTexture)(GLenum) = nullptr;
+
+	static WORD gammaRamp[3][256] = {};
+	static bool isRampIdentity = true;
+	static bool isRampDirty = true;
+
+	static HGLRC gammaContext = nullptr;
+	static bool isUnavailable = false;
+	static GLuint gammaProgram = 0;
+	static GLint sizeLocation = -1;
+	static GLuint frameTexture = 0;
+	static GLuint rampTexture = 0;
+	static int frameWidth = 0;
+	static int frameHeight = 0;
+
+	// Fill an identity ramp, what the game sees as the system's current calibration
+	static void GetIdentityRamp(WORD* ramp)
+	{
+		for (int i = 0; i < 256; i++)
+		{
+			ramp[i] = ramp[256 + i] = ramp[512 + i] = static_cast<WORD>(i * 257);
+		}
+	}
+
+	// Store the ramp the game wants to apply to the display
+	static void SetRamp(const WORD* ramp)
+	{
+		std::memcpy(gammaRamp, ramp, sizeof(gammaRamp));
+
+		isRampIdentity = true;
+		for (int i = 0; i < 256 * 3 && isRampIdentity; i++)
+		{
+			isRampIdentity = (ramp[i] >> 8) == (i & 0xFF);
+		}
+
+		isRampDirty = true;
+	}
+
+	static bool LoadShaderFunctions()
+	{
+		qglCreateShader = (GLuint(APIENTRY*)(GLenum))wglGetProcAddress("glCreateShader");
+		qglShaderSource = (void(APIENTRY*)(GLuint, GLsizei, const GLchar* const*, const GLint*))wglGetProcAddress("glShaderSource");
+		qglCompileShader = (void(APIENTRY*)(GLuint))wglGetProcAddress("glCompileShader");
+		qglGetShaderiv = (void(APIENTRY*)(GLuint, GLenum, GLint*))wglGetProcAddress("glGetShaderiv");
+		qglDeleteShader = (void(APIENTRY*)(GLuint))wglGetProcAddress("glDeleteShader");
+		qglCreateProgram = (GLuint(APIENTRY*)())wglGetProcAddress("glCreateProgram");
+		qglAttachShader = (void(APIENTRY*)(GLuint, GLuint))wglGetProcAddress("glAttachShader");
+		qglLinkProgram = (void(APIENTRY*)(GLuint))wglGetProcAddress("glLinkProgram");
+		qglGetProgramiv = (void(APIENTRY*)(GLuint, GLenum, GLint*))wglGetProcAddress("glGetProgramiv");
+		qglUseProgram = (void(APIENTRY*)(GLuint))wglGetProcAddress("glUseProgram");
+		qglGetUniformLocation = (GLint(APIENTRY*)(GLuint, const GLchar*))wglGetProcAddress("glGetUniformLocation");
+		qglUniform1i = (void(APIENTRY*)(GLint, GLint))wglGetProcAddress("glUniform1i");
+		qglUniform2f = (void(APIENTRY*)(GLint, GLfloat, GLfloat))wglGetProcAddress("glUniform2f");
+		qglActiveTexture = (void(APIENTRY*)(GLenum))wglGetProcAddress("glActiveTexture");
+
+		return qglCreateShader && qglShaderSource && qglCompileShader && qglGetShaderiv && qglDeleteShader && qglCreateProgram && qglAttachShader && qglLinkProgram && qglGetProgramiv && qglUseProgram && qglGetUniformLocation && qglUniform1i && qglUniform2f && qglActiveTexture;
+	}
+
+	static GLuint CompileShader(GLenum type, const char* source)
+	{
+		GLuint shader = qglCreateShader(type);
+		qglShaderSource(shader, 1, &source, nullptr);
+		qglCompileShader(shader);
+
+		GLint status = 0;
+		qglGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+
+		if (!status)
+		{
+			qglDeleteShader(shader);
+			return 0;
+		}
+
+		return shader;
+	}
+
+	// Create the shader for the current context, the objects of a previous context are gone with it
+	static bool InitContext()
+	{
+		HGLRC context = wglGetCurrentContext();
+
+		if (!context) return false;
+		if (context == gammaContext) return !isUnavailable;
+
+		gammaContext = context;
+		isUnavailable = true;
+		gammaProgram = frameTexture = rampTexture = 0;
+		frameWidth = frameHeight = 0;
+		isRampDirty = true;
+
+		GLuint vertexShader = LoadShaderFunctions() ? CompileShader(GL_VERTEX_SHADER, GammaVertexShader) : 0;
+		GLuint fragmentShader = vertexShader ? CompileShader(GL_FRAGMENT_SHADER, GammaFragmentShader) : 0;
+
+		if (fragmentShader)
+		{
+			gammaProgram = qglCreateProgram();
+			qglAttachShader(gammaProgram, vertexShader);
+			qglAttachShader(gammaProgram, fragmentShader);
+			qglLinkProgram(gammaProgram);
+
+			GLint status = 0;
+			qglGetProgramiv(gammaProgram, GL_LINK_STATUS, &status);
+			if (!status) gammaProgram = 0;
+		}
+
+		if (vertexShader) qglDeleteShader(vertexShader);
+		if (fragmentShader) qglDeleteShader(fragmentShader);
+
+		if (!gammaProgram)
+		{
+			GameHelper::ri_Printf(0, "...gamma shader unavailable\n");
+			return false;
+		}
+
+		sizeLocation = qglGetUniformLocation(gammaProgram, "size");
+		qglUseProgram(gammaProgram);
+		qglUniform1i(qglGetUniformLocation(gammaProgram, "frame"), 0);
+		qglUniform1i(qglGetUniformLocation(gammaProgram, "ramp"), 1);
+		qglUseProgram(0);
+
+		glGenTextures(1, &frameTexture);
+		glGenTextures(1, &rampTexture);
+
+		isUnavailable = false;
+		return true;
+	}
+
+	static void SetupTexture(GLuint texture)
+	{
+		glBindTexture(GL_TEXTURE_2D, texture);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	}
+
+	// Apply the gamma ramp to the frame in the window's back buffer, before it is presented
+	static void ApplyGammaRamp(int width, int height)
+	{
+		if (isRampIdentity || width <= 0 || height <= 0 || !InitContext()) return;
+
+		glPushAttrib(GL_ALL_ATTRIB_BITS);
+
+		// The frame is read from the window, even when the game renders in the supersampled framebuffer
+		if (RenderHelper::qglBindFramebuffer)
+		{
+			RenderHelper::qglBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
+
+		qglActiveTexture(GL_TEXTURE1);
+		if (isRampDirty)
+		{
+			WORD rampTexels[256][3];
+			for (int i = 0; i < 256; i++)
+			{
+				rampTexels[i][0] = gammaRamp[0][i];
+				rampTexels[i][1] = gammaRamp[1][i];
+				rampTexels[i][2] = gammaRamp[2][i];
+			}
+
+			SetupTexture(rampTexture);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16, 256, 1, 0, GL_RGB, GL_UNSIGNED_SHORT, rampTexels);
+			isRampDirty = false;
+		}
+		else
+		{
+			glBindTexture(GL_TEXTURE_2D, rampTexture);
+		}
+
+		qglActiveTexture(GL_TEXTURE0);
+		if (width != frameWidth || height != frameHeight)
+		{
+			SetupTexture(frameTexture);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+			frameWidth = width;
+			frameHeight = height;
+		}
+		else
+		{
+			glBindTexture(GL_TEXTURE_2D, frameTexture);
+		}
+
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
+
+		glDisable(GL_BLEND);
+		glDisable(GL_ALPHA_TEST);
+		glDisable(GL_DEPTH_TEST);
+		glDisable(GL_STENCIL_TEST);
+		glDisable(GL_SCISSOR_TEST);
+		glDisable(GL_CULL_FACE);
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+		RenderHelper::isSSAASuspended = true;
+		glViewport(0, 0, width, height);
+
+		qglUseProgram(gammaProgram);
+		qglUniform2f(sizeLocation, static_cast<float>(width), static_cast<float>(height));
+
+		glBegin(GL_QUADS);
+		glVertex2f(-1.0f, -1.0f);
+		glVertex2f(1.0f, -1.0f);
+		glVertex2f(1.0f, 1.0f);
+		glVertex2f(-1.0f, 1.0f);
+		glEnd();
+
+		qglUseProgram(0);
+		glPopAttrib();
+		RenderHelper::isSSAASuspended = false;
 	}
 };
 

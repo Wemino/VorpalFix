@@ -266,6 +266,8 @@ static void(WINAPI* ori_glViewport)(GLint, GLint, GLsizei, GLsizei);
 static void(WINAPI* ori_glScissor)(GLint, GLint, GLsizei, GLsizei);
 static void(WINAPI* ori_glDrawBuffer)(GLenum);
 static BOOL(WINAPI* ori_SwapBuffers)(HDC);
+static BOOL(WINAPI* ori_GetDeviceGammaRamp)(HDC, LPVOID);
+static BOOL(WINAPI* ori_SetDeviceGammaRamp)(HDC, LPVOID);
 static DWORD(WINAPI* ori_XInputGetState)(DWORD, XINPUT_STATE*);
 static BOOL(WINAPI* SystemHelper::qwglChoosePixelFormatARB)(HDC, const int*, const FLOAT*, UINT, int*, UINT*) = nullptr;
 
@@ -328,6 +330,7 @@ bool FixUnfocusedCursorLock = false;
 bool FixLocalizationFiles = false;
 bool FixUnlitModels = false;
 bool FixCharacterShading = false;
+bool FixSystemWideGamma = false;
 bool OptimizeSaveSpeed = false;
 
 // Input
@@ -406,6 +409,7 @@ static void ReadConfig()
 	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
 	FixUnlitModels = IniHelper::ReadInteger("Fixes", "FixUnlitModels", 1) == 1;
 	FixCharacterShading = IniHelper::ReadInteger("Fixes", "FixCharacterShading", 1) == 1;
+	FixSystemWideGamma = IniHelper::ReadInteger("Fixes", "FixSystemWideGamma", 1) == 1;
 	OptimizeSaveSpeed = IniHelper::ReadInteger("Fixes", "OptimizeSaveSpeed", 1) == 1;
 
 	// Input
@@ -630,19 +634,43 @@ static void WINAPI glDrawBuffer_Hook(GLenum mode)
 	ori_glDrawBuffer(mode);
 }
 
-// Hook SwapBuffers to downsample the supersampled frame to the window before presenting it
+// Hook SwapBuffers to downsample the supersampled frame and apply the gamma ramp before presenting it
 static BOOL WINAPI SwapBuffers_Hook(HDC hdc)
 {
-	if (!RenderHelper::IsSSAAActive())
+	bool isSSAAActive = RenderHelper::IsSSAAActive();
+
+	if (isSSAAActive)
 	{
-		return ori_SwapBuffers(hdc);
+		RenderHelper::PresentSSAA();
 	}
 
-	RenderHelper::PresentSSAA();
+	if (FixSystemWideGamma)
+	{
+		GammaHelper::ApplyGammaRamp(currentWidth, currentHeight);
+	}
+
 	BOOL result = ori_SwapBuffers(hdc);
-	RenderHelper::RestoreSSAABinding();
+
+	if (isSSAAActive)
+	{
+		RenderHelper::RestoreSSAABinding();
+	}
 
 	return result;
+}
+
+// Hook GetDeviceGammaRamp to report an identity ramp, the system's calibration is never read or modified
+static BOOL WINAPI GetDeviceGammaRamp_Hook(HDC hdc, LPVOID lpRamp)
+{
+	GammaHelper::GetIdentityRamp((WORD*)lpRamp);
+	return TRUE;
+}
+
+// Hook SetDeviceGammaRamp to keep the ramp for the game's frame instead of applying it to the display
+static BOOL WINAPI SetDeviceGammaRamp_Hook(HDC hdc, LPVOID lpRamp)
+{
+	GammaHelper::SetRamp((const WORD*)lpRamp);
+	return TRUE;
 }
 
 // Hook XInputGetState to override it with SDL
@@ -3225,6 +3253,23 @@ static void ApplyFixCharacterShading()
 	MemoryHelper::MakeCALL(0x4805E5, reinterpret_cast<uintptr_t>(&SphereLightingHookStub));
 }
 
+static void ApplyFixSystemWideGamma()
+{
+	if (!FixSystemWideGamma) return;
+
+	HookHelper::ApplyHookAPI(L"gdi32", "GetDeviceGammaRamp", &GetDeviceGammaRamp_Hook, (LPVOID*)&ori_GetDeviceGammaRamp);
+	HookHelper::ApplyHookAPI(L"gdi32", "SetDeviceGammaRamp", &SetDeviceGammaRamp_Hook, (LPVOID*)&ori_SetDeviceGammaRamp);
+
+	// Already hooked if 'SSAAScale' is used
+	if (SSAAScale <= 1.0f)
+	{
+		HookHelper::ApplyHookAPI(L"gdi32", "SwapBuffers", &SwapBuffers_Hook, (LPVOID*)&ori_SwapBuffers);
+	}
+
+	// Keep the overbright bits in windowed mode, they were only disabled because of the display's ramp (R_SetColorMappings)
+	MemoryHelper::WriteMemory<uint8_t>(0x47EC55, 0xEB);
+}
+
 static void ApplyOptimizeSaveSpeed()
 {
 	if (!OptimizeSaveSpeed) return;
@@ -3553,6 +3598,7 @@ static void Init()
 	ApplyFixLocalizationFiles();
 	ApplyFixUnlitModels();
 	ApplyFixCharacterShading();
+	ApplyFixSystemWideGamma();
 	ApplyOptimizeSaveSpeed();
 
 	// General

@@ -51,6 +51,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
   
 - Corrected display scaling on high‑DPI monitors.
 
+- Brightness and gamma are now applied to the game's image by a shader instead of changing the system's display calibration.
+
 ---
 
 ## Widescreen Fixes
