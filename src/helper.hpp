@@ -290,6 +290,17 @@ namespace GameHelper
 
 		return cached;
 	}
+
+	// Check if a point of the light grid contains lighting data
+	static bool IsLightGridPointLit(uintptr_t world, int x, int y, int z)
+	{
+		const int* gridBounds = (int*)(world + 0xE0);
+
+		if (x < 0 || y < 0 || z < 0 || x >= gridBounds[0] || y >= gridBounds[1] || z >= gridBounds[2]) return false;
+
+		const uint8_t* gridPoint = *(uint8_t**)(world + 0xEC) + 8 * (x + y * gridBounds[0] + z * gridBounds[0] * gridBounds[1]);
+		return (gridPoint[0] + gridPoint[1] + gridPoint[2]) != 0;
+	}
 };
 
 namespace SystemHelper
@@ -404,6 +415,312 @@ namespace SystemHelper
 		}
 
 		winmm.ProxySetup(hL);
+	}
+};
+
+#define GL_FRAMEBUFFER                    0x8D40
+#define GL_READ_FRAMEBUFFER               0x8CA8
+#define GL_DRAW_FRAMEBUFFER               0x8CA9
+#define GL_RENDERBUFFER                   0x8D41
+#define GL_COLOR_ATTACHMENT0              0x8CE0
+#define GL_DEPTH_STENCIL_ATTACHMENT       0x821A
+#define GL_DEPTH24_STENCIL8               0x88F0
+#define GL_FRAMEBUFFER_COMPLETE           0x8CD5
+#define GL_MAX_RENDERBUFFER_SIZE          0x84E8
+#define GL_MAX_SAMPLES                    0x8D57
+
+namespace RenderHelper
+{
+	struct RenderTarget
+	{
+		GLuint fbo;
+		GLuint color;
+		GLuint depth;
+		int width;
+		int height;
+	};
+
+	static void(APIENTRY* qglGenFramebuffers)(GLsizei, GLuint*) = nullptr;
+	static void(APIENTRY* qglDeleteFramebuffers)(GLsizei, const GLuint*) = nullptr;
+	static void(APIENTRY* qglBindFramebuffer)(GLenum, GLuint) = nullptr;
+	static void(APIENTRY* qglFramebufferRenderbuffer)(GLenum, GLenum, GLenum, GLuint) = nullptr;
+	static GLenum(APIENTRY* qglCheckFramebufferStatus)(GLenum) = nullptr;
+	static void(APIENTRY* qglGenRenderbuffers)(GLsizei, GLuint*) = nullptr;
+	static void(APIENTRY* qglDeleteRenderbuffers)(GLsizei, const GLuint*) = nullptr;
+	static void(APIENTRY* qglBindRenderbuffer)(GLenum, GLuint) = nullptr;
+	static void(APIENTRY* qglRenderbufferStorageMultisample)(GLenum, GLsizei, GLenum, GLsizei, GLsizei) = nullptr;
+	static void(APIENTRY* qglBlitFramebuffer)(GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLbitfield, GLenum) = nullptr;
+
+	static HGLRC ssaaContext = nullptr;
+	static float ssaaScale = 1.0f;
+	static int nativeWidth = 0;
+	static int nativeHeight = 0;
+	static RenderTarget sceneTarget = {}; // Supersampled framebuffer the game renders into
+	static RenderTarget resolveTarget = {}; // Single-sample copy of the scene when MSAA is used
+	static RenderTarget downsampleTargets[2] = {}; // Intermediate steps so that each blit never shrinks more than 2x
+	static int downsampleTargetCount = 0;
+	static RenderTarget readTarget = {}; // Native resolution copy used by glReadPixels
+
+	static PROC GetFramebufferProc(const char* name)
+	{
+		PROC proc = wglGetProcAddress(name);
+
+		if (!proc)
+		{
+			// Fall back to the EXT_framebuffer_object/blit/multisample entry points
+			char extName[64];
+			sprintf_s(extName, "%sEXT", name);
+			proc = wglGetProcAddress(extName);
+		}
+
+		return proc;
+	}
+
+	static bool LoadFramebufferFunctions()
+	{
+		qglGenFramebuffers = (void(APIENTRY*)(GLsizei, GLuint*))GetFramebufferProc("glGenFramebuffers");
+		qglDeleteFramebuffers = (void(APIENTRY*)(GLsizei, const GLuint*))GetFramebufferProc("glDeleteFramebuffers");
+		qglBindFramebuffer = (void(APIENTRY*)(GLenum, GLuint))GetFramebufferProc("glBindFramebuffer");
+		qglFramebufferRenderbuffer = (void(APIENTRY*)(GLenum, GLenum, GLenum, GLuint))GetFramebufferProc("glFramebufferRenderbuffer");
+		qglCheckFramebufferStatus = (GLenum(APIENTRY*)(GLenum))GetFramebufferProc("glCheckFramebufferStatus");
+		qglGenRenderbuffers = (void(APIENTRY*)(GLsizei, GLuint*))GetFramebufferProc("glGenRenderbuffers");
+		qglDeleteRenderbuffers = (void(APIENTRY*)(GLsizei, const GLuint*))GetFramebufferProc("glDeleteRenderbuffers");
+		qglBindRenderbuffer = (void(APIENTRY*)(GLenum, GLuint))GetFramebufferProc("glBindRenderbuffer");
+		qglRenderbufferStorageMultisample = (void(APIENTRY*)(GLenum, GLsizei, GLenum, GLsizei, GLsizei))GetFramebufferProc("glRenderbufferStorageMultisample");
+		qglBlitFramebuffer = (void(APIENTRY*)(GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLbitfield, GLenum))GetFramebufferProc("glBlitFramebuffer");
+
+		return qglGenFramebuffers && qglDeleteFramebuffers && qglBindFramebuffer && qglFramebufferRenderbuffer && qglCheckFramebufferStatus && qglGenRenderbuffers && qglDeleteRenderbuffers && qglBindRenderbuffer && qglRenderbufferStorageMultisample && qglBlitFramebuffer;
+	}
+
+	static void DeleteRenderTarget(RenderTarget& target)
+	{
+		if (target.fbo) qglDeleteFramebuffers(1, &target.fbo);
+		if (target.color) qglDeleteRenderbuffers(1, &target.color);
+		if (target.depth) qglDeleteRenderbuffers(1, &target.depth);
+		target = {};
+	}
+
+	static bool CreateRenderTarget(RenderTarget& target, int width, int height, int samples, bool withDepth)
+	{
+		target.width = width;
+		target.height = height;
+
+		qglGenRenderbuffers(1, &target.color);
+		qglBindRenderbuffer(GL_RENDERBUFFER, target.color);
+		qglRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, GL_RGBA8, width, height);
+
+		if (withDepth)
+		{
+			// The game uses the stencil buffer for its shadows
+			qglGenRenderbuffers(1, &target.depth);
+			qglBindRenderbuffer(GL_RENDERBUFFER, target.depth);
+			qglRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, GL_DEPTH24_STENCIL8, width, height);
+		}
+
+		qglGenFramebuffers(1, &target.fbo);
+		qglBindFramebuffer(GL_FRAMEBUFFER, target.fbo);
+		qglFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, target.color);
+
+		if (withDepth)
+		{
+			qglFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, target.depth);
+		}
+
+		qglBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+		return qglCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+	}
+
+	static void DeleteSSAATargets()
+	{
+		DeleteRenderTarget(sceneTarget);
+		DeleteRenderTarget(resolveTarget);
+		DeleteRenderTarget(readTarget);
+
+		for (int i = 0; i < downsampleTargetCount; i++)
+		{
+			DeleteRenderTarget(downsampleTargets[i]);
+		}
+
+		downsampleTargetCount = 0;
+	}
+
+	// Create the supersampled framebuffer, must be called with the game's context current
+	static bool InitSSAA(float scale, int width, int height, int msaaSamples)
+	{
+		HGLRC context = wglGetCurrentContext();
+
+		if (ssaaContext == context)
+		{
+			DeleteSSAATargets();
+		}
+		else
+		{
+			// The previous context has been destroyed along with its objects
+			sceneTarget = {};
+			resolveTarget = {};
+			readTarget = {};
+			downsampleTargetCount = 0;
+		}
+
+		ssaaContext = nullptr;
+
+		if (scale <= 1.0f || width <= 0 || height <= 0 || !LoadFramebufferFunctions())
+		{
+			return false;
+		}
+
+		// Keep the supersampled framebuffer within the limits of the GPU
+		GLint maxRenderbufferSize = 0;
+		GLint maxViewportDims[2] = {};
+		glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &maxRenderbufferSize);
+		glGetIntegerv(GL_MAX_VIEWPORT_DIMS, maxViewportDims);
+
+		int maxSize = std::min(maxRenderbufferSize, std::min(maxViewportDims[0], maxViewportDims[1]));
+		scale = std::min(scale, static_cast<float>(maxSize) / static_cast<float>(std::max(width, height)));
+
+		if (scale <= 1.0f)
+		{
+			return false;
+		}
+
+		GLint maxSamples = 0;
+		glGetIntegerv(GL_MAX_SAMPLES, &maxSamples);
+		msaaSamples = std::min(msaaSamples, static_cast<int>(maxSamples));
+
+		// Use the same scale on both axes so that a fullscreen viewport covers the whole framebuffer
+		int scaledWidth = static_cast<int>(width * scale);
+		float effectiveScale = static_cast<float>(scaledWidth) / static_cast<float>(width);
+		int scaledHeight = static_cast<int>(floorf(height * effectiveScale));
+
+		bool success = CreateRenderTarget(sceneTarget, scaledWidth, scaledHeight, std::max(msaaSamples, 0), true);
+
+		if (success && msaaSamples > 0)
+		{
+			success = CreateRenderTarget(resolveTarget, scaledWidth, scaledHeight, 0, false);
+		}
+
+		// Halve the size until the last blit to the screen is 2x or less
+		int stepWidth = scaledWidth;
+		int stepHeight = scaledHeight;
+
+		while (success && downsampleTargetCount < 2 && (stepWidth > width * 2 || stepHeight > height * 2))
+		{
+			stepWidth = std::max(width, (stepWidth + 1) / 2);
+			stepHeight = std::max(height, (stepHeight + 1) / 2);
+			success = CreateRenderTarget(downsampleTargets[downsampleTargetCount++], stepWidth, stepHeight, 0, false);
+		}
+
+		if (success)
+		{
+			success = CreateRenderTarget(readTarget, width, height, 0, false);
+		}
+
+		if (!success)
+		{
+			DeleteSSAATargets();
+			qglBindFramebuffer(GL_FRAMEBUFFER, 0);
+			GameHelper::ri_Printf(0, "...SSAA framebuffer incomplete, disabling SSAA\n");
+			return false;
+		}
+
+		// The game will now render into the supersampled framebuffer
+		qglBindFramebuffer(GL_FRAMEBUFFER, sceneTarget.fbo);
+
+		ssaaContext = context;
+		ssaaScale = effectiveScale;
+		nativeWidth = width;
+		nativeHeight = height;
+
+		if (msaaSamples > 0)
+		{
+			GameHelper::ri_Printf(0, "...SSAA %.2fx enabled, rendering at %dx%d (%dx MSAA)\n", ssaaScale, scaledWidth, scaledHeight, msaaSamples);
+		}
+		else
+		{
+			GameHelper::ri_Printf(0, "...SSAA %.2fx enabled, rendering at %dx%d\n", ssaaScale, scaledWidth, scaledHeight);
+		}
+
+		return true;
+	}
+
+	static bool IsSSAAActive()
+	{
+		return ssaaContext && sceneTarget.fbo && wglGetCurrentContext() == ssaaContext;
+	}
+
+	// Convert a rectangle from the game's resolution to the supersampled resolution
+	static void ScaleRect(GLint& x, GLint& y, GLsizei& width, GLsizei& height)
+	{
+		GLint x0 = static_cast<GLint>(floorf(x * ssaaScale));
+		GLint y0 = static_cast<GLint>(floorf(y * ssaaScale));
+		GLint x1 = static_cast<GLint>(floorf((x + width) * ssaaScale));
+		GLint y1 = static_cast<GLint>(floorf((y + height) * ssaaScale));
+
+		x = x0;
+		y = y0;
+		width = x1 - x0;
+		height = y1 - y0;
+	}
+
+	static void BlitRenderTarget(const RenderTarget& source, GLuint destinationFbo, int destinationWidth, int destinationHeight)
+	{
+		qglBindFramebuffer(GL_READ_FRAMEBUFFER, source.fbo);
+		qglBindFramebuffer(GL_DRAW_FRAMEBUFFER, destinationFbo);
+
+		GLenum filter = (source.width == destinationWidth && source.height == destinationHeight) ? GL_NEAREST : GL_LINEAR;
+		qglBlitFramebuffer(0, 0, source.width, source.height, 0, 0, destinationWidth, destinationHeight, GL_COLOR_BUFFER_BIT, filter);
+	}
+
+	// Downsample the supersampled framebuffer into the destination framebuffer
+	static void ResolveSSAA(GLuint destinationFbo, int destinationWidth, int destinationHeight)
+	{
+		// Blits are affected by the scissor test and the color mask
+		GLboolean isScissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
+		GLboolean colorMask[4];
+		glGetBooleanv(GL_COLOR_WRITEMASK, colorMask);
+
+		glDisable(GL_SCISSOR_TEST);
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+		const RenderTarget* source = &sceneTarget;
+
+		// Resolve the MSAA samples first, scaling isn't allowed while doing so
+		if (resolveTarget.fbo)
+		{
+			BlitRenderTarget(*source, resolveTarget.fbo, resolveTarget.width, resolveTarget.height);
+			source = &resolveTarget;
+		}
+
+		for (int i = 0; i < downsampleTargetCount; i++)
+		{
+			BlitRenderTarget(*source, downsampleTargets[i].fbo, downsampleTargets[i].width, downsampleTargets[i].height);
+			source = &downsampleTargets[i];
+		}
+
+		BlitRenderTarget(*source, destinationFbo, destinationWidth, destinationHeight);
+
+		if (isScissorEnabled) glEnable(GL_SCISSOR_TEST);
+		glColorMask(colorMask[0], colorMask[1], colorMask[2], colorMask[3]);
+	}
+
+	// Copy the frame to the window, before the buffers are swapped
+	static void PresentSSAA()
+	{
+		ResolveSSAA(0, nativeWidth, nativeHeight);
+	}
+
+	// Make glReadPixels read a native resolution copy of the frame
+	static void BindSSAAReadTarget()
+	{
+		ResolveSSAA(readTarget.fbo, nativeWidth, nativeHeight);
+		qglBindFramebuffer(GL_READ_FRAMEBUFFER, readTarget.fbo);
+	}
+
+	// Let the game render into the supersampled framebuffer again
+	static void RestoreSSAABinding()
+	{
+		qglBindFramebuffer(GL_FRAMEBUFFER, sceneTarget.fbo);
 	}
 };
 

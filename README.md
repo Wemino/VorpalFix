@@ -37,6 +37,10 @@ A patch that addresses various technical issues and adds quality-of-life improve
 
 - Fixed missing particle effects for re-materialization visuals of Alice's throwable weapons.
 
+- Fixed models being rendered completely black in places where the map has no lighting data, such as the Demon Dice pickup in Fungiferous Flora.
+
+- Fixed Alice and the enemies losing their shading and appearing fully bright whenever a dynamic light was visible on screen, even far away, such as at the start of Pool of Tears.
+
 - Fixed an issue where Alice's blinking animation in the menu played too quickly at high frame rates.
 
 - Fullscreen selection now persists after restarting.
@@ -312,6 +316,10 @@ Adds support for PlayStation and Nintendo Switch controllers via SDL3.
     </tr>
   </table>
 </div>
+
+- **SSAA Anti-Aliasing**  
+  Renders the game at a higher resolution and downscales it to the screen, also smoothing the edges of alpha-tested textures such as foliage and grates that MSAA can't reach.
+    To enable it, set `SSAAScale = 2.0` in the `[Graphics]` section of `VorpalFix.ini` (`1.0` disables it, up to `4.0`).
 
 - **Maximum Model Detail**  
   Disable LOD bias to render models at full quality at any distance.

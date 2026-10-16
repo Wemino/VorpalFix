@@ -24,6 +24,8 @@ using GameHelper::ShaderType;
 // =============================
 // Memory Addresses 
 // =============================
+constexpr uintptr_t RB_LIGHT_SPHERE_EXACT_DLIGHTS = 0x4A4FB0;
+constexpr uintptr_t RB_LIGHT_SPHERE = 0x4A5400;
 constexpr uintptr_t MAIN_ENTRY_POINT = 0x4DF0A3;
 constexpr uintptr_t CODE_CAVE_SOUND = 0x513490;
 constexpr uintptr_t CODE_CAVE_INTRO = 0x513B90;
@@ -66,6 +68,12 @@ constexpr uintptr_t CVAR_M_INVERT_PITCH = 0x14E8A5C;
 constexpr uintptr_t CVAR_CL_YAWSPEED = 0x14EB3B8;
 constexpr uintptr_t IN_GUIMOUSE = 0x14EB498;
 constexpr uintptr_t CVAR_CL_PITCHSPEED = 0x14EB4D8;
+constexpr uintptr_t SPHERE_LIGHT_COLORS = 0x1BB8420;
+constexpr uintptr_t SPHERE_NEARBY_DLIGHTS = 0x1BB869C;
+constexpr uintptr_t SPHERE_SKIP_NORMALIZE = 0x1BB86A0;
+constexpr uintptr_t SPHERE_LIGHT_FUNC = 0x1BB86A4;
+constexpr uintptr_t TR_WORLD_ADDR = 0x1BB8F80;
+constexpr uintptr_t TR_OVERBRIGHT_BITS = 0x1BB9924;
 constexpr uintptr_t SHADERS_CACHE_ADDR = 0x1BFCEF4;
 constexpr uintptr_t DISPLAY_MODE_ARRAY_WIDTH_ADDR = 0x1C1D2E0;
 constexpr uintptr_t DISPLAY_MODE_ARRAY_HEIGHT_ADDR = 0x1C1D2E4;
@@ -236,9 +244,10 @@ static void(__cdecl* FetchDisplayResolutions)() = nullptr; // 0x46F850
 static int(__cdecl* GLW_CreatePFD)(void*, unsigned __int8, char, unsigned __int8, int) = nullptr; // 0x46FC70
 static int(__cdecl* QGL_Init)(LPCSTR) = nullptr; // 0x47ABE0
 static void(__cdecl* R_SetupShaders)() = nullptr; // 0x4873C0
-static void(__cdecl* R_DrawString)(int, BYTE, float, float, float, float, float, float, float, int) = nullptr; // 0x48F1E0
+static void(__cdecl* R_DrawString)(int, const char*, float, float, float, float, float, float, float, int) = nullptr; // 0x48F1E0
 static int(__cdecl* Draw_StretchPic)(float, float, float, float, float, float, float, float, int) = nullptr; // 0x48FC00
 static int(__cdecl* RE_StretchRaw)(int, int, int, int, int, int, int) = nullptr; // 0x490130
+static void(__cdecl* R_SetupEntityLighting)(int, int, float*) = nullptr; // 0x4A6640
 static int(__thiscall* UIWidget_DrawPicStretched)(int, float, float, float, float, float, float, float, float, int) = nullptr; // 0x4B0AF0
 static int(__thiscall* UIWidget_Print)(int, int, float, float, int, int, float, float, float, float, float) = nullptr; // 0x4B0F00
 static int(__thiscall* UIWidget_PrintJustified)(int, void*, int, int, int, int, float, float, float, float, float) = nullptr; // 0x4B1010
@@ -253,6 +262,10 @@ static void(__cdecl* GPhysics_Pusher)(int); // fgamex86.dll+0x774F0
 static HWND(WINAPI* ori_CreateWindowExA)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
 static void(WINAPI* ori_glTexParameterf)(GLenum, GLenum, GLfloat);
 static void(WINAPI* ori_glReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*);
+static void(WINAPI* ori_glViewport)(GLint, GLint, GLsizei, GLsizei);
+static void(WINAPI* ori_glScissor)(GLint, GLint, GLsizei, GLsizei);
+static void(WINAPI* ori_glDrawBuffer)(GLenum);
+static BOOL(WINAPI* ori_SwapBuffers)(HDC);
 static DWORD(WINAPI* ori_XInputGetState)(DWORD, XINPUT_STATE*);
 static BOOL(WINAPI* SystemHelper::qwglChoosePixelFormatARB)(HDC, const int*, const FLOAT*, UINT, int*, UINT*) = nullptr;
 
@@ -278,10 +291,15 @@ static BOOL(WINAPI* SystemHelper::qwglChoosePixelFormatARB)(HDC, const int*, con
 #define GL_TEXTURE_MAX_ANISOTROPY_EXT     0x84FE
 #define GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT 0x84FF
 
-#define GL_MAX_SAMPLES                    0x8D57
-
 #define GL_NEAREST_MIPMAP_NEAREST         0x2700
 #define GL_LINEAR_MIPMAP_LINEAR           0x2703
+
+// =============================
+// Renderer Defines
+// =============================
+
+#define RF_FULLBRIGHT                     0x40000
+#define RDF_NOWORLDMODEL                  0x1
 
 // =============================
 // Ini Variables
@@ -308,6 +326,8 @@ bool FixFrozenCameraRotation = false;
 bool FixResolutionModeOOB = false;
 bool FixUnfocusedCursorLock = false;
 bool FixLocalizationFiles = false;
+bool FixUnlitModels = false;
+bool FixCharacterShading = false;
 bool OptimizeSaveSpeed = false;
 
 // Input
@@ -350,6 +370,7 @@ bool EnableAltF4Close = 0;
 // Graphics
 float MaxAnisotropy = 0;
 int MultiSampleAntiAliasing = 0;
+float SSAAScale = 0;
 bool TrilinearTextureFiltering = false;
 bool ForceBatchedRendering = false;
 bool EnhancedLOD = false;
@@ -383,6 +404,8 @@ static void ReadConfig()
 	FixFrozenCameraRotation = IniHelper::ReadInteger("Fixes", "FixFrozenCameraRotation", 1) == 1;
 	FixUnfocusedCursorLock = IniHelper::ReadInteger("Fixes", "FixUnfocusedCursorLock", 1) == 1;
 	FixLocalizationFiles = IniHelper::ReadInteger("Fixes", "FixLocalizationFiles", 1) == 1;
+	FixUnlitModels = IniHelper::ReadInteger("Fixes", "FixUnlitModels", 1) == 1;
+	FixCharacterShading = IniHelper::ReadInteger("Fixes", "FixCharacterShading", 1) == 1;
 	OptimizeSaveSpeed = IniHelper::ReadInteger("Fixes", "OptimizeSaveSpeed", 1) == 1;
 
 	// Input
@@ -426,6 +449,7 @@ static void ReadConfig()
 	// Graphics
 	MaxAnisotropy = IniHelper::ReadFloat("Graphics", "MaxAnisotropy", 16);
 	MultiSampleAntiAliasing = IniHelper::ReadInteger("Graphics", "MultiSampleAntiAliasing", 8);
+	SSAAScale = IniHelper::ReadFloat("Graphics", "SSAAScale", 1.0f);
 	TrilinearTextureFiltering = IniHelper::ReadInteger("Graphics", "TrilinearTextureFiltering", 1) == 1;
 	ForceBatchedRendering = IniHelper::ReadInteger("Graphics", "ForceBatchedRendering", 1) == 1;
 	EnhancedLOD = IniHelper::ReadInteger("Graphics", "EnhancedLOD", 1) == 1;
@@ -441,6 +465,9 @@ static void ReadConfig()
 
 	// Clamp CameraSmoothingFactor
 	CameraSmoothingFactor = std::clamp(CameraSmoothingFactor, 0.0f, 1.0f);
+
+	// Clamp SSAAScale
+	SSAAScale = std::clamp(SSAAScale, 1.0f, 4.0f);
 
 	// Check if the user has specified a custom save directory
 	isUsingCustomSaveDir = (CustomSavePath != NULL) && (CustomSavePath[0] != '\0');
@@ -558,7 +585,64 @@ static void WINAPI glReadPixels_Hook(GLint x, GLint y, GLsizei width, GLsizei he
 		isTakingSaveScreenshot = false;
 	}
 
+	// Read from a native resolution copy of the supersampled frame
+	if (RenderHelper::IsSSAAActive())
+	{
+		RenderHelper::BindSSAAReadTarget();
+		ori_glReadPixels(x, y, width, height, format, type, data);
+		RenderHelper::RestoreSSAABinding();
+		return;
+	}
+
 	ori_glReadPixels(x, y, width, height, format, type, data);
+}
+
+// Hook glViewport to scale the viewport to the supersampled framebuffer
+static void WINAPI glViewport_Hook(GLint x, GLint y, GLsizei width, GLsizei height)
+{
+	if (RenderHelper::IsSSAAActive())
+	{
+		RenderHelper::ScaleRect(x, y, width, height);
+	}
+
+	ori_glViewport(x, y, width, height);
+}
+
+// Hook glScissor to scale the scissor box to the supersampled framebuffer
+static void WINAPI glScissor_Hook(GLint x, GLint y, GLsizei width, GLsizei height)
+{
+	if (RenderHelper::IsSSAAActive())
+	{
+		RenderHelper::ScaleRect(x, y, width, height);
+	}
+
+	ori_glScissor(x, y, width, height);
+}
+
+// Hook glDrawBuffer, the window buffers (GL_BACK) aren't valid while the supersampled framebuffer is bound
+static void WINAPI glDrawBuffer_Hook(GLenum mode)
+{
+	if (mode >= GL_FRONT_LEFT && mode <= GL_FRONT_AND_BACK && RenderHelper::IsSSAAActive())
+	{
+		mode = GL_COLOR_ATTACHMENT0;
+	}
+
+	ori_glDrawBuffer(mode);
+}
+
+// Hook SwapBuffers to downsample the supersampled frame to the window before presenting it
+static BOOL WINAPI SwapBuffers_Hook(HDC hdc)
+{
+	if (!RenderHelper::IsSSAAActive())
+	{
+		return ori_SwapBuffers(hdc);
+	}
+
+	RenderHelper::PresentSSAA();
+	BOOL result = ori_SwapBuffers(hdc);
+	RenderHelper::RestoreSSAABinding();
+
+	return result;
 }
 
 // Hook XInputGetState to override it with SDL
@@ -2023,7 +2107,9 @@ static int GLW_MakeContext()
 	if (!*pPixelFormatSet)
 	{
 		bool pixelFormatSelected = false;
-		int msaaSamples = MultiSampleAntiAliasing;
+
+		// When using SSAA, MSAA is applied to the supersampled framebuffer instead of the window
+		int msaaSamples = (SSAAScale > 1.0f) ? 0 : MultiSampleAntiAliasing;
 
 		SystemHelper::BootstrapWGLExtensions();
 
@@ -2205,6 +2291,14 @@ static int GLW_MakeContext()
 		}
 
 		GameHelper::ri_Printf(0, "succeeded\n");
+
+		// Render the game in a supersampled framebuffer
+		if (SSAAScale > 1.0f)
+		{
+			int width = MemoryHelper::ReadMemory<int>(CURRENT_WIDTH_ADDR);
+			int height = MemoryHelper::ReadMemory<int>(CURRENT_HEIGHT_ADDR);
+			RenderHelper::InitSSAA(SSAAScale, width, height, MultiSampleAntiAliasing);
+		}
 	}
 
 	return TRY_PFD_SUCCESS;
@@ -2237,7 +2331,7 @@ static void __cdecl R_SetupShaders_Hook()
 }
 
 // Scale the font
-static void __cdecl R_DrawString_Hook(int a1, BYTE a2, float font_x_position, float font_y_position, float a5, float a6, float font_spacing, float font_scale_width, float font_scale_height, int a10)
+static void __cdecl R_DrawString_Hook(int a1, const char* a2, float font_x_position, float font_y_position, float a5, float a6, float font_spacing, float font_scale_width, float font_scale_height, int a10)
 {
 	// Don't mess with the console or with the credits
 	if (!mustScaleFont)
@@ -2363,6 +2457,76 @@ static int __cdecl RE_StretchRaw_Hook(int x_position, int y_position, int resolu
 	}
 
 	return RE_StretchRaw(x_position, y_position, resolution_width, resolution_height, a5, a6, a7);
+}
+
+// Light the model with the nearest lit point of the light grid when every point around it is empty, instead of rendering it black
+static void __cdecl R_SetupEntityLighting_Hook(int refdef, int ent, float* lightOrigin)
+{
+	uintptr_t world = MemoryHelper::ReadMemory<uintptr_t>(TR_WORLD_ADDR);
+
+	// Same conditions as the original function before sampling the light grid
+	if (!world || *(int*)(ent + 0x1D4) != 0 || (*(int*)(refdef + 0x4C) & RDF_NOWORLDMODEL) || *(int*)(world + 0xEC) == 0 || (*(int*)(ent + 0x4) & RF_FULLBRIGHT))
+	{
+		R_SetupEntityLighting(refdef, ent, lightOrigin);
+		return;
+	}
+
+	const float* gridOrigin = (float*)(world + 0xBC);
+	const float* gridSize = (float*)(world + 0xC8);
+	const float* gridInverseSize = (float*)(world + 0xD4);
+	const int* gridBounds = (int*)(world + 0xE0);
+
+	int gridPos[3];
+	for (int i = 0; i < 3; i++)
+	{
+		gridPos[i] = std::clamp(static_cast<int>(floorf((lightOrigin[i] - gridOrigin[i]) * gridInverseSize[i])), 0, gridBounds[i] - 1);
+	}
+
+	// The original function only samples the 8 points surrounding the model
+	for (int i = 0; i < 8; i++)
+	{
+		if (GameHelper::IsLightGridPointLit(world, gridPos[0] + (i & 1), gridPos[1] + ((i >> 1) & 1), gridPos[2] + ((i >> 2) & 1)))
+		{
+			R_SetupEntityLighting(refdef, ent, lightOrigin);
+			return;
+		}
+	}
+
+	// None of them are lit (e.g. the Demon Dice in 'centipede1'), look for the nearest lit point
+	bool foundLitPoint = false;
+	float nearestDistance = 0.0f;
+	float nearestPoint[3] = {};
+
+	for (int z = gridPos[2] - 2; z <= gridPos[2] + 3; z++)
+	{
+		for (int y = gridPos[1] - 2; y <= gridPos[1] + 3; y++)
+		{
+			for (int x = gridPos[0] - 2; x <= gridPos[0] + 3; x++)
+			{
+				if (!GameHelper::IsLightGridPointLit(world, x, y, z)) continue;
+
+				float point[3] = { gridOrigin[0] + x * gridSize[0], gridOrigin[1] + y * gridSize[1], gridOrigin[2] + z * gridSize[2] };
+				float dx = point[0] - lightOrigin[0];
+				float dy = point[1] - lightOrigin[1];
+				float dz = point[2] - lightOrigin[2];
+				float distance = dx * dx + dy * dy + dz * dz;
+
+				if (!foundLitPoint || distance < nearestDistance)
+				{
+					foundLitPoint = true;
+					nearestDistance = distance;
+					std::memcpy(nearestPoint, point, sizeof(nearestPoint));
+				}
+			}
+		}
+	}
+
+	if (foundLitPoint)
+	{
+		std::memcpy(lightOrigin, nearestPoint, sizeof(nearestPoint));
+	}
+
+	R_SetupEntityLighting(refdef, ent, lightOrigin);
 }
 
 // Do not scale pictures from the AutoScroll or the console
@@ -2708,6 +2872,67 @@ __declspec(naked) static void BlinkAnimationHookStub()
 	}
 }
 
+// When a dynamic light is visible, the models using the sphere lighting (Alice, enemies...) lose their shading even if the light is far away
+static void FixSphereLighting()
+{
+	// Only if the dynamic light path was selected for this model
+	if (MemoryHelper::ReadMemory<uintptr_t>(SPHERE_LIGHT_FUNC) != RB_LIGHT_SPHERE_EXACT_DLIGHTS) return;
+
+	bool hasNearbyDynamicLight = MemoryHelper::ReadMemory<int>(SPHERE_NEARBY_DLIGHTS) > 0;
+	float overbrightScale = static_cast<float>(1 << MemoryHelper::ReadMemory<int>(TR_OVERBRIGHT_BITS));
+	float* lightColors = (float*)SPHERE_LIGHT_COLORS;
+
+	// Apply the color normalization that was skipped by 'R_Sphere_SetupEntity'
+	for (int i = 0; i < 6; i++)
+	{
+		float* color = &lightColors[i * 3];
+
+		color[0] *= overbrightScale;
+		color[1] *= overbrightScale;
+		color[2] *= overbrightScale;
+
+		float maxComponent = std::max({ color[0], color[1], color[2] });
+		if (maxComponent > 255.0f)
+		{
+			float normalizeScale = 255.0f / maxComponent;
+			color[0] *= normalizeScale;
+			color[1] *= normalizeScale;
+			color[2] *= normalizeScale;
+		}
+
+		// The dynamic light path applies the overbright scale itself
+		if (hasNearbyDynamicLight)
+		{
+			color[0] /= overbrightScale;
+			color[1] /= overbrightScale;
+			color[2] /= overbrightScale;
+		}
+	}
+
+	// No dynamic light is close enough to light this model, use the regular path
+	if (!hasNearbyDynamicLight)
+	{
+		MemoryHelper::WriteMemory<int>(SPHERE_SKIP_NORMALIZE, 0, false);
+		MemoryHelper::WriteMemory<uintptr_t>(SPHERE_LIGHT_FUNC, RB_LIGHT_SPHERE, false);
+	}
+}
+
+// Hook to fix the lighting computed by 'R_Sphere_SetupEntity'
+__declspec(naked) static void SphereLightingHookStub()
+{
+	__asm
+	{
+		mov  eax, 0x4A5CE0
+		call eax
+		pushad
+		pushfd
+		call FixSphereLighting
+		popfd
+		popad
+		ret
+	}
+}
+
 #pragma endregion Hooks with MinHook
 
 #pragma region
@@ -2985,6 +3210,21 @@ static void ApplyFixLocalizationFiles()
 	HookHelper::ApplyHook((void*)0x4615F0, &LoadLocalizationFile_Hook, (LPVOID*)&LoadLocalizationFile);
 }
 
+static void ApplyFixUnlitModels()
+{
+	if (!FixUnlitModels) return;
+
+	HookHelper::ApplyHook((void*)0x4A6640, &R_SetupEntityLighting_Hook, (LPVOID*)&R_SetupEntityLighting);
+}
+
+static void ApplyFixCharacterShading()
+{
+	if (!FixCharacterShading) return;
+
+	// R_Sphere_SetupEntity
+	MemoryHelper::MakeCALL(0x4805E5, reinterpret_cast<uintptr_t>(&SphereLightingHookStub));
+}
+
 static void ApplyOptimizeSaveSpeed()
 {
 	if (!OptimizeSaveSpeed) return;
@@ -3203,6 +3443,22 @@ static void ApplyMultiSampleAntiAliasing()
 	MemoryHelper::MakeCALL(0x46FFF6, reinterpret_cast<uintptr_t>(&GLW_MakeContext));
 }
 
+static void ApplySSAAScale()
+{
+	if (SSAAScale <= 1.0f) return;
+
+	HookHelper::ApplyHookAPI(L"opengl32", "glViewport", &glViewport_Hook, (LPVOID*)&ori_glViewport);
+	HookHelper::ApplyHookAPI(L"opengl32", "glScissor", &glScissor_Hook, (LPVOID*)&ori_glScissor);
+	HookHelper::ApplyHookAPI(L"opengl32", "glDrawBuffer", &glDrawBuffer_Hook, (LPVOID*)&ori_glDrawBuffer);
+	HookHelper::ApplyHookAPI(L"gdi32", "SwapBuffers", &SwapBuffers_Hook, (LPVOID*)&ori_SwapBuffers);
+
+	// Already hooked if 'FixStretchedMenu' is used
+	if (!FixStretchedMenu)
+	{
+		HookHelper::ApplyHookAPI(L"opengl32", "glReadPixels", &glReadPixels_Hook, (LPVOID*)&ori_glReadPixels);
+	}
+}
+
 static void ApplyTrilinearTextureFiltering()
 {
 	if (!TrilinearTextureFiltering) return;
@@ -3295,6 +3551,8 @@ static void Init()
 	ApplyFixCutsceneJumpSound();
 	ApplyFixUnfocusedCursorLock();
 	ApplyFixLocalizationFiles();
+	ApplyFixUnlitModels();
+	ApplyFixCharacterShading();
 	ApplyOptimizeSaveSpeed();
 
 	// General
@@ -3323,6 +3581,7 @@ static void Init()
 
 	// Graphics
 	ApplyMultiSampleAntiAliasing();
+	ApplySSAAScale();
 	ApplyTrilinearTextureFiltering();
 	ApplyForceBatchedRendering();
 	ApplyEnhancedLOD();
