@@ -20,6 +20,7 @@
 #pragma comment(lib, "SDL3-static.lib")
 
 using GameHelper::ShaderType;
+using MenuHelper::MenuStyle;
 
 // =============================
 // Memory Addresses 
@@ -34,12 +35,14 @@ constexpr uintptr_t CODE_CAVE_WIDTH = 0x513E40;
 constexpr uintptr_t CODE_CAVE_PHANTASM = 0x513E44;
 constexpr uintptr_t VTABLE_ALICE_DIALOG_TEXT = 0x52221C;
 constexpr uintptr_t VTABLE_UI_WINDOW_MANAGER = 0x53E62C;
+constexpr uintptr_t VTABLE_UI_WIDGET_CONTAINER = 0x53EB84;
 constexpr uintptr_t VTABLE_UI_AUTOSCROLL = 0x53EBD4;
 constexpr uintptr_t VTABLE_UI_LABEL = 0x5410FC;
 constexpr uintptr_t INTRO_STAGE_ADDR = 0x7CCA20;
 constexpr uintptr_t FAKK_CONSOLE_PTR_ADDR = 0x7CCA54;
 constexpr uintptr_t UI_PAUSED = 0x7CCA64;
 constexpr uintptr_t CURRENT_LANG = 0x7CF868;
+constexpr uintptr_t CONTROLLER_STATE_ADDR = 0x7CF87C;
 constexpr uintptr_t MOUSE_ACTIVE_ADDR = 0x7CFA40;
 constexpr uintptr_t GAME_API_MODULE_ADDR = 0x7D0E7C;
 constexpr uintptr_t GL_PIXEL_FORMAT_DESCRIPTOR_ADDR = 0x7D4098;
@@ -107,11 +110,9 @@ static bool isTitleBgSet = false;
 static bool isUsingCustomSaveDir = false;
 static bool skipAutoResolution = false;
 static bool isAnisotropyRetrieved = false;
-static bool isInSettingMenu = false;
 static bool isTakingSaveScreenshot = false;
 static bool isLoadingSaveFromMenuButton = false;
 static bool isRawInputRegistered = false;
-static bool maxFpsPopulated = false;
 static bool mustScaleFont = false;
 static bool mustSkipPicScaling = false;
 static bool inAutoCenterLayout = false;
@@ -201,6 +202,8 @@ static const char* const pak5BrokenPaths[] =
 // Original Function Pointers
 // =============================
 static int(__cdecl* IN_UpDown)() = nullptr; // 0x4061D0
+static void(__cdecl* CL_GetMouseState)(int*, int*, int*) = nullptr; // 0x406750
+static int(__cdecl* CL_MouseEvent)(int, int, int) = nullptr; // 0x4067B0
 static void(__cdecl* CL_JoystickMove)(int) = nullptr; // 0x406870
 static void(__cdecl* CL_MouseMove)(char*) = nullptr; // 0x4069A0
 static int(__cdecl* Bind)(int, char*) = nullptr; // 0x407870
@@ -214,7 +217,6 @@ static void* (__cdecl* FS_FCloseFile)(int) = nullptr; // 0x41A1B0
 static int(__cdecl* FS_FOpenFileRead)(char*, int*, int, int) = nullptr; // 0x41A590
 static size_t(__cdecl* FS_Write)(const void*, size_t, int) = nullptr; // 0x41AD80
 static int(__cdecl* FS_Seek)(int, int, int) = nullptr; // 0x41AEC0
-static float(__cdecl* EulerToQuat)(DWORD*, float*) = nullptr; // 0x423740
 static BYTE(__cdecl* Str_To_Lower)(char*) = nullptr; // 0x4256E0
 static bool(__cdecl* SV_ArchiveLevelFile)(bool) = nullptr; // 0x429F50
 static int(__cdecl* SV_InitGameProgs)() = nullptr; // 0x42CFF0
@@ -232,6 +234,7 @@ static int(__thiscall* View3D_DrawFades)(int) = nullptr; // 0x45A3C0
 static const char* (__cdecl* LoadLocalizationFile)() = nullptr; // 0x4615F0
 static int(__cdecl* IN_ActivateWin32Mouse)() = nullptr; // sub_462A00
 static int* (__cdecl* IN_Win32Mouse)(DWORD*, int*) = nullptr; // sub_462AE0
+static int(__cdecl* ReadControllerState)() = nullptr; // 0x463130
 static MMRESULT(__cdecl* UpdateControllerState)() = nullptr; // 0x4635A0
 static int(__stdcall* lpfnWndProc_MSG)(HWND, UINT, int, LPARAM) = nullptr; // 0x46C600
 static int(__cdecl* R_SepiaScreenShot)(int, int, int) = nullptr; // 0x46D280
@@ -248,10 +251,11 @@ static int(__thiscall* UIWidget_DrawPicStretched)(int, float, float, float, floa
 static int(__thiscall* UIWidget_Print)(int, int, float, float, int, int, float, float, float, float, float) = nullptr; // 0x4B0F00
 static int(__thiscall* UIWidget_PrintJustified)(int, void*, int, int, int, int, float, float, float, float, float) = nullptr; // 0x4B1010
 static int(__thiscall* UIWidget_setFrame)(int, int) = nullptr; // 0x4B3DB0
+static void(__thiscall* UIWidget_Display)(int, int, float) = nullptr; // 0x4B5F60
+static int(__thiscall* MenuManager_FindMenu)(int, void*) = nullptr; // 0x4B9670
 static DWORD(__thiscall* MenuManager_SaveCVars)(DWORD*, char*) = nullptr; // 0x4B9FD0
 static BYTE(__thiscall* Init_UILayout)(DWORD*, char*) = nullptr; // 0x4C1AC0
 static void(__thiscall* UIWidget_AddItem)(DWORD*, void**, void**) = nullptr; // 0x4C4850
-static int(__thiscall* UIAlice3D_Draw3DModel)(int, float*, int, float*, float*) = nullptr; // 0x4C6050
 static int(__thiscall* UIFakkBindList_DrawPressKey)(int*, int, int, int, int) = nullptr; // 0x4D2320
 static long(__cdecl* ori_ftell)(FILE*) = nullptr; // 0x4D79D3
 static void(__cdecl* GPhysics_Pusher)(int); // fgamex86.dll+0x774F0
@@ -1199,23 +1203,81 @@ static int __cdecl CheckDiskFreeSpace()
 	return 2048;
 }
 
-// Make sure Alice is not looking at the top left of the screen when using a controller
-static float __cdecl EulerToQuat_Hook(DWORD* a1, float* a2)
+// Use the controller menus when the controller is used, and the keyboard/mouse menus when it's disconnected
+static int __cdecl ReadControllerState_Hook()
 {
-	if (isInSettingMenu && *a1 == 0xC1B40000 && *(a1 + 1) == 0xC2100000 && *(a1 + 2) == 0)
+	int isConnected = ReadControllerState();
+
+	if (!isConnected)
 	{
-		*a1 = 0xC119EB80;
-		isInSettingMenu = false;
+		MenuHelper::requestedMenuStyle = MenuStyle::PC;
+	}
+	else
+	{
+		const XINPUT_GAMEPAD& pad = ((XINPUT_STATE*)CONTROLLER_STATE_ADDR)->Gamepad;
+		const int stickThreshold = 16384;
+
+		bool isUsed = pad.wButtons || pad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD || pad.bRightTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD || abs(pad.sThumbLX) > stickThreshold || abs(pad.sThumbLY) > stickThreshold || abs(pad.sThumbRX) > stickThreshold || abs(pad.sThumbRY) > stickThreshold;
+		if (isUsed)
+		{
+			MenuHelper::requestedMenuStyle = MenuHelper::GetControllerMenuStyle(UsePS3ControllerIcons);
+			MenuHelper::mouseMoveDistance = 0;
+		}
 	}
 
-	return EulerToQuat(a1, a2);
+	if (MenuHelper::UpdateMenuStyle())
+	{
+		isUsingControllerMenu = MenuHelper::currentMenuStyle != MenuStyle::PC;
+
+		if (FixStretchedMenu)
+		{
+			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
+		}
+	}
+
+	return isConnected;
 }
 
-// Hook to check if we are in the setting menu and not in-game 
-static int __fastcall UIAlice3D_Draw3DModel_Hook(int thisPtr, int*, float* a2, int a3, float* a4, float* a5)
+// Keep the cursor out of the controller menus, where Alice looks forward in the settings
+static void __cdecl CL_GetMouseState_Hook(int* x, int* y, int* buttons)
 {
-	isInSettingMenu = true;
-	return UIAlice3D_Draw3DModel(thisPtr, a2, a3, a4, a5);
+	CL_GetMouseState(x, y, buttons);
+
+	if (isUsingControllerMenu)
+	{
+		if (x) *x = 0;
+		if (y) *y = static_cast<int>(currentHeight * (0.5f - 9.62f / 45.0f));
+	}
+}
+
+// Use the keyboard/mouse menus when the mouse is moved in the menus
+static int __cdecl CL_MouseEvent_Hook(int dx, int dy, int time)
+{
+	if (MenuHelper::requestedMenuStyle != MenuStyle::PC && MemoryHelper::ReadMemory<int>(IN_GUIMOUSE))
+	{
+		// Ignore small accidental moves
+		DWORD now = GetTickCount64();
+		if (now - MenuHelper::lastMouseMoveTime > 500) MenuHelper::mouseMoveDistance = 0;
+
+		MenuHelper::lastMouseMoveTime = now;
+		MenuHelper::mouseMoveDistance += abs(dx) + abs(dy);
+
+		if (MenuHelper::mouseMoveDistance >= 16)
+		{
+			MenuHelper::requestedMenuStyle = MenuStyle::PC;
+		}
+	}
+
+	return CL_MouseEvent(dx, dy, time);
+}
+
+// Return the version of the menu matching the device used last
+static int __fastcall MenuManager_FindMenu_Hook(int thisPtr, int, void* name)
+{
+	int menu = MenuManager_FindMenu(thisPtr, name);
+	int styleMenu = MenuHelper::GetMenuForStyle(menu, MenuHelper::currentMenuStyle);
+
+	return styleMenu ? styleMenu : menu;
 }
 
 // Initialize the cvars used for the VorpalFix menu
@@ -1322,11 +1384,19 @@ static void __fastcall UIWidget_AddItem_Hook(DWORD* thisp, int, void** a2, void*
 {
 	const char* name = GameHelper::GetWidgetName(thisp);
 
+	// The game fills the resolution list of one settings menu, also fill the ones of the other controller styles
+	if (name && strcmp(name, "r_mode") == 0)
+	{
+		MenuHelper::AddItemToMenuVariants(thisp, name, a2, a3, UIWidget_AddItem);
+	}
+
 	if (name && strcmp(name, "com_maxfps") == 0)
 	{
-		if (!maxFpsPopulated)
+		// Each version of the settings menu has its own list
+		static DWORD* maxFpsWidget = nullptr;
+		if (thisp != maxFpsWidget)
 		{
-			maxFpsPopulated = true;
+			maxFpsWidget = thisp;
 
 			DEVMODEA dm = {};
 			dm.dmSize = sizeof(dm);
@@ -1445,7 +1515,13 @@ static void __fastcall UIWidget_AddItem_Hook(DWORD* thisp, int, void** a2, void*
 		UIWidget_AddItem(thisp, a2, a3);
 
 		// Script adds 4 items (0, 2, 4, 8), after the 4th, inject 16x if the GPU supports it
+		static DWORD* msaaWidget = nullptr;
 		static int msaaItemCount = 0;
+		if (thisp != msaaWidget)
+		{
+			msaaWidget = thisp;
+			msaaItemCount = 0;
+		}
 		msaaItemCount++;
 
 		if (msaaItemCount == 4)
@@ -1483,8 +1559,13 @@ static BYTE __cdecl Str_To_Lower_Hook(char* Buffer)
 	{
 		HookHelper::ApplyHook((void*)0x46E0D0, &R_Register_Hook, (LPVOID*)&R_Register);
 		HookHelper::ApplyHook((void*)0x4B9FD0, &MenuManager_SaveCVars_Hook, (LPVOID*)&MenuManager_SaveCVars);
-		HookHelper::ApplyHook((void*)0x4C4850, &UIWidget_AddItem_Hook, (LPVOID*)&UIWidget_AddItem);
 		isVFMenuUsed = true;
+
+		// Already hooked if 'EnableControllerIcons' is used
+		if (!EnableControllerIcons)
+		{
+			HookHelper::ApplyHook((void*)0x4C4850, &UIWidget_AddItem_Hook, (LPVOID*)&UIWidget_AddItem);
+		}
 	}
 
 	// Disable this hook, nothing else to check
@@ -2005,6 +2086,12 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 
 static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, int wParam, LPARAM lParam)
 {
+	// Use the keyboard/mouse menus when a key or a mouse button is pressed
+	if (EnableControllerIcons && (Msg == WM_KEYDOWN || Msg == WM_SYSKEYDOWN || Msg == WM_LBUTTONDOWN || Msg == WM_RBUTTONDOWN || Msg == WM_MBUTTONDOWN || Msg == WM_XBUTTONDOWN || Msg == WM_MOUSEWHEEL))
+	{
+		MenuHelper::requestedMenuStyle = MenuStyle::PC;
+	}
+
 	// Alt+F4
 	if (EnableAltF4Close && Msg == WM_SYSKEYDOWN && wParam == VK_F4)
 	{
@@ -2653,20 +2740,20 @@ static void __cdecl Widget_SetScissor_Override(int x, int y, int width, int heig
 static DWORD __fastcall Init_UILayout_Hook(DWORD* thisPtr, int*, char* ui_path)
 {
 	// Check if a controller is connected
-	if (EnableControllerIcons && !isUsingControllerMenu && GameHelper::IsControllerConnected() == 1)
+	static bool isControllerChecked = false;
+	if (EnableControllerIcons && !isControllerChecked)
 	{
-		isUsingControllerMenu = true;
+		isControllerChecked = true;
 
-		// Disable mouse navigation
-		MemoryHelper::MakeNOP(0x40675E, 2);
-		MemoryHelper::MakeNOP(0x40676E, 2);
-
-		// For Alice's 3d model in the settings
-		HookHelper::ApplyHook((void*)0x423740, &EulerToQuat_Hook, (LPVOID*)&EulerToQuat);
-		HookHelper::ApplyHook((void*)0x4C6050, &UIAlice3D_Draw3DModel_Hook, (LPVOID*)&UIAlice3D_Draw3DModel);
+		if (GameHelper::IsControllerConnected() == 1)
+		{
+			MenuHelper::currentMenuStyle = MenuHelper::requestedMenuStyle = MenuHelper::GetControllerMenuStyle(UsePS3ControllerIcons);
+			isUsingControllerMenu = true;
+		}
 	}
 
-	if (ui_path == nullptr)
+	MenuHelper::MenuVariant* variant = ui_path ? MenuHelper::FindMenuVariant(ui_path, UseConsoleTitleScreen) : nullptr;
+	if (!variant)
 	{
 		return Init_UILayout(thisPtr, ui_path);
 	}
@@ -2679,47 +2766,37 @@ static DWORD __fastcall Init_UILayout_Hook(DWORD* thisPtr, int*, char* ui_path)
 		case 3: langPrefix = "ESN"; break;
 	}
 
-	static char pathBuffer[64];
+	char path[64];
 
-	// Use the proper title screen file
-	if (UseConsoleTitleScreen && strcmp(ui_path, "ui/title.urc") == 0)
-	{
-		snprintf(pathBuffer, sizeof(pathBuffer), "%s%s", langPrefix, isUsingControllerMenu ? "/title_console.urc" : "/title.urc");
-		return Init_UILayout(thisPtr, pathBuffer);
-	}
+	// Keyboard/mouse version first, it's the one found by the game, the menu container is kept in the layout
+	MenuHelper::GetMenuVariantPath(*variant, MenuStyle::PC, langPrefix, path, sizeof(path));
+	DWORD result = Init_UILayout(thisPtr, path);
+	variant->containers[(int)MenuStyle::PC] = thisPtr[5];
 
 	// Override using the menus located inside 'pak6_VorpalFix.pk3'
-	if (isUsingControllerMenu)
+	for (MenuStyle style : { MenuStyle::Xbox, MenuStyle::PlayStation })
 	{
-		// Check if we use PS3 icons
-		bool usePS3Icons = (UsePS3ControllerIcons == 2) || (UsePS3ControllerIcons == 0 && ControllerHelper::GetGamepadStyle() == ControllerHelper::GamepadStyle::PlayStation);
+		int& container = variant->containers[(int)style];
+		container = 0;
 
-		static const struct { const char* from; const char* to; } uiRemaps[] =
+		if (!EnableControllerIcons || !MenuHelper::IsMenuStyleUsed(style, UsePS3ControllerIcons, UseSDLControllerInput)) continue;
+
+		// Same file for both controllers
+		if (style == MenuStyle::PlayStation && !variant->hasPS3Icons && variant->containers[(int)MenuStyle::Xbox])
 		{
-			{ "ui/controls.urc", "/controls2.urc" },
-			{ "ui/credits.urc",  "/credits2.urc"  },
-			{ "ui/loadsave.urc", "/loadsave2.urc" },
-			{ "ui/main.urc",     "/main2.urc"     },
-			{ "ui/newgame.urc",  "/newgame2.urc"  },
-			{ "ui/quit.urc",     "/quit2.urc"     },
-		};
-
-		for (const auto& remap : uiRemaps)
-		{
-			if (strcmp(ui_path, remap.from) == 0)
-			{
-				if (usePS3Icons)
-					snprintf(pathBuffer, sizeof(pathBuffer), "%s_ps3%s", langPrefix, remap.to);
-				else
-					snprintf(pathBuffer, sizeof(pathBuffer), "%s%s", langPrefix, remap.to);
-
-				ui_path = pathBuffer;
-				break;
-			}
+			container = variant->containers[(int)MenuStyle::Xbox];
+			continue;
 		}
+
+		DWORD* layout = (DWORD*)GameHelper::Class_New(0x1C);
+		if (!layout) continue;
+
+		MenuHelper::GetMenuVariantPath(*variant, style, langPrefix, path, sizeof(path));
+		Init_UILayout(layout, path);
+		container = layout[5];
 	}
 
-	return Init_UILayout(thisPtr, ui_path);
+	return result;
 }
 
 // Adjust the scaling and position of Alice's 3D model in the settings menu
@@ -2782,6 +2859,20 @@ static void __cdecl UI_DrawPillarboxes_Hook()
 
 	Draw_StretchPic(widthDifference - border_width, 0, border_width, border_height, 0.0, 0.0, 1.0, 1.0, *(DWORD*)(border + 4));
 	Draw_StretchPic(currentWidth - widthDifference, 0, border_width, border_height, 1.0, 0.0, 0.0, 1.0, *(DWORD*)(border + 4));
+}
+
+// Draw the borders after the fullscreen menus, so the console and the cursor stay over them
+static void __fastcall UIWidget_Display_Hook(int thisPtr, int, int parentRect, float alpha)
+{
+	UIWidget_Display(thisPtr, parentRect, alpha);
+
+	// Shown menu containers filling the screen, the title screen doesn't use the borders
+	if (*(int*)thisPtr != VTABLE_UI_WIDGET_CONTAINER || !*(BYTE*)(thisPtr + 0xCC) || *(float*)(thisPtr + 0x1E0) == 0.0f) return;
+
+	int menu = GameHelper::FindMenuByContainer(thisPtr);
+	if (menu && strcmp(GameHelper::GetMenuName(menu), "title") == 0) return;
+
+	UI_DrawPillarboxes_Hook();
 }
 
 // Update 'BLINK_TIMER' at a consistent rate, independent of frame rate
@@ -3027,6 +3118,8 @@ static void ApplyFixStretchedMenu()
 
 	HookHelper::ApplyHook((void*)0x48FC00, &Draw_StretchPic_Hook, (LPVOID*)&Draw_StretchPic); // UI Scaling
 	HookHelper::ApplyHook((void*)0x44B100, &UI_DrawPillarboxes_Hook, (LPVOID*)&UI_DrawPillarboxes); // Add the borders
+	HookHelper::ApplyHook((void*)0x4B5F60, &UIWidget_Display_Hook, (LPVOID*)&UIWidget_Display);
+	MemoryHelper::MakeNOP(0x44C168, 5); // The menus draw the borders under the console instead
 	HookHelper::ApplyHook((void*)0x48F1E0, &R_DrawString_Hook, (LPVOID*)&R_DrawString); // Font Scaling
 	HookHelper::ApplyHook((void*)0x4873C0, &R_SetupShaders_Hook, (LPVOID*)&R_SetupShaders);
 	HookHelper::ApplyHook((void*)0x452CF0, &AliceDialogText_Draw_Hook, (LPVOID*)&AliceDialogText_Draw);
@@ -3354,6 +3447,13 @@ static void ApplyEnableControllerIcons()
 	{
 		HookHelper::ApplyHook((void*)0x4C1AC0, &Init_UILayout_Hook, (LPVOID*)&Init_UILayout);
 	}
+
+	// Switch between the controller and keyboard/mouse menus
+	HookHelper::ApplyHook((void*)0x406750, &CL_GetMouseState_Hook, (LPVOID*)&CL_GetMouseState);
+	HookHelper::ApplyHook((void*)0x4067B0, &CL_MouseEvent_Hook, (LPVOID*)&CL_MouseEvent);
+	HookHelper::ApplyHook((void*)0x463130, &ReadControllerState_Hook, (LPVOID*)&ReadControllerState);
+	HookHelper::ApplyHook((void*)0x4B9670, &MenuManager_FindMenu_Hook, (LPVOID*)&MenuManager_FindMenu);
+	HookHelper::ApplyHook((void*)0x4C4850, &UIWidget_AddItem_Hook, (LPVOID*)&UIWidget_AddItem);
 }
 
 static void ApplyHideConsoleAtLaunch()
@@ -3387,7 +3487,7 @@ static void ApplyCustomResolution()
 
 static void ApplyWndProcHook()
 {
-	if (!EnableAltF4Close && !UseMouseRawInput && !EnableMouse45) return;
+	if (!EnableAltF4Close && !UseMouseRawInput && !EnableMouse45 && !EnableControllerIcons) return;
 
 	HookHelper::ApplyHook((void*)0x46C600, &lpfnWndProc_MSG_Hook, (LPVOID*)&lpfnWndProc_MSG);
 }

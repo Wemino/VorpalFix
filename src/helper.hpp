@@ -191,9 +191,15 @@ namespace GameHelper
 	void** (__thiscall* CreateString)(void**, const char*) = (void** (__thiscall*)(void**, const char*))0x441880;
 	char* (__cdecl* CL_GetInvItemName)(int) = (char* (__cdecl*)(int))0x441D60;
 	int(__cdecl* UI_GetStaticMap)(unsigned int, const char*) = (int(__cdecl*)(unsigned int, const char*))0x44A300;
+	void* (__cdecl* Class_New)(size_t) = (void* (__cdecl*)(size_t))0x45CA00;
+	void* (__cdecl* Event_New)(size_t) = (void* (__cdecl*)(size_t))0x45E030;
+	int(__thiscall* Listener_ProcessEvent)(int, void*) = (int(__thiscall*)(int, void*))0x45F920;
+	void* (__thiscall* Event_Init)(void*, const char*) = (void* (__thiscall*)(void*, const char*))0x4605D0;
 	int(__cdecl* IsControllerConnected)() = (int(__cdecl*)())0x463130;
 	void(__cdecl* Sys_QueEvent)(int, int, int, int, int, void*) = (void(__cdecl*)(int, int, int, int, int, void*))0x464D00;
 	const char* (__thiscall* GetWidgetName)(DWORD*) = (const char* (__thiscall*)(DWORD*))0x4B1550;
+	void(__thiscall* Menu_SaveCVars)(int, const char*) = (void(__thiscall*)(int, const char*))0x4B9770;
+	void(__thiscall* Menu_ForceHide)(int) = (void(__thiscall*)(int))0x4B9B90;
 	void(__cdecl*& ri_Printf)(int, const char*, ...) = *(void(__cdecl**)(int, const char*, ...))0x1C1D220;
 
 	static void AssignCmdKeyId(int keyId, const char* cmd)
@@ -291,6 +297,81 @@ namespace GameHelper
 		return cached;
 	}
 
+	// Number of menus in the menu manager
+	static int GetMenuCount()
+	{
+		return *(int*)(0x11C2750 + 0x10);
+	}
+
+	// Menu shown on top
+	static int GetCurrentMenu()
+	{
+		int* overlayStack = *(int**)(0x11C2750 + 0x18);
+		int* menuStack = *(int**)(0x11C2750 + 0x1C);
+
+		if (overlayStack && overlayStack[0]) return overlayStack[0];
+		return menuStack ? menuStack[0] : 0;
+	}
+
+	static const char* GetMenuName(int menu)
+	{
+		return **(char***)(menu + 0x20);
+	}
+
+	// The first widget of a menu is the container of the widgets loaded from its '.urc' file
+	static int GetMenuContainer(int menu)
+	{
+		return (menu && *(int*)(menu + 0x18) > 0) ? **(int**)(menu + 0x14) : 0;
+	}
+
+	static int FindMenuByContainer(int container)
+	{
+		const int* menus = *(int**)(0x11C2750 + 0xC);
+
+		for (int i = 0; i < GetMenuCount(); i++)
+		{
+			if (GetMenuContainer(menus[i]) == container) return menus[i];
+		}
+
+		return 0;
+	}
+
+	// Find the widget of a menu linked to a cvar
+	static DWORD* FindMenuWidget(int menu, const char* cvarName)
+	{
+		const int* widgets = *(int**)(menu + 0x14);
+
+		for (int i = 0; i < *(int*)(menu + 0x18); i++)
+		{
+			const char* name = GetWidgetName((DWORD*)widgets[i]);
+			if (name && strcmp(name, cvarName) == 0) return (DWORD*)widgets[i];
+		}
+
+		return nullptr;
+	}
+
+	// Group of widgets shown in the menu, the settings use one per page
+	static const char* GetActiveMenuGroup()
+	{
+		char** group = *(char***)0x11C187C;
+		return (group && *group) ? *group : "";
+	}
+
+	// Duration of the fade from black when a widget is shown, set by 'fadeoverlay' in the '.urc' files
+	static float& GetFadeOverlayTime(int widget)
+	{
+		return *(float*)(widget + 0x1C4);
+	}
+
+	// Send an event like "showmenu" to a menu
+	static void ProcessMenuEvent(int menu, const char* eventName)
+	{
+		void* event = Event_New(0x58);
+		if (!event) return;
+
+		Listener_ProcessEvent(menu, Event_Init(event, eventName));
+	}
+
 	// Fit a widget rect in the 4:3 area, 'rectOffset' is where its x, y, width and height are
 	static void ScaleWidgetRect(int widget, int rectOffset, float scaleFactor, float widthDifference, int& x, int& width)
 	{
@@ -310,6 +391,212 @@ namespace GameHelper
 
 		const uint8_t* gridPoint = *(uint8_t**)(world + 0xEC) + 8 * (x + y * gridBounds[0] + z * gridBounds[0] * gridBounds[1]);
 		return (gridPoint[0] + gridPoint[1] + gridPoint[2]) != 0;
+	}
+};
+
+namespace MenuHelper
+{
+	// Controller menus, switched to the device used last
+	enum class MenuStyle : int
+	{
+		PC,
+		Xbox,
+		PlayStation,
+		Count
+	};
+
+	struct MenuVariant
+	{
+		const char* path; // Menu loaded by the game
+		const char* pcFile; // Replace the game's file when set
+		const char* controllerFile;
+		bool hasPS3Icons;
+		int containers[(int)MenuStyle::Count];
+	};
+
+	static MenuVariant menuVariants[] =
+	{
+		{ "ui/controls.urc", nullptr,      "/controls2.urc",     true  },
+		{ "ui/credits.urc",  nullptr,      "/credits2.urc",      true  },
+		{ "ui/loadsave.urc", nullptr,      "/loadsave2.urc",     true  },
+		{ "ui/main.urc",     nullptr,      "/main2.urc",         true  },
+		{ "ui/newgame.urc",  nullptr,      "/newgame2.urc",      true  },
+		{ "ui/quit.urc",     nullptr,      "/quit2.urc",         true  },
+		{ "ui/title.urc",    "/title.urc", "/title_console.urc", false },
+	};
+
+	static MenuStyle currentMenuStyle = MenuStyle::PC;
+	static MenuStyle requestedMenuStyle = MenuStyle::PC;
+	static int fadedMenuContainer = 0;
+	static DWORD fadedMenuTime = 0;
+	static int mouseMoveDistance = 0;
+	static DWORD lastMouseMoveTime = 0;
+
+	// Check which controller icons should be shown
+	static MenuStyle GetControllerMenuStyle(int usePS3ControllerIcons)
+	{
+		bool usePS3Icons = (usePS3ControllerIcons == 2) || (usePS3ControllerIcons == 0 && ControllerHelper::GetGamepadStyle() == ControllerHelper::GamepadStyle::PlayStation);
+		return usePS3Icons ? MenuStyle::PlayStation : MenuStyle::Xbox;
+	}
+
+	// Only load the controller menus that can be shown
+	static bool IsMenuStyleUsed(MenuStyle style, int usePS3ControllerIcons, bool useSDLControllerInput)
+	{
+		switch (style)
+		{
+			case MenuStyle::Xbox: return usePS3ControllerIcons != 2;
+			case MenuStyle::PlayStation: return usePS3ControllerIcons == 2 || (usePS3ControllerIcons == 0 && useSDLControllerInput);
+			default: return true;
+		}
+	}
+
+	static MenuVariant* FindMenuVariant(const char* ui_path, bool useConsoleTitleScreen)
+	{
+		for (auto& variant : menuVariants)
+		{
+			// The title screen is only replaced when using the console one
+			if (variant.pcFile && !useConsoleTitleScreen) continue;
+
+			if (strcmp(ui_path, variant.path) == 0) return &variant;
+		}
+
+		return nullptr;
+	}
+
+	static void GetMenuVariantPath(const MenuVariant& variant, MenuStyle style, const char* langPrefix, char* buffer, size_t size)
+	{
+		if (style == MenuStyle::PC)
+		{
+			if (variant.pcFile)
+				snprintf(buffer, size, "%s%s", langPrefix, variant.pcFile);
+			else
+				snprintf(buffer, size, "%s", variant.path);
+		}
+		else if (style == MenuStyle::PlayStation && variant.hasPS3Icons)
+		{
+			snprintf(buffer, size, "%s_ps3%s", langPrefix, variant.controllerFile);
+		}
+		else
+		{
+			snprintf(buffer, size, "%s%s", langPrefix, variant.controllerFile);
+		}
+	}
+
+	// Find the version of a menu used by a controller style, 0 if the menu has only one version
+	static int GetMenuForStyle(int menu, MenuStyle style)
+	{
+		int container = GameHelper::GetMenuContainer(menu);
+		if (!container) return 0;
+
+		for (const auto& variant : menuVariants)
+		{
+			for (int variantContainer : variant.containers)
+			{
+				if (variantContainer != container) continue;
+
+				int styleContainer = variant.containers[(int)style];
+				if (!styleContainer || styleContainer == container) return menu;
+
+				int styleMenu = GameHelper::FindMenuByContainer(styleContainer);
+				return styleMenu ? styleMenu : menu;
+			}
+		}
+
+		return 0;
+	}
+
+	// Add an item to the same list in the other versions of the menus
+	static void AddItemToMenuVariants(DWORD* widget, const char* cvarName, void** value, void** label, void(__thiscall* addItem)(DWORD*, void**, void**))
+	{
+		for (const auto& variant : menuVariants)
+		{
+			for (int i = 0; i < (int)MenuStyle::Count; i++)
+			{
+				int container = variant.containers[i];
+
+				// Shared by two styles
+				if (!container || (i > 0 && container == variant.containers[i - 1])) continue;
+
+				int menu = GameHelper::FindMenuByContainer(container);
+				DWORD* variantWidget = menu ? GameHelper::FindMenuWidget(menu, cvarName) : nullptr;
+				if (!variantWidget || variantWidget == widget) continue;
+
+				// The strings are released by the function
+				((int*)value)[1]++;
+				((int*)label)[1]++;
+				addItem(variantWidget, value, label);
+			}
+		}
+	}
+
+	// Remove the fade from black given to a menu when switching
+	static void RemoveSwitchFade()
+	{
+		if (!fadedMenuContainer) return;
+
+		GameHelper::GetFadeOverlayTime(fadedMenuContainer) = 0.0f;
+		fadedMenuContainer = 0;
+	}
+
+	// Switch the menus to the version of the device used last, return true when switched
+	static bool UpdateMenuStyle()
+	{
+		if (fadedMenuContainer && GetTickCount() - fadedMenuTime > 500)
+		{
+			RemoveSwitchFade();
+		}
+
+		if (requestedMenuStyle == currentMenuStyle || GameHelper::GetMenuCount() == 0) return false;
+
+		// Wait for the menu transitions
+		if (MemoryHelper::ReadMemory<uint8_t>(0x11C2770)) return false;
+
+		// Wait to be back on the main page of the settings, the other pages can have unsaved changes
+		int currentMenu = GameHelper::GetCurrentMenu();
+		if (currentMenu && strcmp(GameHelper::GetMenuName(currentMenu), "controls") == 0 && strcmp(GameHelper::GetActiveMenuGroup(), "group_main") != 0) return false;
+
+		currentMenuStyle = requestedMenuStyle;
+
+		// Replace the opened menus, the overlay ones and the top one are visible
+		for (uintptr_t stackAddr : { 0x11C2750 + 0x18, 0x11C2750 + 0x1C })
+		{
+			int* top = *(int**)stackAddr;
+
+			for (int* node = top; node; node = (int*)node[1])
+			{
+				int menu = GetMenuForStyle(node[0], currentMenuStyle);
+				if (!menu || menu == node[0]) continue;
+
+				if (stackAddr == 0x11C2750 + 0x18 || node == top)
+				{
+					GameHelper::Menu_ForceHide(node[0]);
+					GameHelper::Menu_SaveCVars(menu, nullptr);
+
+					// Fade from black like the other menus, the main menu doesn't have it
+					int container = GameHelper::GetMenuContainer(menu);
+					if (GameHelper::GetFadeOverlayTime(container) == 0.0f)
+					{
+						RemoveSwitchFade();
+						GameHelper::GetFadeOverlayTime(container) = 0.5f;
+						fadedMenuContainer = container;
+						fadedMenuTime = GetTickCount();
+					}
+
+					GameHelper::ProcessMenuEvent(menu, "showmenu");
+				}
+
+				node[0] = menu;
+			}
+		}
+
+		// Used by the game to check if the main menu is opened
+		int mainMenu = GetMenuForStyle(MemoryHelper::ReadMemory<int>(0x7CCA60), currentMenuStyle);
+		if (mainMenu)
+		{
+			MemoryHelper::WriteMemory<int>(0x7CCA60, mainMenu, false);
+		}
+
+		return true;
 	}
 };
 

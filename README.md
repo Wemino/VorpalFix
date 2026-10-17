@@ -204,7 +204,7 @@ Adds support for PlayStation and Nintendo Switch controllers via SDL3.
   > **Tip**: Press the Right Stick to quickly recenter your view while using gyro aiming.
 
 - **Controller Icon Support**  
-  Xbox or PlayStation 3 controller icons are displayed in the menus when a controller is detected at startup.
+  Xbox or PlayStation 3 controller icons are displayed in the menus when a controller is used. The menus switch back to keyboard/mouse as soon as the keyboard or mouse is used, and when the controller is disconnected.
 
 <div align="center">
   <table>
