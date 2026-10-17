@@ -679,7 +679,16 @@ static BOOL WINAPI SetDeviceGammaRamp_Hook(HDC hdc, LPVOID lpRamp)
 // Hook XInputGetState to override it with SDL
 static DWORD WINAPI XInputGetState_Hook(DWORD dwUserIndex, XINPUT_STATE* pState)
 {
-	return ControllerHelper::PollController(pState, InvertABXYButtons);
+	static bool s_inHook = false;
+	if (s_inHook)
+	{
+		return ori_XInputGetState(dwUserIndex, pState);
+	}
+
+	s_inHook = true;
+	DWORD result = ControllerHelper::PollController(pState, InvertABXYButtons);
+	s_inHook = false;
+	return result;
 }
 
 // Prevent flusher entities from overshooting their travel limit and clipping through the player
@@ -3709,10 +3718,13 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		}
 		case DLL_PROCESS_DETACH:
 		{
-			MH_Uninitialize();
-			if (UseSDLControllerInput)
+			if (lpReserved == nullptr)
 			{
-				ControllerHelper::ShutdownSDLGamepad();
+				MH_Uninitialize();
+				if (UseSDLControllerInput)
+				{
+					ControllerHelper::ShutdownSDLGamepad();
+				}
 			}
 			break;
 		}
