@@ -41,6 +41,8 @@ A patch that addresses various technical issues and adds quality-of-life improve
 
 - Fixed Alice and the enemies losing their shading and appearing fully bright whenever a dynamic light was visible on screen, even far away, such as at the start of Pool of Tears.
 
+- Fixed a line across fog volumes past which the fog suddenly changed, following the camera as it moved, such as on the lava in Labyrinthine Revenge.
+
 - Fixed an issue where Alice's blinking animation in the menu played too quickly at high frame rates.
 
 - Fullscreen selection now persists after restarting.
@@ -324,7 +326,7 @@ Adds support for PlayStation and Nintendo Switch controllers via SDL3.
     To enable it, set `SSAAScale = 2.0` in the `[Graphics]` section of `VorpalFix.ini` (`1.0` disables it, up to `4.0`).
 
 - **Maximum Model Detail**  
-  Disable LOD bias to render models at full quality at any distance.
+  Disable LOD bias to render models at full quality at any distance, and render curved surfaces such as arches and pillars with more detail.
 
 <div align="center">
   <table>

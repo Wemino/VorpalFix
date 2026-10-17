@@ -1,4 +1,4 @@
-﻿#define _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
 #define MINI_CASE_SENSITIVE
 #define NOMINMAX
 
@@ -333,6 +333,7 @@ bool FixUnlitModels = false;
 bool FixCharacterShading = false;
 bool FixSystemWideGamma = false;
 bool FixTextureDownscaling = false;
+bool FixFogBanding = false;
 bool OptimizeSaveSpeed = false;
 
 // Input
@@ -413,6 +414,7 @@ static void ReadConfig()
 	FixCharacterShading = IniHelper::ReadInteger("Fixes", "FixCharacterShading", 1) == 1;
 	FixSystemWideGamma = IniHelper::ReadInteger("Fixes", "FixSystemWideGamma", 1) == 1;
 	FixTextureDownscaling = IniHelper::ReadInteger("Fixes", "FixTextureDownscaling", 1) == 1;
+	FixFogBanding = IniHelper::ReadInteger("Fixes", "FixFogBanding", 1) == 1;
 	OptimizeSaveSpeed = IniHelper::ReadInteger("Fixes", "OptimizeSaveSpeed", 1) == 1;
 
 	// Input
@@ -3290,6 +3292,14 @@ static void ApplyFixTextureDownscaling()
 	HookHelper::ApplyHook((void*)0x47D130, &ResampleTexture_Hook, (LPVOID*)&ResampleTexture);
 }
 
+static void ApplyFixFogBanding()
+{
+	if (!FixFogBanding) return;
+
+	// The fog image GL_CLAMP -> GL_CLAMP_TO_EDGE, far fog used to blend with the border (R_CreateFogImage)
+	MemoryHelper::WriteMemory<int>(0x47E9FD, 0x812F);
+}
+
 static void ApplyFixSystemWideGamma()
 {
 	if (!FixSystemWideGamma) return;
@@ -3647,6 +3657,7 @@ static void Init()
 	ApplyFixCharacterShading();
 	ApplyFixSystemWideGamma();
 	ApplyFixTextureDownscaling();
+	ApplyFixFogBanding();
 	ApplyOptimizeSaveSpeed();
 
 	// General
