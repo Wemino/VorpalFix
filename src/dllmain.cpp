@@ -40,7 +40,6 @@ constexpr uintptr_t VTABLE_UI_AUTOSCROLL = 0x53EBD4;
 constexpr uintptr_t VTABLE_UI_LABEL = 0x5410FC;
 constexpr uintptr_t INTRO_STAGE_ADDR = 0x7CCA20;
 constexpr uintptr_t FAKK_CONSOLE_PTR_ADDR = 0x7CCA54;
-constexpr uintptr_t UI_PAUSED = 0x7CCA64;
 constexpr uintptr_t CURRENT_LANG = 0x7CF868;
 constexpr uintptr_t CONTROLLER_STATE_ADDR = 0x7CF87C;
 constexpr uintptr_t MOUSE_ACTIVE_ADDR = 0x7CFA40;
@@ -50,7 +49,6 @@ constexpr uintptr_t DISPLAY_MODE_IDX = 0x7D40C4;
 constexpr uintptr_t DISPLAY_MODE_NUM = 0x7D40C8;
 constexpr uintptr_t SET_VIEWPORT_FN_ADDR = 0x11C01D0;
 constexpr uintptr_t SET_SCISSOR_FN_ADDR = 0x11C01D8;
-constexpr uintptr_t IS_MENU_LOCKED = 0x11C2770;
 constexpr uintptr_t BLINK_TIMER = 0x11C35EC;
 constexpr uintptr_t MAIN_WINDOW_HWND = 0x11C5008;
 constexpr uintptr_t SYS_EVENT_TIME = 0x11C50AC;
@@ -62,8 +60,8 @@ constexpr uintptr_t CURRENT_WEAPON_ID = 0x12F3D60;
 constexpr uintptr_t MOUSE_YAW_BUFFER = 0x12F986C;
 constexpr uintptr_t MOUSE_PITCH_BUFFER = 0x12F9874;
 constexpr uintptr_t MOUSE_BUFFER_INDEX = 0x12F987C;
-constexpr uintptr_t CAMERA_YAW_ADDR = 0x12F9F28;
-constexpr uintptr_t CAMERA_PITCH_ADDR = 0x12F9F2C;
+constexpr uintptr_t CAMERA_PITCH_ADDR = 0x12F9F28;
+constexpr uintptr_t CAMERA_YAW_ADDR = 0x12F9F2C;
 constexpr uintptr_t CVAR_SENSITIVITY = 0x148BC3C;
 constexpr uintptr_t CVAR_M_INVERT_PITCH = 0x14E8A5C;
 constexpr uintptr_t CVAR_CL_YAWSPEED = 0x14EB3B8;
@@ -153,7 +151,6 @@ static std::vector<std::string> pk3LocFiles;
 // Additional commands
 static bool wasRightStickPressed = false;
 static bool isHoldingLeftStick = false;
-static int lastQuickSaveFrame = 0;
 static int lastWeaponIdPerDpad[4] = { -1, -1, -1, -1 };
 static std::unordered_map<int, std::string> weaponCommandCache;
 static const char* weaponCommands[] =
@@ -172,19 +169,6 @@ static const char* weaponCommands[] =
 
 // pak5 fix
 static bool isUsingBrokenPak5 = false;
-static const char* correctPaths[] =
-{
-	"models/characters/cheshire/skin01.ftx",
-	"models/characters/cheshire/skin02.ftx",
-	"models/characters/cheshire/skin02g.ftx",
-	"models/characters/cardguard_club/skin01.ftx",
-	"models/characters/cardguard_diamond/skin02.ftx",
-	"models/characters/cardguard_heart/skin04.ftx",
-	"models/characters/cardguard_spade/skin03.ftx",
-	"models/characters/mock_turtle/mshell.ftx",
-	"models/characters/mock_turtle/mturt.ftx"
-};
-
 static const char* const pak5BrokenPaths[] = 
 {
 	"models/characters/cheshire_cat/skin01.ftx",
@@ -220,7 +204,7 @@ static int(__cdecl* FS_Seek)(int, int, int) = nullptr; // 0x41AEC0
 static BYTE(__cdecl* Str_To_Lower)(char*) = nullptr; // 0x4256E0
 static bool(__cdecl* SV_ArchiveLevelFile)(bool) = nullptr; // 0x429F50
 static int(__cdecl* SV_InitGameProgs)() = nullptr; // 0x42CFF0
-static FILE(__cdecl* unzOpen)(const char*) = nullptr; // 0x43E030
+static void*(__cdecl* unzOpen)(const char*) = nullptr; // 0x43E030
 static int(__cdecl* CL_Draw3DModel)(float, float, float, float, int, float*, float*, float*, int, const char*, __int16, float*, float*, float, float, int) = nullptr; // 0x446050
 static int(__cdecl* GetIntroStage)() = nullptr; // 0x449DF0
 static void(__cdecl* UI_DrawLoadingIndicator)(int, float, float, float, float) = nullptr; // 0x44AC30
@@ -270,7 +254,6 @@ static BOOL(WINAPI* ori_SwapBuffers)(HDC);
 static BOOL(WINAPI* ori_GetDeviceGammaRamp)(HDC, LPVOID);
 static BOOL(WINAPI* ori_SetDeviceGammaRamp)(HDC, LPVOID);
 static DWORD(WINAPI* ori_XInputGetState)(DWORD, XINPUT_STATE*);
-static BOOL(WINAPI* SystemHelper::qwglChoosePixelFormatARB)(HDC, const int*, const FLOAT*, UINT, int*, UINT*) = nullptr;
 
 // =============================
 // OpenGL / WGL Defines
@@ -562,7 +545,7 @@ static void WINAPI glTexParameterf_Hook(GLenum target, GLenum pname, GLfloat par
 		if (!isAnisotropyRetrieved)
 		{
 			// Retrieve the maximum anisotropy level supported by the hardware
-			float maxAnisotropy;
+			float maxAnisotropy = 1.0f;
 			glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAnisotropy);
 
 			// Check if the user's MaxAnisotropy exceeds the hardware's capability
@@ -576,7 +559,12 @@ static void WINAPI glTexParameterf_Hook(GLenum target, GLenum pname, GLfloat par
 		}
 
 		ori_glTexParameterf(target, pname, param);
-		ori_glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, (float)MaxAnisotropy);
+
+		// 0 disables it, the lowest valid level is 1 (no anisotropic filtering)
+		if (MaxAnisotropy > 1.0f)
+		{
+			ori_glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, (float)MaxAnisotropy);
+		}
 	}
 	else
 	{
@@ -745,24 +733,24 @@ static void __cdecl CL_JoystickMove_Hook(int a1)
 
 		if (gyroYaw != 0.0f || gyroPitch != 0.0f)
 		{
-			float* cameraYaw = (float*)CAMERA_YAW_ADDR;
 			float* cameraPitch = (float*)CAMERA_PITCH_ADDR;
+			float* cameraYaw = (float*)CAMERA_YAW_ADDR;
 
 			int ptr_sensitivity = MemoryHelper::ReadMemory<int>(CVAR_SENSITIVITY);
 			int ptr_cl_yawspeed = MemoryHelper::ReadMemory<int>(CVAR_CL_YAWSPEED);
 			int ptr_cl_pitchspeed = MemoryHelper::ReadMemory<int>(CVAR_CL_PITCHSPEED);
 			int ptr_m_invert_pitch = MemoryHelper::ReadMemory<int>(CVAR_M_INVERT_PITCH);
 
-			float baseSens = MemoryHelper::ReadMemory<float>(ptr_sensitivity + 28) / 5.0f;
-			float pitchSens = MemoryHelper::ReadMemory<float>(ptr_cl_yawspeed + 28);
-			float yawSens = MemoryHelper::ReadMemory<float>(ptr_cl_pitchspeed + 28);
-			bool invertPitch = MemoryHelper::ReadMemory<int>(ptr_m_invert_pitch + 32) != 0;
+			float baseSens = GameHelper::GetCvarFloat(ptr_sensitivity) / 5.0f;
+			float yawSens = GameHelper::GetCvarFloat(ptr_cl_yawspeed);
+			float pitchSens = GameHelper::GetCvarFloat(ptr_cl_pitchspeed);
+			bool invertPitch = GameHelper::GetCvarInteger(ptr_m_invert_pitch) != 0;
 
 			const float gyroScale = 0.65f;
 			float pitchDir = invertPitch ? -1.0f : 1.0f;
 
-			*cameraYaw += gyroPitch * gyroScale * yawSens * baseSens * pitchDir;
-			*cameraPitch -= gyroYaw * gyroScale * pitchSens * baseSens;
+			*cameraPitch += gyroPitch * gyroScale * pitchSens * baseSens * pitchDir;
+			*cameraYaw -= gyroYaw * gyroScale * yawSens * baseSens;
 		}
 	}
 }
@@ -1271,7 +1259,7 @@ static int __cdecl CL_MouseEvent_Hook(int dx, int dy, int time)
 	if (MenuHelper::requestedMenuStyle != MenuStyle::PC && MemoryHelper::ReadMemory<int>(IN_GUIMOUSE))
 	{
 		// Ignore small accidental moves
-		DWORD now = GetTickCount64();
+		ULONGLONG now = GetTickCount64();
 		if (now - MenuHelper::lastMouseMoveTime > 500) MenuHelper::mouseMoveDistance = 0;
 
 		MenuHelper::lastMouseMoveTime = now;
@@ -1339,29 +1327,29 @@ static DWORD __fastcall MenuManager_SaveCVars_Hook(DWORD* thisPtr, int*, char* g
 		bool shouldVidRestart = false;
 
 		// LanguageId - Need a restart
-		int languageId = MemoryHelper::ReadMemory<int>(VF_LANGUAGE_PTR + 0x20);
+		int languageId = GameHelper::GetCvarInteger(VF_LANGUAGE_PTR);
 		IniHelper::iniReader["General"]["LanguageId"] = StringHelper::IntegerToCString(languageId);
 
 		// DisableRemasteredModels - Need a restart
-		bool disableRemasteredModels = MemoryHelper::ReadMemory<int>(VF_REMASTERED_MODELS_PTR + 0x20);
-		IniHelper::iniReader["General"]["DisableRemasteredModels"] = StringHelper::IntegerToCString(!disableRemasteredModels);
+		bool isRemasteredModelsEnabled = GameHelper::GetCvarInteger(VF_REMASTERED_MODELS_PTR);
+		IniHelper::iniReader["General"]["DisableRemasteredModels"] = StringHelper::IntegerToCString(!isRemasteredModelsEnabled);
 
 		// GyroEnabled
-		GyroEnabled = MemoryHelper::ReadMemory<int>(VF_UI_GYRO_AIM_PTR + 0x20);
+		GyroEnabled = GameHelper::GetCvarInteger(VF_UI_GYRO_AIM_PTR);
 		IniHelper::iniReader["Input"]["GyroEnabled"] = StringHelper::IntegerToCString(GyroEnabled);
 		ControllerHelper::SetGyroEnabled(GyroEnabled);
 
 		// ConsolePortHUD
-		ConsolePortHUD = MemoryHelper::ReadMemory<int>(VF_UI_CONSOLE_HUD_PTR + 0x20);
+		ConsolePortHUD = GameHelper::GetCvarInteger(VF_UI_CONSOLE_HUD_PTR);
 		IniHelper::iniReader["Display"]["ConsolePortHUD"] = StringHelper::IntegerToCString(ConsolePortHUD);
 
 		// DisableLetterbox
-		bool isLetterboxEnabled = MemoryHelper::ReadMemory<int>(VF_UI_LETTERBOX_PTR + 0x20);
+		bool isLetterboxEnabled = GameHelper::GetCvarInteger(VF_UI_LETTERBOX_PTR);
 		IniHelper::iniReader["Display"]["DisableLetterbox"] = StringHelper::IntegerToCString(!isLetterboxEnabled);
 		DisableLetterbox = !isLetterboxEnabled;
 
 		// MultiSampleAntiAliasing
-		int msaa = MemoryHelper::ReadMemory<int>(VF_MSAA_PTR + 0x20);
+		int msaa = GameHelper::GetCvarInteger(VF_MSAA_PTR);
 		IniHelper::iniReader["Graphics"]["MultiSampleAntiAliasing"] = StringHelper::IntegerToCString(msaa);
 
 		if (msaa != MultiSampleAntiAliasing)
@@ -1371,7 +1359,7 @@ static DWORD __fastcall MenuManager_SaveCVars_Hook(DWORD* thisPtr, int*, char* g
 		}
 
 		// MaxAnisotropy
-		float maxAnisotropy = MemoryHelper::ReadMemory<float>(VF_R_EXT_MAX_ANISOTROPY_PTR + 0x1C);
+		float maxAnisotropy = GameHelper::GetCvarFloat(VF_R_EXT_MAX_ANISOTROPY_PTR);
 		IniHelper::iniReader["Graphics"]["MaxAnisotropy"] = StringHelper::FloatToCString(maxAnisotropy);
 
 		if (maxAnisotropy != MaxAnisotropy)
@@ -1407,110 +1395,50 @@ static void __fastcall UIWidget_AddItem_Hook(DWORD* thisp, int, void** a2, void*
 
 	if (name && strcmp(name, "com_maxfps") == 0)
 	{
-		// Each version of the settings menu has its own list
-		static DWORD* maxFpsWidget = nullptr;
-		if (thisp != maxFpsWidget)
+		// Each version of the settings menu has its own list, fill it when it's still empty
+		if (GameHelper::GetWidgetItemCount(thisp) == 0)
 		{
-			maxFpsWidget = thisp;
+			std::vector<DWORD> rates;
 
 			DEVMODEA dm = {};
 			dm.dmSize = sizeof(dm);
 
-			DWORD rates[256]{};
-			int rateCount = 0;
-
-			// Enumerate all refresh rates supported by the primary monitor
 			for (DWORD i = 0; EnumDisplaySettingsA(NULL, i, &dm); i++)
 			{
-				if (dm.dmDisplayFrequency < 60 || rateCount >= 256) continue;
-
-				bool dup = false;
-				for (int k = 0; k < rateCount; k++)
+				if (dm.dmDisplayFrequency >= 60)
 				{
-					if (rates[k] == dm.dmDisplayFrequency)
-					{
-						dup = true;
-						break;
-					}
-				}
-
-				if (!dup)
-				{
-					rates[rateCount++] = dm.dmDisplayFrequency;
+					rates.push_back(dm.dmDisplayFrequency);
 				}
 			}
 
-			DWORD maxRate = 0;
-			for (int k = 0; k < rateCount; k++)
-			{
-				if (rates[k] > maxRate)
-				{
-					maxRate = rates[k];
-				}
-			}
+			DWORD maxRate = rates.empty() ? 0 : *std::max_element(rates.begin(), rates.end());
 
 			// Ensure 60 and 85 are always available if within the monitor's range
-			const DWORD required[] = { 60, 85 };
-			for (int r = 0; r < 2; r++)
+			for (DWORD required : { 60u, 85u })
 			{
-				if (required[r] > maxRate) continue;
-
-				bool found = false;
-				for (int k = 0; k < rateCount; k++)
+				if (required <= maxRate)
 				{
-					if (rates[k] == required[r])
-					{
-						found = true;
-						break;
-					}
-				}
-
-				if (!found && rateCount < 256)
-				{
-					rates[rateCount++] = required[r];
+					rates.push_back(required);
 				}
 			}
 
 			// Ensure 500 FPS is pickable if the monitor supports rates that high
 			if (maxRate >= 500)
 			{
-				bool has500 = false;
-				for (int k = 0; k < rateCount; k++)
-				{
-					if (rates[k] == 500)
-					{
-						has500 = true;
-						break;
-					}
-				}
-
-				if (!has500 && rateCount < 256)
-				{
-					rates[rateCount++] = 500;
-				}
+				rates.push_back(500);
 			}
 
-			// Cap at 500 FPS
-			int finalCount = 0;
-			for (int k = 0; k < rateCount; k++)
-			{
-				if (rates[k] <= 500)
-				{
-					rates[finalCount++] = rates[k];
-				}
-			}
-
-			rateCount = finalCount;
-
-			// Sort ascending
-			std::sort(rates, rates + rateCount);
+			// Cap at 500 FPS, sort ascending and remove the duplicates
+			std::erase_if(rates, [](DWORD rate) { return rate > 500; });
+			std::sort(rates.begin(), rates.end());
+			rates.erase(std::unique(rates.begin(), rates.end()), rates.end());
 
 			// Add each rate as a list item (value + label)
-			for (int r = 0; r < rateCount; r++)
+			for (DWORD rate : rates)
 			{
 				char valueStr[32], labelStr[64];
-				sprintf_s(valueStr, "%d", rates[r]);
-				sprintf_s(labelStr, "%d FPS", rates[r]);
+				sprintf_s(valueStr, "%d", rate);
+				sprintf_s(labelStr, "%d FPS", rate);
 
 				void* valueObj = nullptr;
 				void* labelObj = nullptr;
@@ -1530,16 +1458,7 @@ static void __fastcall UIWidget_AddItem_Hook(DWORD* thisp, int, void** a2, void*
 		UIWidget_AddItem(thisp, a2, a3);
 
 		// Script adds 4 items (0, 2, 4, 8), after the 4th, inject 16x if the GPU supports it
-		static DWORD* msaaWidget = nullptr;
-		static int msaaItemCount = 0;
-		if (thisp != msaaWidget)
-		{
-			msaaWidget = thisp;
-			msaaItemCount = 0;
-		}
-		msaaItemCount++;
-
-		if (msaaItemCount == 4)
+		if (GameHelper::GetWidgetItemCount(thisp) == 4)
 		{
 			GLint maxSamples = 0;
 			glGetIntegerv(GL_MAX_SAMPLES, &maxSamples);
@@ -1729,7 +1648,7 @@ static int __cdecl SV_InitGameProgs_Hook()
 }
 
 // Function used to open and load the pk3 files
-static FILE __cdecl unzOpen_Hook(const char* FileName)
+static void* __cdecl unzOpen_Hook(const char* FileName)
 {
 	if (FileName)
 	{
@@ -1808,7 +1727,7 @@ static int __cdecl GetIntroStage_Hook()
 	}
 
 	// Loading a quicksave while the menu is transitioning can cause issues
-	if (FixMenuTransitionTiming && MemoryHelper::ReadMemory<uint8_t>(IS_MENU_LOCKED))
+	if (FixMenuTransitionTiming && GameHelper::IsMenuLocked())
 	{
 		return 0;
 	}
@@ -1898,7 +1817,7 @@ static void __cdecl UI_MenuEscape_Hook(int a1)
 static void __fastcall AliceDialogText_Draw_Hook(int thisPtr, int*)
 {
 	// Hide dialog box when still in menu
-	if (!MemoryHelper::ReadMemory<uint8_t>(IS_MENU_LOCKED))
+	if (!GameHelper::IsMenuLocked())
 	{
 		// Adjust vertical position for 2-line messages (4 -> 3)
 		if (*(DWORD*)(thisPtr + 0x1D8) == 4)
@@ -2023,10 +1942,10 @@ static int* __cdecl IN_Win32Mouse_Hook(DWORD* a1, int* a2)
 // Hook of the function used to parse the controller state, add some more features
 static MMRESULT __cdecl UpdateControllerState_Hook()
 {
-	int xinput_state = MemoryHelper::ReadMemory<int>(0x7CF880);
+	WORD xinput_state = ((XINPUT_STATE*)CONTROLLER_STATE_ADDR)->Gamepad.wButtons;
 
 	// Center view on right stick press
-	bool isRightStickPressed = (xinput_state & 0x80) != 0;
+	bool isRightStickPressed = (xinput_state & XINPUT_GAMEPAD_RIGHT_THUMB) != 0;
 	if (isRightStickPressed && !wasRightStickPressed)
 	{
 		GameHelper::IN_CenterView();
@@ -2039,7 +1958,7 @@ static MMRESULT __cdecl UpdateControllerState_Hook()
 		isHoldingLeftStick = true;
 
 		int slot = -1;
-		switch (xinput_state & 0x0F)
+		switch (xinput_state & (XINPUT_GAMEPAD_DPAD_UP | XINPUT_GAMEPAD_DPAD_DOWN | XINPUT_GAMEPAD_DPAD_LEFT | XINPUT_GAMEPAD_DPAD_RIGHT))
 		{
 			case XINPUT_GAMEPAD_DPAD_UP: slot = 0; break;
 			case XINPUT_GAMEPAD_DPAD_DOWN: slot = 1; break;
@@ -2264,29 +2183,7 @@ static int GLW_MakeContext()
 
 			if (SystemHelper::qwglChoosePixelFormatARB(hDC, attribs, NULL, 1, &chosenFormat, &numFormats) && numFormats > 0)
 			{
-				__asm
-				{
-					push pPFD
-					push 0x28
-					push chosenFormat
-					push hDC
-					mov eax, 0x1BB8AC8
-					call dword ptr[eax]
-				}
-
-				int setResult = 0;
-
-				__asm
-				{
-					push pPFD
-					push chosenFormat
-					push hDC
-					mov eax, 0x1BB8D9C
-					call dword ptr[eax]
-					mov setResult, eax
-				}
-
-				if (setResult)
+				if (GameHelper::GLW_SetPixelFormat(hDC, chosenFormat, pPFD))
 				{
 					if (msaaSamples > 0)
 					{
@@ -2333,29 +2230,7 @@ static int GLW_MakeContext()
 
 			GameHelper::ri_Printf(0, "...PIXELFORMAT %d selected\n", pixelformat);
 
-			__asm
-			{
-				push pPFD
-				push 0x28
-				push pixelformat
-				push hDC
-				mov eax, 0x1BB8AC8
-				call dword ptr[eax]
-			}
-
-			int setResult = 0;
-
-			__asm
-			{
-				push pPFD
-				push pixelformat
-				push hDC
-				mov eax, 0x1BB8D9C
-				call dword ptr[eax]
-				mov setResult, eax
-			}
-
-			if (!setResult)
+			if (!GameHelper::GLW_SetPixelFormat(hDC, pixelformat, pPFD))
 			{
 				GameHelper::ri_Printf(0, "...qwglSetPixelFormat failed\n");
 				return TRY_PFD_FAIL_SOFT;
@@ -2369,16 +2244,7 @@ static int GLW_MakeContext()
 	{
 		GameHelper::ri_Printf(0, "...creating GL context: ");
 
-		HGLRC newContext = nullptr;
-
-		__asm
-		{
-			push hDC
-			mov eax, 0x1BB8EC8
-			call dword ptr[eax]
-			mov newContext, eax
-		}
-
+		HGLRC newContext = GameHelper::qwglCreateContext(hDC);
 		*pHGLRC = newContext;
 
 		if (!newContext)
@@ -2390,26 +2256,9 @@ static int GLW_MakeContext()
 		GameHelper::ri_Printf(0, "succeeded\n");
 		GameHelper::ri_Printf(0, "...making context current: ");
 
-		int makeCurrentResult = 0;
-
-		__asm
+		if (!GameHelper::qwglMakeCurrent(hDC, newContext))
 		{
-			push newContext
-			push hDC
-			mov eax, 0x1BB8F00
-			call dword ptr[eax]
-			mov makeCurrentResult, eax
-		}
-
-		if (!makeCurrentResult)
-		{
-			__asm
-			{
-				push newContext
-				mov eax, 0x1BB8D7C
-				call dword ptr[eax]
-			}
-
+			GameHelper::qwglDeleteContext(newContext);
 			*pHGLRC = nullptr;
 
 			GameHelper::ri_Printf(0, "failed\n");
@@ -2658,7 +2507,7 @@ static void __cdecl R_SetupEntityLighting_Hook(int refdef, int ent, float* light
 // Do not scale pictures from the AutoScroll or the console
 static int __fastcall UIWidget_DrawPicStretched_Hook(int thisPtr, int, float a2, float a3, float a4, float a5, float a6, float a7, float a8, float a9, int a10)
 {
-	if (*(BYTE*)(thisPtr + 449) || *(BYTE*)(thisPtr + 456))
+	if (*(BYTE*)(thisPtr + 0x1C1) || *(BYTE*)(thisPtr + 0x1C8))
 	{
 		mustSkipPicScaling = true;
 	}
@@ -2686,7 +2535,7 @@ static int __fastcall UIWidget_DrawPicStretched_Hook(int thisPtr, int, float a2,
 // If we should scale the font of the menu
 static int __fastcall UIWidget_PrintJustified_Hook(int thisPtr, int, void* a2, int a3, int a4, int a5, int a6, float a7, float a8, float a9, float a10, float a11)
 {
-	mustScaleFont = !(*(BYTE*)(thisPtr + 456) || *(BYTE*)(thisPtr + 449));
+	mustScaleFont = !(*(BYTE*)(thisPtr + 0x1C8) || *(BYTE*)(thisPtr + 0x1C1));
 	int result = UIWidget_PrintJustified(thisPtr, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11);
 	mustScaleFont = false;
 
@@ -2696,7 +2545,7 @@ static int __fastcall UIWidget_PrintJustified_Hook(int thisPtr, int, void* a2, i
 // If we should scale the font of the menu
 static int __fastcall UIWidget_Print_Hook(int thisPtr, int, int a2, float a3, float a4, int a5, int a6, float a7, float a8, float a9, float a10, float a11)
 {
-	mustScaleFont = !(*(BYTE*)(thisPtr + 456) || *(BYTE*)(thisPtr + 449));
+	mustScaleFont = !(*(BYTE*)(thisPtr + 0x1C8) || *(BYTE*)(thisPtr + 0x1C1));
 	int result = UIWidget_Print(thisPtr, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11);
 	mustScaleFont = false;
 
@@ -2713,27 +2562,12 @@ static void __cdecl Widget_SetViewport_Override(int x, int y, int width, int hei
 	if (isWiderThan4By3 && (vtable == VTABLE_UI_AUTOSCROLL || vtable == VTABLE_ALICE_DIALOG_TEXT))
 	{
 		// Make sure to display the borders while transitioning from menu to in-game
-		if (vtable == VTABLE_ALICE_DIALOG_TEXT && MemoryHelper::ReadMemory<uint8_t>(IS_MENU_LOCKED)) return;
+		if (vtable == VTABLE_ALICE_DIALOG_TEXT && GameHelper::IsMenuLocked()) return;
 
 		GameHelper::ScaleWidgetRect(widget, 0x38, scaleFactor, widthDifference, x, width);
 	}
 
-	__asm
-	{
-		push zFar
-		push zNear
-		push top
-		push bottom
-		push right
-		push left
-		push height
-		push width
-		push y
-		push x
-		mov  eax, SET_VIEWPORT_FN_ADDR
-		call dword ptr[eax]
-		add  esp, 0x28
-	}
+	(*(void(__cdecl**)(int, int, int, int, float, float, float, float, float, float))SET_VIEWPORT_FN_ADDR)(x, y, width, height, left, right, bottom, top, zNear, zFar);
 }
 
 // Scale the scissor for the autoscroll and dialogbox, replaces the call in 'UIWidget::setViewport' where the widget is in esi
@@ -2746,21 +2580,12 @@ static void __cdecl Widget_SetScissor_Override(int x, int y, int width, int heig
 	if (isWiderThan4By3 && (vtable == VTABLE_UI_AUTOSCROLL || vtable == VTABLE_ALICE_DIALOG_TEXT))
 	{
 		// Make sure to display the borders while transitioning from menu to in-game
-		if (vtable == VTABLE_ALICE_DIALOG_TEXT && MemoryHelper::ReadMemory<uint8_t>(IS_MENU_LOCKED)) return;
+		if (vtable == VTABLE_ALICE_DIALOG_TEXT && GameHelper::IsMenuLocked()) return;
 
 		GameHelper::ScaleWidgetRect(widget, 0x50, scaleFactor, widthDifference, x, width);
 	}
 
-	__asm
-	{
-		push height
-		push width
-		push y
-		push x
-		mov  eax, SET_SCISSOR_FN_ADDR
-		call dword ptr[eax]
-		add  esp, 0x10
-	}
+	(*(void(__cdecl**)(int, int, int, int))SET_SCISSOR_FN_ADDR)(x, y, width, height);
 }
 
 // Load the menu files from 'pak6_VorpalFix.pk3' when required
@@ -3715,7 +3540,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 			IMAGE_NT_HEADERS* nt = (IMAGE_NT_HEADERS*)(base + dos->e_lfanew);
 
 			// Check if the entry point matches our expected MAIN_ENTRY_POINT
-			if ((base + nt->OptionalHeader.AddressOfEntryPoint + (0x400000 - base)) == MAIN_ENTRY_POINT)
+			if (0x400000 + nt->OptionalHeader.AddressOfEntryPoint == MAIN_ENTRY_POINT)
 			{
 				SystemHelper::LoadProxyLibrary();
 				Init();

@@ -175,7 +175,6 @@ namespace GameHelper
 		Generic = 0,
 		MouseArrow,
 		TitleBg,
-		PressAnyKey,
 		QuicksaveCam,
 	};
 
@@ -201,6 +200,28 @@ namespace GameHelper
 	void(__thiscall* Menu_SaveCVars)(int, const char*) = (void(__thiscall*)(int, const char*))0x4B9770;
 	void(__thiscall* Menu_ForceHide)(int) = (void(__thiscall*)(int))0x4B9B90;
 	void(__cdecl*& ri_Printf)(int, const char*, ...) = *(void(__cdecl**)(int, const char*, ...))0x1C1D220;
+	int(WINAPI*& qwglDescribePixelFormat)(HDC, int, UINT, LPPIXELFORMATDESCRIPTOR) = *(int(WINAPI**)(HDC, int, UINT, LPPIXELFORMATDESCRIPTOR))0x1BB8AC8;
+	BOOL(WINAPI*& qwglSetPixelFormat)(HDC, int, const PIXELFORMATDESCRIPTOR*) = *(BOOL(WINAPI**)(HDC, int, const PIXELFORMATDESCRIPTOR*))0x1BB8D9C;
+	HGLRC(WINAPI*& qwglCreateContext)(HDC) = *(HGLRC(WINAPI**)(HDC))0x1BB8EC8;
+	BOOL(WINAPI*& qwglMakeCurrent)(HDC, HGLRC) = *(BOOL(WINAPI**)(HDC, HGLRC))0x1BB8F00;
+	BOOL(WINAPI*& qwglDeleteContext)(HGLRC) = *(BOOL(WINAPI**)(HGLRC))0x1BB8D7C;
+
+	static int GetCvarInteger(int cvar)
+	{
+		return *(int*)(cvar + 0x20);
+	}
+
+	static float GetCvarFloat(int cvar)
+	{
+		return *(float*)(cvar + 0x1C);
+	}
+
+	// Describe the pixel format into the game's descriptor, then set it on the window
+	static bool GLW_SetPixelFormat(HDC hDC, int pixelFormat, PIXELFORMATDESCRIPTOR* pPFD)
+	{
+		qwglDescribePixelFormat(hDC, pixelFormat, sizeof(PIXELFORMATDESCRIPTOR), pPFD);
+		return qwglSetPixelFormat(hDC, pixelFormat, pPFD) != FALSE;
+	}
 
 	static void AssignCmdKeyId(int keyId, const char* cmd)
 	{
@@ -300,14 +321,20 @@ namespace GameHelper
 	// Number of menus in the menu manager
 	static int GetMenuCount()
 	{
-		return *(int*)(0x11C2750 + 0x10);
+		return *(int*)(MENU_MANAGER_ADDR + 0x10);
+	}
+
+	// The menus can't be changed while one is transitioning
+	static bool IsMenuLocked()
+	{
+		return *(uint8_t*)(MENU_MANAGER_ADDR + 0x20) != 0;
 	}
 
 	// Menu shown on top
 	static int GetCurrentMenu()
 	{
-		int* overlayStack = *(int**)(0x11C2750 + 0x18);
-		int* menuStack = *(int**)(0x11C2750 + 0x1C);
+		int* overlayStack = *(int**)(MENU_MANAGER_ADDR + 0x18);
+		int* menuStack = *(int**)(MENU_MANAGER_ADDR + 0x1C);
 
 		if (overlayStack && overlayStack[0]) return overlayStack[0];
 		return menuStack ? menuStack[0] : 0;
@@ -326,7 +353,7 @@ namespace GameHelper
 
 	static int FindMenuByContainer(int container)
 	{
-		const int* menus = *(int**)(0x11C2750 + 0xC);
+		const int* menus = *(int**)(MENU_MANAGER_ADDR + 0xC);
 
 		for (int i = 0; i < GetMenuCount(); i++)
 		{
@@ -348,6 +375,12 @@ namespace GameHelper
 		}
 
 		return nullptr;
+	}
+
+	// Number of items added to a list widget with 'additem'
+	static int GetWidgetItemCount(DWORD* widget)
+	{
+		return *(int*)((uintptr_t)widget + 0x1D8);
 	}
 
 	// Group of widgets shown in the menu, the settings use one per page
@@ -428,9 +461,9 @@ namespace MenuHelper
 	static MenuStyle currentMenuStyle = MenuStyle::PC;
 	static MenuStyle requestedMenuStyle = MenuStyle::PC;
 	static int fadedMenuContainer = 0;
-	static DWORD fadedMenuTime = 0;
+	static ULONGLONG fadedMenuTime = 0;
 	static int mouseMoveDistance = 0;
-	static DWORD lastMouseMoveTime = 0;
+	static ULONGLONG lastMouseMoveTime = 0;
 
 	// Check which controller icons should be shown
 	static MenuStyle GetControllerMenuStyle(int usePS3ControllerIcons)
@@ -541,7 +574,7 @@ namespace MenuHelper
 	// Switch the menus to the version of the device used last, return true when switched
 	static bool UpdateMenuStyle()
 	{
-		if (fadedMenuContainer && GetTickCount() - fadedMenuTime > 500)
+		if (fadedMenuContainer && GetTickCount64() - fadedMenuTime > 500)
 		{
 			RemoveSwitchFade();
 		}
@@ -549,7 +582,7 @@ namespace MenuHelper
 		if (requestedMenuStyle == currentMenuStyle || GameHelper::GetMenuCount() == 0) return false;
 
 		// Wait for the menu transitions
-		if (MemoryHelper::ReadMemory<uint8_t>(0x11C2770)) return false;
+		if (GameHelper::IsMenuLocked()) return false;
 
 		// Wait to be back on the main page of the settings, the other pages can have unsaved changes
 		int currentMenu = GameHelper::GetCurrentMenu();
@@ -558,7 +591,7 @@ namespace MenuHelper
 		currentMenuStyle = requestedMenuStyle;
 
 		// Replace the opened menus, the overlay ones and the top one are visible
-		for (uintptr_t stackAddr : { 0x11C2750 + 0x18, 0x11C2750 + 0x1C })
+		for (uintptr_t stackAddr : { GameHelper::MENU_MANAGER_ADDR + 0x18, GameHelper::MENU_MANAGER_ADDR + 0x1C })
 		{
 			int* top = *(int**)stackAddr;
 
@@ -567,7 +600,7 @@ namespace MenuHelper
 				int menu = GetMenuForStyle(node[0], currentMenuStyle);
 				if (!menu || menu == node[0]) continue;
 
-				if (stackAddr == 0x11C2750 + 0x18 || node == top)
+				if (stackAddr == GameHelper::MENU_MANAGER_ADDR + 0x18 || node == top)
 				{
 					GameHelper::Menu_ForceHide(node[0]);
 					GameHelper::Menu_SaveCVars(menu, nullptr);
@@ -579,7 +612,7 @@ namespace MenuHelper
 						RemoveSwitchFade();
 						GameHelper::GetFadeOverlayTime(container) = 0.5f;
 						fadedMenuContainer = container;
-						fadedMenuTime = GetTickCount();
+						fadedMenuTime = GetTickCount64();
 					}
 
 					GameHelper::ProcessMenuEvent(menu, "showmenu");
@@ -590,10 +623,10 @@ namespace MenuHelper
 		}
 
 		// Used by the game to check if the main menu is opened
-		int mainMenu = GetMenuForStyle(MemoryHelper::ReadMemory<int>(0x7CCA60), currentMenuStyle);
+		int mainMenu = GetMenuForStyle(MemoryHelper::ReadMemory<int>(GameHelper::MAIN_MENU_ADDR), currentMenuStyle);
 		if (mainMenu)
 		{
-			MemoryHelper::WriteMemory<int>(0x7CCA60, mainMenu, false);
+			MemoryHelper::WriteMemory<int>(GameHelper::MAIN_MENU_ADDR, mainMenu, false);
 		}
 
 		return true;
@@ -602,18 +635,6 @@ namespace MenuHelper
 
 namespace SystemHelper
 {
-	static DWORD GetCurrentDisplayFrequency()
-	{
-		DEVMODE devMode = {};
-		devMode.dmSize = sizeof(DEVMODE);
-
-		if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &devMode))
-		{
-			return devMode.dmDisplayFrequency;
-		}
-		return 60;
-	}
-
 	static std::pair<DWORD, DWORD> GetScreenResolution()
 	{
 		DEVMODE devMode = {};
@@ -649,7 +670,7 @@ namespace SystemHelper
 		return pk3Files;
 	}
 
-	extern BOOL(WINAPI* qwglChoosePixelFormatARB)(HDC, const int*, const FLOAT*, UINT, int*, UINT*);
+	static BOOL(WINAPI* qwglChoosePixelFormatARB)(HDC, const int*, const FLOAT*, UINT, int*, UINT*) = nullptr;
 
 	static void BootstrapWGLExtensions()
 	{
