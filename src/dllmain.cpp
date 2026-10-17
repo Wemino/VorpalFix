@@ -100,7 +100,6 @@ static bool isVFMenuUsed = false;
 // =============================
 
 // Misc
-static bool isCursorResized = false;
 static bool isDefaultFullscreenSettingSkipped = false;
 static bool isUsingControllerMenu = false;
 static bool isMainMenuShown = false;
@@ -1230,12 +1229,6 @@ static int __cdecl ReadControllerState_Hook()
 	if (MenuHelper::UpdateMenuStyle())
 	{
 		isUsingControllerMenu = MenuHelper::currentMenuStyle != MenuStyle::PC;
-
-		// The cursor stays hidden on the title screen, it's set when the main menu shows up
-		if (FixStretchedMenu && (isMainMenuShown || !UseConsoleTitleScreen))
-		{
-			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
-		}
 	}
 
 	return isConnected;
@@ -1767,8 +1760,6 @@ static int __cdecl PushMenu_Hook(const char* menu_name)
 		int start_state = MemoryHelper::ReadMemory<int>(INTRO_STAGE_ADDR);
 		if (start_state == 4 || start_state == 6 || start_state == 100)
 		{
-			// Hide the cursor on the title screen
-			GameHelper::ResizeCursor(true, currentWidth, currentHeight);
 			isTitleBgSet = true;
 			return PushMenu("title");
 		}
@@ -2125,12 +2116,6 @@ static int __cdecl GLW_CreatePFD_Hook(void* pPFD, unsigned __int8 colorbits, cha
 		MemoryHelper::WriteMemory<int>(0x46D3B7, CODE_CAVE_WIDTH);
 	}
 
-	// Update the cursor size
-	if (isMainMenuShown)
-	{
-		isCursorResized = false;
-	}
-
 	// Skip console title screen for aspect ratios greater than 21:9 
 	if (UseConsoleTitleScreen && currentAspectRatio > 2.0f)
 	{
@@ -2358,7 +2343,6 @@ static int __cdecl Draw_StretchPic_Hook(float x_position, float y_position, floa
 	{
 		if (strstr(ShaderName, "main"))
 		{
-			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
 			isMainMenuShown = true;
 		}
 		else if (strstr(ShaderName, "legalplate"))
@@ -2389,14 +2373,20 @@ static int __cdecl Draw_StretchPic_Hook(float x_position, float y_position, floa
 	switch (shaderType)
 	{
 		case ShaderType::MouseArrow:
-			if (!isCursorResized)
+		{
+			// Hidden on the title screen and in the controller menus
+			if (isUsingControllerMenu || (isTitleBgSet && !isMainMenuShown)) return 0;
+
+			// The game draws it with the size of its image, give it one scaled to the screen
+			std::tie(resolution_width, resolution_height) = GameHelper::GetCursorSize(currentWidth, currentHeight);
+
+			if (isWiderThan4By3 && !isConsoleEnabled())
 			{
-				GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
-				isCursorResized = true;
+				x_position = (x_position * scaleFactor) + widthDifference;
 			}
-			if (isConsoleEnabled())
-				return Draw_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
-			break;
+
+			return Draw_StretchPic(x_position, y_position, resolution_width, resolution_height, a5, a6, a7, a8, ShaderHandle);
+		}
 
 
 		case ShaderType::QuicksaveCam:

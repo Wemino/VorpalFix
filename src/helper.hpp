@@ -169,6 +169,9 @@ namespace GameHelper
 {
 	constexpr float ASPECT_RATIO_4_3 = 4.0f / 3.0f;
 
+	constexpr uintptr_t MENU_MANAGER_ADDR = 0x11C2750;
+	constexpr uintptr_t MAIN_MENU_ADDR = 0x7CCA60;
+
 	enum class ShaderType : int8_t
 	{
 		Unknown = -1,
@@ -233,63 +236,14 @@ namespace GameHelper
 		}
 	}
 
-	static int FindShaderIndex(const char* texturePath)
+	static std::pair<float, float> GetCursorSize(int width, int height)
 	{
-		int ShaderNum = MemoryHelper::ReadMemory<int>(0x1BCCEEC);
-		int ShaderIndex = 0x1BCCEF0;
+		const float mouseWidth = 16.0f;
+		const float mouseHeight = 32.0f;
 
-		for (int i = 0; i < ShaderNum; i++)
-		{
-			const char* currentTexture = (const char*)ShaderIndex;
+		float scaleFactor = DisableCursorScaling ? 1.0f : std::min(width / 640.0f, height / 480.0f);
 
-			if (strcmp(currentTexture, texturePath) == 0)
-			{
-				return ShaderIndex;
-			}
-
-			ShaderIndex += 0x80;
-		}
-
-		return -1;
-	}
-
-	static void __cdecl ResizeCursor(bool hide, int width, int height)
-	{
-		int ImageIndex = FindShaderIndex("gfx/2d/mouse_arrow.tga");
-
-		if (ImageIndex == -1) return;
-
-		const int originalWidth = 640;
-		const int originalHeight = 480;
-
-		const int mouseWidth = 16;
-		const int mouseHeight = 32;
-
-		if (hide)
-		{
-			MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, 0, false);
-			MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, 0, false);
-			return;
-		}
-
-		float widthScale = static_cast<float>(width) / originalWidth;
-		float heightScale = static_cast<float>(height) / originalHeight;
-
-		float scaleFactor = std::min(widthScale, heightScale);
-
-		int scaledMouseWidth = static_cast<int>(mouseWidth * scaleFactor);
-		int scaledMouseHeight = static_cast<int>(mouseHeight * scaleFactor);
-
-		if (DisableCursorScaling)
-		{
-			MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, mouseWidth, false);
-			MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, mouseHeight, false);
-		}
-		else
-		{
-			MemoryHelper::WriteMemory<int>(ImageIndex + 0x40, scaledMouseWidth, false);
-			MemoryHelper::WriteMemory<int>(ImageIndex + 0x44, scaledMouseHeight, false);
-		}
+		return { floorf(mouseWidth * scaleFactor), floorf(mouseHeight * scaleFactor) };
 	}
 
 	static void ResetShaderCache()
