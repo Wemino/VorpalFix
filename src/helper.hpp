@@ -700,6 +700,7 @@ namespace SystemHelper
 #define GL_FRAMEBUFFER_COMPLETE           0x8CD5
 #define GL_MAX_RENDERBUFFER_SIZE          0x84E8
 #define GL_MAX_SAMPLES                    0x8D57
+#define GL_SAMPLE_BUFFERS                 0x80A8
 
 namespace RenderHelper
 {
@@ -991,6 +992,41 @@ namespace RenderHelper
 		qglBindFramebuffer(GL_READ_FRAMEBUFFER, readTarget.fbo);
 	}
 
+	static void CreateWindowResolveTarget(RenderTarget& target, int width, int height)
+	{
+		if (target.fbo)
+		{
+			DeleteRenderTarget(target);
+		}
+
+		GLint sampleBuffers = 0;
+		glGetIntegerv(GL_SAMPLE_BUFFERS, &sampleBuffers);
+
+		if (!sampleBuffers || !LoadFramebufferFunctions())
+		{
+			return;
+		}
+
+		if (!CreateRenderTarget(target, width, height, 0, false))
+		{
+			DeleteRenderTarget(target);
+		}
+
+		qglBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
+	static void CopyResolvedWindow(const RenderTarget& target)
+	{
+		qglBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+		qglBindFramebuffer(GL_DRAW_FRAMEBUFFER, target.fbo);
+		qglBlitFramebuffer(0, 0, target.width, target.height, 0, 0, target.width, target.height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+		qglBindFramebuffer(GL_READ_FRAMEBUFFER, target.fbo);
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, target.width, target.height);
+
+		qglBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
 	// Let the game render into the supersampled framebuffer again
 	static void RestoreSSAABinding()
 	{
@@ -1084,6 +1120,7 @@ namespace GammaHelper
 	static GLint sizeLocation = -1;
 	static GLuint frameTexture = 0;
 	static GLuint rampTexture = 0;
+	static RenderHelper::RenderTarget resolveTarget = {};
 	static int frameWidth = 0;
 	static int frameHeight = 0;
 
@@ -1159,6 +1196,7 @@ namespace GammaHelper
 		gammaContext = context;
 		isUnavailable = true;
 		gammaProgram = frameTexture = rampTexture = 0;
+		resolveTarget = {};
 		frameWidth = frameHeight = 0;
 		isRampDirty = true;
 
@@ -1248,13 +1286,13 @@ namespace GammaHelper
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
 			frameWidth = width;
 			frameHeight = height;
+
+			RenderHelper::CreateWindowResolveTarget(resolveTarget, width, height);
 		}
 		else
 		{
 			glBindTexture(GL_TEXTURE_2D, frameTexture);
 		}
-
-		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
 
 		glDisable(GL_BLEND);
 		glDisable(GL_ALPHA_TEST);
@@ -1263,6 +1301,15 @@ namespace GammaHelper
 		glDisable(GL_SCISSOR_TEST);
 		glDisable(GL_CULL_FACE);
 		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+		if (resolveTarget.fbo)
+		{
+			RenderHelper::CopyResolvedWindow(resolveTarget);
+		}
+		else
+		{
+			glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
+		}
 
 		RenderHelper::isSSAASuspended = true;
 		glViewport(0, 0, width, height);
