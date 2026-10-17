@@ -242,6 +242,7 @@ static int(__cdecl* R_Register)() = nullptr; // 0x46E0D0
 static void(__cdecl* FetchDisplayResolutions)() = nullptr; // 0x46F850
 static int(__cdecl* GLW_CreatePFD)(void*, unsigned __int8, char, unsigned __int8, int) = nullptr; // 0x46FC70
 static int(__cdecl* QGL_Init)(LPCSTR) = nullptr; // 0x47ABE0
+static void(__cdecl* ResampleTexture)(uint8_t*, int, int, uint8_t*, int, int) = nullptr; // 0x47D130
 static void(__cdecl* R_SetupShaders)() = nullptr; // 0x4873C0
 static void(__cdecl* R_DrawString)(int, const char*, float, float, float, float, float, float, float, int) = nullptr; // 0x48F1E0
 static int(__cdecl* Draw_StretchPic)(float, float, float, float, float, float, float, float, int) = nullptr; // 0x48FC00
@@ -331,6 +332,7 @@ bool FixLocalizationFiles = false;
 bool FixUnlitModels = false;
 bool FixCharacterShading = false;
 bool FixSystemWideGamma = false;
+bool FixTextureDownscaling = false;
 bool OptimizeSaveSpeed = false;
 
 // Input
@@ -410,6 +412,7 @@ static void ReadConfig()
 	FixUnlitModels = IniHelper::ReadInteger("Fixes", "FixUnlitModels", 1) == 1;
 	FixCharacterShading = IniHelper::ReadInteger("Fixes", "FixCharacterShading", 1) == 1;
 	FixSystemWideGamma = IniHelper::ReadInteger("Fixes", "FixSystemWideGamma", 1) == 1;
+	FixTextureDownscaling = IniHelper::ReadInteger("Fixes", "FixTextureDownscaling", 1) == 1;
 	OptimizeSaveSpeed = IniHelper::ReadInteger("Fixes", "OptimizeSaveSpeed", 1) == 1;
 
 	// Input
@@ -1229,7 +1232,8 @@ static int __cdecl ReadControllerState_Hook()
 	{
 		isUsingControllerMenu = MenuHelper::currentMenuStyle != MenuStyle::PC;
 
-		if (FixStretchedMenu)
+		// The cursor stays hidden on the title screen, it's set when the main menu shows up
+		if (FixStretchedMenu && (isMainMenuShown || !UseConsoleTitleScreen))
 		{
 			GameHelper::ResizeCursor(isUsingControllerMenu, currentWidth, currentHeight);
 		}
@@ -2434,6 +2438,18 @@ static int __cdecl QGL_Init_Hook(LPCSTR lpLibFileName)
 	return QGL_Init(lpLibFileName);
 }
 
+// The game resamples textures with row buffers of 1024 pixels, textures scaled up to 2048 pixels need larger ones
+static void __cdecl ResampleTexture_Hook(uint8_t* in, int inWidth, int inHeight, uint8_t* out, int outWidth, int outHeight)
+{
+	if (outWidth <= 1024)
+	{
+		ResampleTexture(in, inWidth, inHeight, out, outWidth, outHeight);
+		return;
+	}
+
+	RenderHelper::ResampleTexture(in, inWidth, inHeight, out, outWidth, outHeight);
+}
+
 // Initialize the shaders list
 static void __cdecl R_SetupShaders_Hook()
 {
@@ -3256,6 +3272,15 @@ static void ApplyFixCharacterShading()
 	MemoryHelper::MakeCALL(0x4805E5, reinterpret_cast<uintptr_t>(&SphereLightingHookStub));
 }
 
+static void ApplyFixTextureDownscaling()
+{
+	if (!FixTextureDownscaling) return;
+
+	// r_roundImagesDown "1" -> "0"
+	MemoryHelper::WriteMemory<int>(0x46E1B8, 0x5151BC);
+	HookHelper::ApplyHook((void*)0x47D130, &ResampleTexture_Hook, (LPVOID*)&ResampleTexture);
+}
+
 static void ApplyFixSystemWideGamma()
 {
 	if (!FixSystemWideGamma) return;
@@ -3539,6 +3564,9 @@ static void ApplyEnhancedLOD()
 
 	// r_lodbias "0" -> "-2"
 	MemoryHelper::WriteMemory<int>(0x46E499, 0x528E98);
+
+	// r_subdivisions "4" -> "1"
+	MemoryHelper::WriteMemory<uint8_t>(0x46E398, 1);
 }
 
 static void ApplyAnisotropicTextureFiltering()
@@ -3609,6 +3637,7 @@ static void Init()
 	ApplyFixUnlitModels();
 	ApplyFixCharacterShading();
 	ApplyFixSystemWideGamma();
+	ApplyFixTextureDownscaling();
 	ApplyOptimizeSaveSpeed();
 
 	// General

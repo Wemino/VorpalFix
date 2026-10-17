@@ -1021,6 +1021,33 @@ namespace RenderHelper
 	{
 		qglBindFramebuffer(GL_FRAMEBUFFER, sceneTarget.fbo);
 	}
+
+	// Same filter as the game's 'ResampleTexture', without its limit of 1024 pixels per row
+	static void ResampleTexture(const uint8_t* in, int inWidth, int inHeight, uint8_t* out, int outWidth, int outHeight)
+	{
+		std::vector<unsigned> p1(outWidth), p2(outWidth);
+		unsigned fracStep = inWidth * 0x10000 / outWidth;
+
+		unsigned frac = fracStep >> 2;
+		for (int i = 0; i < outWidth; i++, frac += fracStep) p1[i] = 4 * (frac >> 16);
+
+		frac = 3 * (fracStep >> 2);
+		for (int i = 0; i < outWidth; i++, frac += fracStep) p2[i] = 4 * (frac >> 16);
+
+		for (int i = 0; i < outHeight; i++, out += 4 * outWidth)
+		{
+			const uint8_t* inRow = in + 4 * inWidth * (int)((i + 0.25) * inHeight / outHeight);
+			const uint8_t* inRow2 = in + 4 * inWidth * (int)((i + 0.75) * inHeight / outHeight);
+
+			for (int j = 0; j < outWidth; j++)
+			{
+				for (int c = 0; c < 4; c++)
+				{
+					out[4 * j + c] = (inRow[p1[j] + c] + inRow[p2[j] + c] + inRow2[p1[j] + c] + inRow2[p2[j] + c]) >> 2;
+				}
+			}
+		}
+	}
 };
 
 #define GL_TEXTURE0                       0x84C0
