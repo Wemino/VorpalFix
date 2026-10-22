@@ -38,6 +38,7 @@ constexpr uintptr_t VTABLE_UI_WINDOW_MANAGER = 0x53E62C;
 constexpr uintptr_t VTABLE_UI_WIDGET_CONTAINER = 0x53EB84;
 constexpr uintptr_t VTABLE_UI_AUTOSCROLL = 0x53EBD4;
 constexpr uintptr_t VTABLE_UI_LABEL = 0x5410FC;
+constexpr uintptr_t COM_LAST_FRAME_TIME = 0x559A0C;
 constexpr uintptr_t INTRO_STAGE_ADDR = 0x7CCA20;
 constexpr uintptr_t FAKK_CONSOLE_PTR_ADDR = 0x7CCA54;
 constexpr uintptr_t CURRENT_LANG = 0x7CF868;
@@ -54,6 +55,9 @@ constexpr uintptr_t MAIN_WINDOW_HWND = 0x11C5008;
 constexpr uintptr_t SYS_EVENT_TIME = 0x11C50AC;
 constexpr uintptr_t FS_HANDLE_TABLE_ADDR = 0x12E3CE0;
 constexpr uintptr_t FS_HANDLE_NAMES_ADDR = 0x12E3CF8;
+constexpr uintptr_t CVAR_COM_TIMEDEMO = 0x12EE10C;
+constexpr uintptr_t CVAR_COM_DEDICATED = 0x12EE114;
+constexpr uintptr_t CVAR_COM_MAXFPS = 0x12EF928;
 constexpr uintptr_t UI_WAIT_TIMER = 0x12EF948;
 constexpr uintptr_t IS_CINEMATIC = 0x12F3CE8;
 constexpr uintptr_t CURRENT_WEAPON_ID = 0x12F3D60;
@@ -117,6 +121,8 @@ static bool refreshFOV = false;
 static bool cursorReleased = false;
 static std::atomic<LONG> rawMouseDeltaX { 0 };
 static std::atomic<LONG> rawMouseDeltaY { 0 };
+static double nextFrameTime = 0.0;
+static int mouseWheelDelta = 0;
 
 // Misc (read-only)
 using GameHelper::ASPECT_RATIO_4_3;
@@ -195,6 +201,7 @@ static void(__cdecl* CL_ParsePacketEntities)(int, int, int) = nullptr; // 0x40C1
 static int(__cdecl* CallCmd)(const char*, char) = nullptr; // 0x4158F0
 static char* (__cdecl* GetSavePath)() = nullptr; // 0x417400
 static void(__cdecl* CVAR_Init)() = nullptr; // 0x417530
+static void(__cdecl* Com_Frame)() = nullptr; // 0x418800
 static int(__cdecl* Cvar_Set)(const char*, const char*, int) = nullptr; // 0x419910
 static void* (__cdecl* FS_FCloseFile)(int) = nullptr; // 0x41A1B0
 static int(__cdecl* FS_FOpenFileRead)(char*, int*, int, int) = nullptr; // 0x41A590
@@ -279,6 +286,8 @@ static DWORD(WINAPI* ori_XInputGetState)(DWORD, XINPUT_STATE*);
 #define GL_NEAREST_MIPMAP_NEAREST         0x2700
 #define GL_LINEAR_MIPMAP_LINEAR           0x2703
 
+#define GL_CLAMP_TO_EDGE                  0x812F
+
 // =============================
 // Renderer Defines
 // =============================
@@ -315,7 +324,11 @@ bool FixUnlitModels = false;
 bool FixCharacterShading = false;
 bool FixSystemWideGamma = false;
 bool FixTextureDownscaling = false;
-bool FixFogBanding = false;
+bool FixFrameRateLimiter = false;
+bool FixMouseWheel = false;
+bool FixTextureClamping = false;
+bool FixLongPk3FileNames = false;
+bool FixWindowBackgroundFlash = false;
 bool OptimizeSaveSpeed = false;
 
 // Input
@@ -396,7 +409,11 @@ static void ReadConfig()
 	FixCharacterShading = IniHelper::ReadInteger("Fixes", "FixCharacterShading", 1) == 1;
 	FixSystemWideGamma = IniHelper::ReadInteger("Fixes", "FixSystemWideGamma", 1) == 1;
 	FixTextureDownscaling = IniHelper::ReadInteger("Fixes", "FixTextureDownscaling", 1) == 1;
-	FixFogBanding = IniHelper::ReadInteger("Fixes", "FixFogBanding", 1) == 1;
+	FixFrameRateLimiter = IniHelper::ReadInteger("Fixes", "FixFrameRateLimiter", 1) == 1;
+	FixMouseWheel = IniHelper::ReadInteger("Fixes", "FixMouseWheel", 1) == 1;
+	FixTextureClamping = IniHelper::ReadInteger("Fixes", "FixTextureClamping", 1) == 1;
+	FixLongPk3FileNames = IniHelper::ReadInteger("Fixes", "FixLongPk3FileNames", 1) == 1;
+	FixWindowBackgroundFlash = IniHelper::ReadInteger("Fixes", "FixWindowBackgroundFlash", 1) == 1;
 	OptimizeSaveSpeed = IniHelper::ReadInteger("Fixes", "OptimizeSaveSpeed", 1) == 1;
 
 	// Input
@@ -938,6 +955,52 @@ static void __cdecl FetchDisplayResolutions_Hook()
 	}
 }
 
+// Wait for the next frame before running it, the wait in 'Com_Frame' dropped the fraction of a millisecond of '1000 / com_maxfps' (144 FPS ran at 166 FPS) and kept a CPU core busy
+static void __cdecl Com_Frame_Hook()
+{
+	int ptr_com_dedicated = MemoryHelper::ReadMemory<int>(CVAR_COM_DEDICATED);
+	int ptr_com_maxfps = MemoryHelper::ReadMemory<int>(CVAR_COM_MAXFPS);
+	int ptr_com_timedemo = MemoryHelper::ReadMemory<int>(CVAR_COM_TIMEDEMO);
+
+	int maxfps = GameHelper::GetCvarInteger(ptr_com_maxfps);
+
+	// Same conditions as the game's limit
+	if (!GameHelper::GetCvarInteger(ptr_com_dedicated) && maxfps > 0 && !GameHelper::GetCvarInteger(ptr_com_timedemo))
+	{
+		// Time at which the previous frame stopped waiting
+		int lastFrameTime = MemoryHelper::ReadMemory<int>(COM_LAST_FRAME_TIME);
+		double frameMsec = 1000.0 / maxfps;
+
+		nextFrameTime += frameMsec;
+
+		// Start over when the previous frame was late by more than a whole frame (loading, frame slower than the limit), instead of rushing the next frames
+		if (nextFrameTime < lastFrameTime || nextFrameTime > lastFrameTime + frameMsec)
+		{
+			nextFrameTime = lastFrameTime + frameMsec;
+		}
+
+		// The game's time is in whole milliseconds
+		int waitMsec = static_cast<int>(ceil(nextFrameTime - lastFrameTime - 0.001));
+
+		// Same clock as the frame times, 'Com_EventLoop' returns the time of 'timeGetTime' when no event is left
+		int elapsed = static_cast<int>(timeGetTime()) - lastFrameTime;
+
+		// A negative time (timer wrap) is left to the game, which resets the time of the previous frame
+		while (elapsed >= 0 && elapsed < waitMsec)
+		{
+			// Sleep while more than a millisecond is left, the game already set the timer resolution to 1 ms with 'timeBeginPeriod'
+			if (waitMsec - elapsed > 1)
+			{
+				Sleep(1);
+			}
+
+			elapsed = static_cast<int>(timeGetTime()) - lastFrameTime;
+		}
+	}
+
+	Com_Frame();
+}
+
 // Intercepts and updates cvars
 static int __cdecl Cvar_Set_Hook(const char* var_name, const char* value, int flag)
 {
@@ -1177,6 +1240,23 @@ static int __cdecl FS_Seek_Hook(int handle, int offset, int origin)
 	}
 
 	return FS_Seek(handle, offset, origin);
+}
+
+// Replaces the call to 'unzGetCurrentFileInfo' in 'FS_LoadZipFile', where the file names are read in a buffer of 80 characters
+static int __cdecl FS_LoadZipFile_unzGetCurrentFileInfo_Override(void* file, uint32_t* fileInfo, char* fileName, unsigned int fileNameBufferSize, void* extraField, unsigned int extraFieldBufferSize, char* comment, unsigned int commentBufferSize)
+{
+	int result = GameHelper::unzGetCurrentFileInfo(file, fileInfo, fileName, fileNameBufferSize, extraField, extraFieldBufferSize, comment, commentBufferSize);
+
+	// 'size_filename' in 'unz_file_info'
+	uint32_t fileNameLength = fileInfo[8];
+
+	// A name that doesn't fit is copied without its null terminator, then lowercased and hashed past the end of the buffer
+	if (result == 0 && fileNameBufferSize > 0 && fileNameLength >= fileNameBufferSize)
+	{
+		fileName[fileNameBufferSize - 1] = '\0';
+	}
+
+	return result;
 }
 
 // Reimplementation of 'sub_41D1E0' to fix free space reporting and ensure accurate target disk
@@ -2058,6 +2138,40 @@ static int __stdcall lpfnWndProc_MSG_Hook(HWND hWnd, UINT Msg, int wParam, LPARA
 			GameHelper::Sys_QueEvent(MemoryHelper::ReadMemory<int>(SYS_EVENT_TIME), 1, key, Msg == WM_XBUTTONDOWN ? 1 : 0, 0, nullptr);
 		}
 
+		return TRUE;
+	}
+
+	// Mouse Wheel
+	if (FixMouseWheel && Msg == WM_MOUSEWHEEL)
+	{
+		int delta = GET_WHEEL_DELTA_WPARAM(wParam);
+
+		// Drop what is left from scrolling in the other direction
+		if ((delta > 0) != (mouseWheelDelta > 0))
+		{
+			mouseWheelDelta = 0;
+		}
+
+		// The game queued one wheel event per message whatever the distance scrolled, queue one per notch instead
+		mouseWheelDelta += delta;
+		int notches = mouseWheelDelta / WHEEL_DELTA;
+		mouseWheelDelta -= notches * WHEEL_DELTA;
+
+		int key = notches > 0 ? 184 : 183; // MWHEELUP / MWHEELDOWN
+		int eventTime = MemoryHelper::ReadMemory<int>(SYS_EVENT_TIME);
+
+		for (int i = 0; i < abs(notches); i++)
+		{
+			GameHelper::Sys_QueEvent(eventTime, 1, key, 1, 0, nullptr);
+			GameHelper::Sys_QueEvent(eventTime, 1, key, 0, 0, nullptr);
+		}
+
+		return 0;
+	}
+
+	// The window class fills the window with a grey brush before the game draws its first frame over it
+	if (FixWindowBackgroundFlash && Msg == WM_ERASEBKGND)
+	{
 		return TRUE;
 	}
 
@@ -3107,12 +3221,43 @@ static void ApplyFixTextureDownscaling()
 	HookHelper::ApplyHook((void*)0x47D130, &ResampleTexture_Hook, (LPVOID*)&ResampleTexture);
 }
 
-static void ApplyFixFogBanding()
+static void ApplyFixFrameRateLimiter()
 {
-	if (!FixFogBanding) return;
+	if (!FixFrameRateLimiter) return;
 
-	// The fog image GL_CLAMP -> GL_CLAMP_TO_EDGE, far fog used to blend with the border (R_CreateFogImage)
-	MemoryHelper::WriteMemory<int>(0x47E9FD, 0x812F);
+	HookHelper::ApplyHook((void*)0x418800, &Com_Frame_Hook, (LPVOID*)&Com_Frame);
+
+	// The wait in 'Com_Frame' always takes the path without limit (1 ms), the hook waits for the next frame instead
+	MemoryHelper::WriteMemory<uint8_t>(0x418880, 0xEB);
+}
+
+static void ApplyFixTextureClamping()
+{
+	if (!FixTextureClamping) return;
+
+	// GL_CLAMP -> GL_CLAMP_TO_EDGE
+	const uintptr_t wrapClampModeAddresses[] =
+	{
+		0x47E9FD, // *fog, far fog used to blend with the border (R_CreateFogImage)
+		0x47EB9F, // *scratch, used to draw the FMVs (R_CreateBuiltinImages)
+		0x47EBC7, // gfx/2d/proj_lobe.tga, used to draw the dynamic lights (R_CreateBuiltinImages)
+		0x4847E1, // Outer sky box (ParseSkyParms)
+		0x4848E0, // Inner sky box (ParseSkyParms)
+		0x492098  // *lightmap (R_LoadLightmaps)
+	};
+
+	for (uintptr_t address : wrapClampModeAddresses)
+	{
+		MemoryHelper::WriteMemory<int>(address, GL_CLAMP_TO_EDGE);
+	}
+}
+
+static void ApplyFixLongPk3FileNames()
+{
+	if (!FixLongPk3FileNames) return;
+
+	// FS_LoadZipFile
+	MemoryHelper::MakeCALL(0x41B341, reinterpret_cast<uintptr_t>(&FS_LoadZipFile_unzGetCurrentFileInfo_Override));
 }
 
 static void ApplyFixSystemWideGamma()
@@ -3346,7 +3491,7 @@ static void ApplyCustomResolution()
 
 static void ApplyWndProcHook()
 {
-	if (!EnableAltF4Close && !UseMouseRawInput && !EnableMouse45 && !EnableControllerIcons) return;
+	if (!EnableAltF4Close && !UseMouseRawInput && !EnableMouse45 && !EnableControllerIcons && !FixMouseWheel && !FixWindowBackgroundFlash) return;
 
 	HookHelper::ApplyHook((void*)0x46C600, &lpfnWndProc_MSG_Hook, (LPVOID*)&lpfnWndProc_MSG);
 }
@@ -3472,7 +3617,9 @@ static void Init()
 	ApplyFixCharacterShading();
 	ApplyFixSystemWideGamma();
 	ApplyFixTextureDownscaling();
-	ApplyFixFogBanding();
+	ApplyFixFrameRateLimiter();
+	ApplyFixTextureClamping();
+	ApplyFixLongPk3FileNames();
 	ApplyOptimizeSaveSpeed();
 
 	// General

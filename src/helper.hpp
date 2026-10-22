@@ -190,6 +190,7 @@ namespace GameHelper
 	int(__cdecl* Key_SetBinding)(int, const char*) = (int(__cdecl*)(int, const char*))0x407870;
 	int(__cdecl* CL_Vid_Restart_f)() = (int(__cdecl*)())0x40B2F0;
 	int(__cdecl* Cvar_Set2)(const char*, const char*, int) = (int(__cdecl*)(const char*, const char*, int))0x418D90;
+	int(__cdecl* unzGetCurrentFileInfo)(void*, uint32_t*, char*, unsigned int, void*, unsigned int, char*, unsigned int) = (int(__cdecl*)(void*, uint32_t*, char*, unsigned int, void*, unsigned int, char*, unsigned int))0x43E560;
 	void** (__thiscall* CreateString)(void**, const char*) = (void** (__thiscall*)(void**, const char*))0x441880;
 	char* (__cdecl* CL_GetInvItemName)(int) = (char* (__cdecl*)(int))0x441D60;
 	int(__cdecl* UI_GetStaticMap)(unsigned int, const char*) = (int(__cdecl*)(unsigned int, const char*))0x44A300;
